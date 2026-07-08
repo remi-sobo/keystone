@@ -44,8 +44,9 @@ const KNOWN_COVERAGE_GAPS: ReadonlyArray<string> = []
  * needs a SECURITY.md paragraph.
  */
 const SERVICE_ROLE_ONLY_TABLES: ReadonlyArray<string> = [
-  'ai_spend_ledger',   // AI cost metadata; written by the anthropicClient chokepoint (SECURITY.md 5)
-  'voice_violations',  // voice drift log, model excerpts only (SECURITY.md 5)
+  'ai_spend_ledger',    // AI cost metadata; written by the anthropicClient chokepoint (SECURITY.md 5)
+  'voice_violations',   // voice drift log, model excerpts only (SECURITY.md 5)
+  'google_connections', // encrypted OAuth tokens; deny-all, calendar routes only (SECURITY.md 7)
 ]
 
 function readAllMigrations(): string {

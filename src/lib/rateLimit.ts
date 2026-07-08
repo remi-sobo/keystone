@@ -231,7 +231,15 @@ export const LIMITS = {
   MESSAGES_PER_HOUR: { kind: 'messages:user:hour', windowMs: 60 * 60 * 1000, max: 100 },
 
   // Session booking (Ring 2). Deliberate, infrequent actions.
+  BOOKING_PER_MIN: { kind: 'booking:user:min', windowMs: 60 * 1000, max: 5 },
   BOOKING_PER_HOUR: { kind: 'booking:user:hour', windowMs: 60 * 60 * 1000, max: 20 },
+
+  // Calendar sync (Ring 2): each run fans out Google API calls.
+  CALENDAR_SYNC_PER_HOUR: {
+    kind: 'calendar-sync:user:hour',
+    windowMs: 60 * 60 * 1000,
+    max: 30,
+  },
 
   // The per-practice model-spend ceiling: a call-count proxy for spend,
   // consumed by lib/spend.ts before every AI call. Every Keystone AI

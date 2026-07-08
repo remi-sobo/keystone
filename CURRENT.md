@@ -2,23 +2,29 @@
 
 The live operational doc. If it is happening and it is not here, it is not happening. Weekly ritual per SOBO_PLAYBOOK.md section 8.
 
-Last updated: 2026-07-08 (Ring 1 built).
+Last updated: 2026-07-08 (Ring 2 built; infrastructure live).
 
 ## State
 
-- **Ring 0 (Preflight): done.** Findings in `docs/keystone-preflight.md`; FLAGS reviewed, spec amended where they won (`ring1: spec amendments`).
-- **Ring 1 (The spine): BUILT on branch `claude/nextjs-setup-verify-w0b2qx`, not yet shipped.** Schema, permission authority, RLS, the seeded cross-practice AND cross-client matrix (passing live against a scratch Postgres 16), login (magic link + email-keyed claim), the sidebar shell on both surfaces, the client progress view, and the SafeSpace seed. Merged + green is not shipped: shipped needs the Supabase and Vercel projects provisioned, migrations + seed applied, a deploy, and one real 390px run against live data. The login page has had a real 390px render locally (screenshot in the session); the data screens render empty states until a live project exists.
+- **Ring 0 (Preflight): done.** Findings in `docs/keystone-preflight.md`.
+- **Ring 1 (The spine): built and applied to live infrastructure.** The pre-provisioned Supabase project (`keystone`) carries migrations 0001, 0002, and the SafeSpace seed (1 practice, 3 practice members, 1 client, 4 client members, 1 engagement, 5 workstreams). The pre-provisioned Vercel project (`keystone`, git-linked to this repo) builds previews from this branch with the public env values in vercel.json.
+- **Ring 2 (Sessions and scheduling): built.** Migration 0003 applied locally and in CI; sessions, availability windows, the encrypted Google connection store, the pure slot engine (DST-pinned unit tests), client booking/reschedule/cancel (pure RLS plus the DB exclusion constraint), practice settings (windows, connect, sync).
 - Engagement status: proposal out to SafeSpace, decision expected Thu Jul 9.
-- **Still owed before "shipped": provision Supabase + Vercel, set env vars, apply `0001_keystone_spine.sql` and `supabase/seed.sql`, configure the Supabase auth email redirect to `/auth/callback`, deploy, run the 390px pass on live data.**
-- The "Client Login" nav link on soboconsulting.com is a one-line PR in that repo; it ships as its own separately approved change (spec section 10 note), not from this session.
+
+## Manual dashboard steps owed (nothing else blocks the 390px live run)
+
+1. Supabase auth: set the Site URL to the production domain and add the Vercel URLs (`https://keystone-blue-tau.vercel.app/**` and the preview pattern) to the auth redirect allow-list, so magic links land on `/auth/callback`.
+2. Vercel env (server-only, dashboard): `SUPABASE_SERVICE_ROLE_KEY` (rate limiting, audit, calendar), and before their rings: `KEYSTONE_TOKEN_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY`, `RESEND_API_KEY`, `CRON_SECRET`.
+3. Merge this branch to `main` when reviewed: the Vercel production domain builds from main.
+4. The "Client Login" nav link on soboconsulting.com stays a separately approved one-line PR in that repo.
 
 ## The ring queue
 
 | Ring | Contents | Status |
 |---|---|---|
 | 0 | Preflight: repo, platform layer, tokens, docs, agents, gate scaffolds, preflight doc | done |
-| 1 | The spine: practices, clients, members, email-keyed invites, engagements, workstreams with the parallel arc, stage events, permission authority, RLS, the seeded cross-practice and cross-client isolation matrix, sidebar shell both surfaces, client progress view, login page | built; deploy owed |
-| 2 | Sessions and scheduling: availability windows, slot picking, Google Calendar OAuth, tz-correct sync, reschedule | queued |
+| 1 | The spine: practices, clients, members, email-keyed invites, engagements, workstreams with the parallel arc, stage events, permission authority, RLS, the seeded cross-practice and cross-client isolation matrix, sidebar shell both surfaces, client progress view, login page | built; live DB seeded; 390px live run owed |
+| 2 | Sessions and scheduling: availability windows, slot picking, Google Calendar OAuth, tz-correct sync, reschedule | built; Google end-to-end run owed (needs env) |
 | 3 | Notes and homework: paste transcript, AI proposes (inert), consultant accepts, client checks off, review queue, session detail, readiness panel | queued |
 | 3.5 | Practice Home, the Monday screen | queued |
 | 4 | Deliverables and library | queued |
@@ -49,7 +55,8 @@ The spec numbers these 1 through 12 and 14; there is no gate 13 in the spec (fla
 
 ## Blocked
 
-- Ring 1 "shipped": blocked on Supabase + Vercel provisioning (a cost and account decision, not a code task).
+- The live 390px data run: blocked on manual step 1 above (auth redirect allow-list), then any seeded email can sign in with a magic link.
+- Calendar end-to-end: blocked on manual step 2 (Google OAuth creds + token secret).
 - Domain wiring: blocked on CONFIRM 1 (`src/lib/env.ts` is the one-file change).
 - Invite sends: blocked on CONFIRM 2 (the seeded SafeSpace emails are the spec's proposal).
 

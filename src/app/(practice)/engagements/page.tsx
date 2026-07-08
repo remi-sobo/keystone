@@ -10,12 +10,19 @@ const DEFAULT_STAGES = ['diagnose', 'design', 'build', 'train', 'stabilize']
  */
 export default async function EngagementsPage() {
   const supabase = await createServerSupabase()
-  const [{ data: engagements }, { data: practice }] = await Promise.all([
+  const [{ data: engagements }, { data: practice }, { data: upcoming }] = await Promise.all([
     supabase
       .from('engagements')
       .select('id, title, status, clients(name), workstreams(id, title, stage, sort)')
       .order('created_at', { ascending: true }),
     supabase.from('practices').select('stage_config').limit(1).maybeSingle(),
+    supabase
+      .from('sessions')
+      .select('id, engagement_id, starts_at, tz, kind')
+      .eq('status', 'booked')
+       
+      .gte('starts_at', new Date().toISOString())
+      .order('starts_at', { ascending: true }),
   ])
 
   const stages =
@@ -57,6 +64,28 @@ export default async function EngagementsPage() {
                     />
                   ))}
               </div>
+              {(upcoming ?? []).filter((s) => s.engagement_id === e.id).length > 0 ? (
+                <div className="mt-6 border-t border-ink/10 pt-4">
+                  <p className="eyebrow">Upcoming sessions</p>
+                  <ul className="mt-2 flex flex-col gap-1">
+                    {(upcoming ?? [])
+                      .filter((s) => s.engagement_id === e.id)
+                      .slice(0, 5)
+                      .map((s) => (
+                        <li key={s.id} className="text-sm text-ink-dim">
+                          {new Intl.DateTimeFormat('en-US', {
+                            timeZone: s.tz,
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          }).format(new Date(s.starts_at))}
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              ) : null}
             </section>
           ))}
         </div>

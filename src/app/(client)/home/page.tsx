@@ -31,6 +31,17 @@ export default async function ClientHomePage() {
   let stages = DEFAULT_STAGES
   const freshByWorkstream = new Map<string, string[]>()
 
+  const { data: nextSession } = await supabase
+    .from('sessions')
+    .select('starts_at, tz')
+    .eq('client_id', viewer.client.clientId)
+    .eq('status', 'booked')
+     
+    .gte('starts_at', new Date().toISOString())
+    .order('starts_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
   if (engagement) {
     const [ws, practice, events] = await Promise.all([
       supabase
@@ -89,9 +100,31 @@ export default async function ClientHomePage() {
         <aside className="flex flex-col gap-4">
           <div className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-4">
             <p className="eyebrow">Next session</p>
-            <p className="mt-2 text-sm text-ink-dim">
-              Scheduling opens soon. Your consultant will reach out.
-            </p>
+            {nextSession ? (
+              <>
+                <p className="mt-2 text-sm font-medium text-ink">
+                  {new Intl.DateTimeFormat('en-US', {
+                    timeZone: nextSession.tz,
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  }).format(new Date(nextSession.starts_at))}
+                </p>
+                <a href="/sessions" className="mt-1 inline-block text-sm text-forest underline">
+                  Reschedule
+                </a>
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-ink-dim">
+                Nothing booked.{' '}
+                <a href="/sessions" className="text-forest underline">
+                  Pick a time
+                </a>
+                .
+              </p>
+            )}
           </div>
           <div className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-4">
             <p className="eyebrow">Homework due</p>

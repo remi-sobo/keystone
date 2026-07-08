@@ -88,6 +88,25 @@ insert into workstream_stage_events
    '10000000-0000-0000-0000-00000000000b', '20000000-0000-0000-0000-0000000000b1',
    'design', 'build');
 
+-- Ring 2: sessions, availability windows, and the token store.
+insert into sessions (id, engagement_id, practice_id, client_id, starts_at, ends_at, tz) values
+  ('50000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   now() + interval '3 days', now() + interval '3 days 1 hour', 'America/Los_Angeles'),
+  ('50000000-0000-0000-0000-0000000000b1', '30000000-0000-0000-0000-0000000000b1',
+   '10000000-0000-0000-0000-00000000000b', '20000000-0000-0000-0000-0000000000b1',
+   now() + interval '4 days', now() + interval '4 days 1 hour', 'America/Los_Angeles');
+
+insert into availability_windows (practice_id, practice_member_id, weekday, start_min, end_min, tz)
+select '10000000-0000-0000-0000-00000000000a', id, 1, 540, 720, 'America/Los_Angeles'
+from practice_members
+where practice_id = '10000000-0000-0000-0000-00000000000a' and role = 'owner';
+
+insert into google_connections (practice_id, practice_member_id, google_email, refresh_token_enc)
+select '10000000-0000-0000-0000-00000000000a', id, 'leak-test@gmail.test', 'kge1:enc:enc:enc'
+from practice_members
+where practice_id = '10000000-0000-0000-0000-00000000000a' and role = 'owner';
+
 -- Service-role-only rows that must be invisible to every session.
 insert into ai_spend_ledger (practice_id, model, tier, cost_usd)
   values ('10000000-0000-0000-0000-00000000000a', 'leak-test', 'default', 0.01);
@@ -145,7 +164,11 @@ do $$ begin
   if (select count(*) from engagements where practice_id = '10000000-0000-0000-0000-00000000000b') <> 0 then
     raise exception 'LEAK cross-practice: owner_a reads practice_b engagements';
   end if;
+  -- Ring 2: the owner sees both dimensions of their own practice only.
+  if (select count(*) from sessions) <> 1 then raise exception 'owner_a session visibility wrong'; end if;
+  if (select count(*) from availability_windows) <> 1 then raise exception 'owner_a window visibility wrong'; end if;
   -- Service-role-only tables: even the owner sees nothing.
+  if (select count(*) from google_connections) <> 0 then raise exception 'LEAK: session reads google_connections (token store)'; end if;
   if (select count(*) from ai_spend_ledger) <> 0 then raise exception 'LEAK: session reads ai_spend_ledger'; end if;
   if (select count(*) from voice_violations) <> 0 then raise exception 'LEAK: session reads voice_violations'; end if;
   if (select count(*) from audit_log) <> 0 then raise exception 'LEAK: session reads audit_log'; end if;
@@ -210,6 +233,54 @@ do $$ begin
   if (select count(*) from engagements where practice_id = '10000000-0000-0000-0000-00000000000b') <> 0 then
     raise exception 'LEAK cross-practice: member_a1 reads practice_b engagements';
   end if;
+  -- Ring 2: sessions honor both dimensions; windows are practice-wide by
+  -- design; the token store stays invisible.
+  if (select count(*) from sessions) <> 1 then raise exception 'member_a1 session visibility wrong'; end if;
+  if (select count(*) from sessions where client_id <> '20000000-0000-0000-0000-0000000000a1') <> 0 then
+    raise exception 'LEAK cross-client: member_a1 reads another client''s sessions';
+  end if;
+  if (select count(*) from availability_windows) <> 1 then
+    raise exception 'member_a1 must read practice_a windows to book';
+  end if;
+  if (select count(*) from google_connections) <> 0 then
+    raise exception 'LEAK: client member reads google_connections';
+  end if;
+  -- The busy-interval function discloses intervals only, both dims of
+  -- the practice, nothing of practice_b.
+  if (select count(*) from keystone_busy_intervals('10000000-0000-0000-0000-00000000000a')) <> 1 then
+    raise exception 'member_a1 busy intervals wrong for own practice';
+  end if;
+  if (select count(*) from keystone_busy_intervals('10000000-0000-0000-0000-00000000000b')) <> 0 then
+    raise exception 'LEAK cross-practice: member_a1 reads practice_b busy intervals';
+  end if;
+end $$;
+
+-- Ring 2: a client member books within their own client...
+do $$ begin
+  insert into sessions (engagement_id, practice_id, client_id, starts_at, ends_at, tz, created_by)
+    values ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1',
+            now() + interval '10 days', now() + interval '10 days 1 hour',
+            'America/Los_Angeles', '00000000-0000-0000-0000-0000000000a1');
+end $$;
+-- ...but never for the OTHER client of the same practice (cross-client
+-- write wall), and never overlapping a live session (the exclusion
+-- constraint).
+do $$ begin
+  insert into sessions (engagement_id, practice_id, client_id, starts_at, ends_at, tz)
+    values ('30000000-0000-0000-0000-0000000000a2', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a2',
+            now() + interval '11 days', now() + interval '11 days 1 hour', 'America/Los_Angeles');
+  raise exception 'LEAK cross-client: member_a1 booked a session for client_a2';
+exception when insufficient_privilege then null;
+end $$;
+do $$ begin
+  insert into sessions (engagement_id, practice_id, client_id, starts_at, ends_at, tz)
+    values ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1',
+            now() + interval '10 days', now() + interval '10 days 1 hour', 'America/Los_Angeles');
+  raise exception 'HOLE: the double-booking exclusion constraint did not fire';
+exception when exclusion_violation then null;
 end $$;
 
 -- A client member watches; they do not write the spine (Ring 1).
@@ -247,6 +318,13 @@ do $$ begin
   end if;
   if (select count(*) from clients where practice_id = '10000000-0000-0000-0000-00000000000a') <> 0 then
     raise exception 'LEAK cross-practice: member_b reads practice_a clients';
+  end if;
+  -- Ring 2 cross-practice: no practice_a sessions or windows.
+  if (select count(*) from sessions where practice_id = '10000000-0000-0000-0000-00000000000a') <> 0 then
+    raise exception 'LEAK cross-practice: member_b reads practice_a sessions';
+  end if;
+  if (select count(*) from availability_windows) <> 0 then
+    raise exception 'LEAK cross-practice: member_b reads practice_a windows';
   end if;
 end $$;
 

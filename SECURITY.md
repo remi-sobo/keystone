@@ -43,7 +43,11 @@ Every AI input is untrusted (a pasted transcript can contain instructions; treat
 
 ## 7. Secrets and email
 
-Secrets live in env (Vercel) only, documented with empty values in `.env.example`, never in the client bundle. Google OAuth tokens (Ring 2) are encrypted at the app layer (AES-256-GCM) in a service-role-only table with RLS deny-all, decrypted server-side just in time. OAuth state is HMAC-signed with a TTL. Resend failures surface as real errors and are logged; the UI never shows "sent" on a failed send.
+Secrets live in env (Vercel) only, documented with empty values in `.env.example`, never in the client bundle. Resend failures surface as real errors and are logged; the UI never shows "sent" on a failed send.
+
+**Google Calendar tokens (Ring 2).** `google_connections` stores OAuth access and refresh tokens AES-256-GCM encrypted (`src/lib/crypto.ts`, keyed by `KEYSTONE_TOKEN_SECRET`, fail-closed) in a deny-all table (RLS on, zero policies); only the calendar routes, behind `requirePracticeMember`, decrypt them just in time. The OAuth state is HMAC-SHA256 signed over the resolved user id with a 15-minute TTL and verified with `timingSafeEqual`, and the callback additionally requires the state's user to equal the session's user. Who can see it: nobody through a session; the settings page shows only the connected email and calendar time zone. Deletion: the row deletes with the practice member (FK cascade); disconnecting is a row delete.
+
+**Sessions and availability (Ring 2).** Sessions carry both scope columns and both-dimension policies like every engagement table; a client member books only within their own client (`session.book` through `keystone_can`, which demands the client match). Double-booking is impossible at the DB layer (`sessions_no_overlap` exclusion constraint on live sessions), not merely in slot math. Slot computation needs the practice's busy times, which a client member cannot read from `sessions`; `keystone_busy_intervals` (SECURITY DEFINER, membership-checked, pinned search_path) discloses bare start/end intervals only: no ids, no client identity, no titles. Availability windows are readable practice-wide by design (a client cannot book without them) and written by consultants only.
 
 ## 8. The CI gates (all ship together, green from Ring 0)
 

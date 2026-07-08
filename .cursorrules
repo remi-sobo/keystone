@@ -1,1 +1,32 @@
+# Keystone editorial rulebook
 
+Read specs/keystone.md and CLAUDE.md before writing code. CURRENT.md holds live state.
+
+## Scope nouns (locked)
+- practice_id: the top tenant (a consultant or coaching firm). Tenant one is SOBO Consulting.
+- client_id: nested under one practice (an organization the practice serves). Client one is SafeSpace.
+- Every scoped table carries practice_id, denormalized even where derivable, plus client_id where the spec requires it.
+- Both ids are ALWAYS resolved server-side from the authenticated user (src/lib/auth.ts). Never trust a practiceId or clientId from the browser.
+
+## Enforcement model (locked, one per surface)
+- Client surface, app/(client) and its route handlers: pure RLS. Anon key only. Importing supabaseAdmin or the service role there fails CI.
+- Practice surface: service-role-after-check. Resolve and verify practice membership first, then act; RLS stays on as defense in depth.
+
+## The per-feature gate (from SOBO_PLAYBOOK.md section 10; every PR)
+- New scoped table: carries practice_id (and client_id where required), membership RLS, and a cross-practice AND cross-client isolation test in THIS PR. Global reference tables are the documented exception: no scope id, SELECT to authenticated, no write policy, carved out in the gate.
+- New route: validates auth, resolves scope server-side, every query scoped, service role only after the check (or pure RLS on the client surface).
+- New person-data: minimized, on the right wall, no cross-AI-scope leak. Raw transcripts live in storage behind the client wall, are excluded from AI context except the extraction call, and never enter logs.
+- New AI surface: untrusted input, rate-limited, spend-capped through the cost ledger, output lands ONLY in ai_proposals (a human accept route is the only path into live tables), voice-swept at the boundary.
+- Secrets in env or an AES-256-GCM deny-all table. No PII in logs; audit records metadata, never values.
+- Copy and AI output: no em dashes, no banned words (transformative, holistic, pivotal, leverage, unlock, seamless, robust, elevate and kin), growth described, never scored.
+- Mobile surface: verified at 390px before merge.
+- Shipped = deployed plus one real 390px run, not just merged.
+
+## Quarry rule (locked)
+The repos trellis, ambition-angels, team-esface, and sobo-consulting are read-only quarries. Read them, copy patterns into keystone, adapt the scope nouns. Never create a branch, commit, or push in any repository except keystone. Never import their code directly; they appear in Keystone only as adapted copies with provenance noted in the file header.
+
+## Do not touch
+- src/lib/supabaseAdmin.ts stays the single service-role chokepoint. Never create a second one.
+- src/lib/claudeModel.ts is the only place that maps tasks to models.
+- The ten design tokens in src/app/globals.css are frozen by the config-integrity gate. Do not add colors.
+- No em dashes anywhere: code comments, docs, strings, commit messages.

@@ -28,7 +28,7 @@ export default async function ClientSessionPage({
     .maybeSingle()
   if (!session) redirect('/sessions')
 
-  const [{ data: note }, { data: items }] = await Promise.all([
+  const [{ data: note }, { data: items }, { data: prep }] = await Promise.all([
     supabase
       .from('session_notes')
       .select('summary_md, decisions_md, raw_transcript, visibility')
@@ -39,6 +39,10 @@ export default async function ClientSessionPage({
       .select('id, title, status, due_on, client_members:assigned_client_member_id(email)')
       .eq('session_id', id)
       .order('created_at', { ascending: true }),
+    supabase
+      .from('session_prep_resources')
+      .select('resource_id, resources(title, kind)')
+      .eq('session_id', id),
   ])
 
   const when = new Intl.DateTimeFormat('en-US', {
@@ -56,6 +60,24 @@ export default async function ClientSessionPage({
         {viewer.client.clientName} / {session.kind} / {when}
       </p>
       <h1 className="text-page-title mt-2 text-ink">Session</h1>
+
+      {(prep ?? []).length > 0 ? (
+        <section className="mt-6 rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-4">
+          <p className="eyebrow">Prep for this session</p>
+          <ul className="mt-2 flex flex-col gap-1">
+            {(prep ?? []).map((p) => (
+              <li key={p.resource_id} className="text-sm">
+                <a href={`/library/${p.resource_id}`} className="text-forest underline">
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {((p.resources as any)?.title as string) ?? 'resource'}
+                </a>{' '}
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                <span className="font-mono text-xs uppercase text-ink-dim">{((p.resources as any)?.kind as string) ?? ''}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {note?.summary_md ? (
         <>

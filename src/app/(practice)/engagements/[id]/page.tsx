@@ -2,7 +2,8 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import WorkstreamArc from '@/components/WorkstreamArc'
-import { saveReadiness } from './actions'
+import AddDeliverableForm from './AddDeliverableForm'
+import { removeDeliverable, saveReadiness } from './actions'
 
 /**
  * Engagement detail (Ring 3): the early mission control. Workstreams,
@@ -44,7 +45,7 @@ export default async function EngagementDetailPage({
   // days as of THIS render.
   // eslint-disable-next-line react-hooks/purity
   const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
-  const [ws, practice, sessions, items, readiness] = await Promise.all([
+  const [ws, practice, sessions, items, readiness, deliverables] = await Promise.all([
     supabase
       .from('workstreams')
       .select('id, title, stage, sort')
@@ -66,6 +67,11 @@ export default async function EngagementDetailPage({
       .from('readiness_markers')
       .select('pillar, note_md, updated_at')
       .eq('engagement_id', id),
+    supabase
+      .from('deliverables')
+      .select('id, title, kind, url, storage_path, note, delivered_on, workstreams(title)')
+      .eq('engagement_id', id)
+      .order('delivered_on', { ascending: false }),
   ])
 
   const stages =
@@ -147,6 +153,50 @@ export default async function EngagementDetailPage({
           )}
         </section>
       </div>
+
+      <section className="mt-12">
+        <h2 className="font-display text-2xl font-medium text-ink">Deliverables</h2>
+        <p className="mt-1 text-sm text-ink-dim">
+          Every artifact you ship, on the client&apos;s timeline the moment it lands.
+        </p>
+        {(deliverables.data ?? []).length === 0 ? (
+          <p className="mt-3 text-sm text-ink-dim">Nothing shipped yet.</p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-2">
+            {(deliverables.data ?? []).map((d) => (
+              <li
+                key={d.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius)] border border-ink/10 bg-paper-raised px-4 py-2.5"
+              >
+                <span className="text-sm text-ink">
+                  {d.kind === 'link' && d.url ? (
+                    <a href={d.url} className="text-forest underline" target="_blank" rel="noreferrer">
+                      {d.title}
+                    </a>
+                  ) : (
+                    d.title
+                  )}{' '}
+                  <span className="text-ink-dim">
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    ({d.delivered_on}{((d.workstreams as any)?.title as string) ? `, ${(d.workstreams as any).title}` : ''})
+                  </span>
+                </span>
+                <form action={removeDeliverable}>
+                  <input type="hidden" name="deliverableId" value={d.id} />
+                  <input type="hidden" name="engagementId" value={engagement.id} />
+                  <button type="submit" className="text-sm text-ink-dim underline hover:text-ink">
+                    Remove
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+        <AddDeliverableForm
+          engagementId={engagement.id}
+          workstreams={(ws.data ?? []).map((w) => ({ id: w.id, title: w.title }))}
+        />
+      </section>
 
       <section className="mt-12">
         <h2 className="font-display text-2xl font-medium text-ink">

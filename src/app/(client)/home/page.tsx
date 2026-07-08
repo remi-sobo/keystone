@@ -32,7 +32,7 @@ export default async function ClientHomePage() {
   let stages = DEFAULT_STAGES
   const freshByWorkstream = new Map<string, string[]>()
 
-  const [{ data: nextSession }, { data: myMembership }] = await Promise.all([
+  const [{ data: nextSession }, { data: myMembership }, { data: latestDeliverable }] = await Promise.all([
     supabase
       .from('sessions')
       .select('starts_at, tz')
@@ -47,6 +47,14 @@ export default async function ClientHomePage() {
       .select('id')
       .eq('user_id', viewer.user!.id)
       .eq('client_id', viewer.client.clientId)
+      .maybeSingle(),
+    supabase
+      .from('deliverables')
+      .select('id, title, delivered_on')
+      .eq('client_id', viewer.client.clientId)
+      .order('delivered_on', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle(),
   ])
 
@@ -166,9 +174,20 @@ export default async function ClientHomePage() {
           </div>
           <div className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-4">
             <p className="eyebrow">Latest deliverable</p>
-            <p className="mt-2 text-sm text-ink-dim">
-              Your first deliverable lands after the kickoff session.
-            </p>
+            {latestDeliverable ? (
+              <p className="mt-2 text-sm text-ink">
+                {latestDeliverable.title}
+                <span className="text-ink-dim"> ({latestDeliverable.delivered_on})</span>
+                <br />
+                <Link href="/deliverables" className="text-forest underline">
+                  See the timeline
+                </Link>
+              </p>
+            ) : (
+              <p className="mt-2 text-sm text-ink-dim">
+                Your first deliverable lands after the kickoff session.
+              </p>
+            )}
           </div>
         </aside>
       </div>

@@ -72,6 +72,22 @@ export default async function SessionsPage({
   const upcoming = upcomingRes.data ?? []
   const past = pastRes.data ?? []
 
+  // Prep resources surfaced above upcoming sessions (spec 6.4). Pure
+  // RLS: the prep policy admits only this client's links.
+  const prepBySession = new Map<string, Array<{ id: string; title: string }>>()
+  if (upcoming.length > 0) {
+    const { data: prep } = await supabase
+      .from('session_prep_resources')
+      .select('session_id, resource_id, resources(title)')
+      .in('session_id', upcoming.map((s) => s.id))
+    for (const p of prep ?? []) {
+      const list = prepBySession.get(p.session_id) ?? []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      list.push({ id: p.resource_id, title: ((p.resources as any)?.title as string) ?? 'resource' })
+      prepBySession.set(p.session_id, list)
+    }
+  }
+
   const slots = await assembleSlots(supabase, viewer.client, new Date())
   const byDay = new Map<string, Slot[]>()
   for (const s of slots) {
@@ -122,6 +138,19 @@ export default async function SessionsPage({
                     </form>
                   </span>
                 </div>
+                {(prepBySession.get(s.id) ?? []).length > 0 ? (
+                  <p className="mt-1.5 text-sm text-ink-dim">
+                    Prep:{' '}
+                    {(prepBySession.get(s.id) ?? []).map((r, i) => (
+                      <span key={r.id}>
+                        {i > 0 ? ', ' : ''}
+                        <a href={`/library/${r.id}`} className="text-forest underline">
+                          {r.title}
+                        </a>
+                      </span>
+                    ))}
+                  </p>
+                ) : null}
                 {reschedulingId === s.id ? (
                   <p className="eyebrow mt-2">Pick a new time below</p>
                 ) : null}

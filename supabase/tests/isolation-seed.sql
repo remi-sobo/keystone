@@ -439,4 +439,168 @@ end $$;
 
 reset role;
 
+-- ── Ring 4: deliverables, resources, prep links, storage paths ───────
+
+-- Seed as the platform (superuser stands in for the service role):
+-- two resources for practice A and one for B, one deliverable per
+-- client, a prep link on client A1's upcoming session, and storage
+-- objects under the scoped path convention.
+insert into resources (id, practice_id, title, kind, body_md) values
+  ('70000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+   'Session prep guide', 'guide', 'guide body'),
+  ('70000000-0000-0000-0000-0000000000a2', '10000000-0000-0000-0000-00000000000a',
+   'Meeting framework', 'framework', 'framework body'),
+  ('70000000-0000-0000-0000-0000000000b1', '10000000-0000-0000-0000-00000000000b',
+   'Practice B guide', 'guide', 'b body');
+
+insert into deliverables (id, engagement_id, practice_id, client_id, title, kind, url) values
+  ('80000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   'Donor journey map', 'link', 'https://example.test/a1'),
+  ('80000000-0000-0000-0000-0000000000a2', '30000000-0000-0000-0000-0000000000a2',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a2',
+   'A2 artifact', 'link', 'https://example.test/a2'),
+  ('80000000-0000-0000-0000-0000000000b1', '30000000-0000-0000-0000-0000000000b1',
+   '10000000-0000-0000-0000-00000000000b', '20000000-0000-0000-0000-0000000000b1',
+   'B artifact', 'link', 'https://example.test/b1');
+
+insert into session_prep_resources (session_id, resource_id, practice_id, client_id) values
+  ('50000000-0000-0000-0000-0000000000a1', '70000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1');
+
+insert into storage.buckets (id, name, public) values
+  ('deliverables', 'deliverables', false), ('resources', 'resources', false)
+on conflict (id) do nothing;
+insert into storage.objects (bucket_id, name) values
+  ('deliverables', '10000000-0000-0000-0000-00000000000a/20000000-0000-0000-0000-0000000000a1/30000000-0000-0000-0000-0000000000a1/x/map.pdf'),
+  ('deliverables', '10000000-0000-0000-0000-00000000000a/20000000-0000-0000-0000-0000000000a2/30000000-0000-0000-0000-0000000000a2/x/a2.pdf'),
+  ('deliverables', '10000000-0000-0000-0000-00000000000b/20000000-0000-0000-0000-0000000000b1/30000000-0000-0000-0000-0000000000b1/x/b.pdf'),
+  ('resources', '10000000-0000-0000-0000-00000000000a/x/guide.pdf'),
+  ('resources', '10000000-0000-0000-0000-00000000000b/x/bguide.pdf'),
+  ('deliverables', 'not-a-uuid/junk/file.pdf');
+
+-- Consultant A: reads the whole practice tree, writes resources, never
+-- across the practice wall.
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000b","email":"consultant_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from deliverables) <> 2 then
+    raise exception 'consultant_a must read both practice A deliverables';
+  end if;
+  if (select count(*) from resources) <> 2 then
+    raise exception 'consultant_a must read both practice A resources';
+  end if;
+  insert into resources (practice_id, title, kind, body_md)
+    values ('10000000-0000-0000-0000-00000000000a', 'consultant-authored', 'template', 'body');
+  delete from resources where title = 'consultant-authored';
+end $$;
+do $$ begin
+  insert into resources (practice_id, title, kind, body_md)
+    values ('10000000-0000-0000-0000-00000000000b', 'cross-practice-intruder', 'guide', 'x');
+  raise exception 'LEAK cross-practice: consultant_a authored a resource for practice B';
+exception when insufficient_privilege then null;
+end $$;
+
+-- Client member A1: own deliverables and prep, the practice-wide
+-- catalog, never the sibling client's artifacts, never a write.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from deliverables) <> 1 then
+    raise exception 'member_a1 must see exactly their own deliverable';
+  end if;
+  if (select count(*) from deliverables where client_id = '20000000-0000-0000-0000-0000000000a2') <> 0 then
+    raise exception 'LEAK cross-client: member_a1 reads client_a2 deliverables';
+  end if;
+  -- The catalog is practice-wide by design (spec 5.1): both A resources.
+  if (select count(*) from resources) <> 2 then
+    raise exception 'member_a1 must read the practice A catalog';
+  end if;
+  if (select count(*) from resources where practice_id = '10000000-0000-0000-0000-00000000000b') <> 0 then
+    raise exception 'LEAK cross-practice: member_a1 reads practice B resources';
+  end if;
+  if (select count(*) from session_prep_resources) <> 1 then
+    raise exception 'member_a1 must see the prep link on their session';
+  end if;
+end $$;
+do $$ begin
+  insert into deliverables (engagement_id, practice_id, client_id, title, kind, url)
+    values ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1', 'client-intruder', 'link', 'https://x.test');
+  raise exception 'LEAK role: client member wrote a deliverable';
+exception when insufficient_privilege then null;
+end $$;
+do $$ begin
+  insert into resources (practice_id, title, kind, body_md)
+    values ('10000000-0000-0000-0000-00000000000a', 'client-intruder', 'guide', 'x');
+  raise exception 'LEAK role: client member authored a resource';
+exception when insufficient_privilege then null;
+end $$;
+-- Storage: their client folder only; the practice-wide resources
+-- folder; the malformed path resolves to no scope, not an error.
+do $$ begin
+  if (select count(*) from storage.objects where bucket_id = 'deliverables') <> 1 then
+    raise exception 'member_a1 must see exactly their own storage object';
+  end if;
+  if (select count(*) from storage.objects
+      where bucket_id = 'deliverables'
+        and name like '%/20000000-0000-0000-0000-0000000000a2/%') <> 0 then
+    raise exception 'LEAK cross-client: member_a1 reads client_a2 storage objects';
+  end if;
+  if (select count(*) from storage.objects where bucket_id = 'resources') <> 1 then
+    raise exception 'member_a1 must see only practice A resource objects';
+  end if;
+end $$;
+
+-- Client member A2: the mirror; the shared catalog, own artifact only,
+-- and no view of which resources sibling engagements were handed.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$ begin
+  if (select count(*) from deliverables) <> 1 then
+    raise exception 'member_a2 must see exactly their own deliverable';
+  end if;
+  if (select count(*) from resources) <> 2 then
+    raise exception 'member_a2 must read the practice A catalog';
+  end if;
+  if (select count(*) from session_prep_resources) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 prep links';
+  end if;
+end $$;
+
+-- Client member B: cross-practice zero in both directions.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000b1","email":"member_b@client-b.test"}', false);
+do $$ begin
+  if (select count(*) from deliverables where practice_id = '10000000-0000-0000-0000-00000000000a') <> 0 then
+    raise exception 'LEAK cross-practice: member_b reads practice A deliverables';
+  end if;
+  if (select count(*) from resources where practice_id = '10000000-0000-0000-0000-00000000000a') <> 0 then
+    raise exception 'LEAK cross-practice: member_b reads practice A resources';
+  end if;
+  if (select count(*) from resources) <> 1 then
+    raise exception 'member_b must read the practice B catalog';
+  end if;
+  if (select count(*) from session_prep_resources) <> 0 then
+    raise exception 'LEAK cross-practice: member_b reads practice A prep links';
+  end if;
+  if (select count(*) from storage.objects
+      where name like '10000000-0000-0000-0000-00000000000a/%') <> 0 then
+    raise exception 'LEAK cross-practice: member_b reads practice A storage objects';
+  end if;
+end $$;
+
+-- Stranger: zero rows in every Ring 4 surface.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000ee","email":"stranger@example.test"}', false);
+do $$ begin
+  if (select count(*) from deliverables) <> 0 then raise exception 'LEAK: stranger reads deliverables'; end if;
+  if (select count(*) from resources) <> 0 then raise exception 'LEAK: stranger reads resources'; end if;
+  if (select count(*) from session_prep_resources) <> 0 then raise exception 'LEAK: stranger reads prep links'; end if;
+  if (select count(*) from storage.objects) <> 0 then raise exception 'LEAK: stranger reads storage objects'; end if;
+end $$;
+
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

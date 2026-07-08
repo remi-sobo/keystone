@@ -1,6 +1,12 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
-import { decideProposal, extractFromTranscript, saveTranscript } from '../actions'
+import {
+  attachPrepResource,
+  decideProposal,
+  extractFromTranscript,
+  removePrepResource,
+  saveTranscript,
+} from '../actions'
 
 /**
  * Practice session detail (Ring 3): the run of show. Paste the
@@ -21,6 +27,8 @@ const STATES: Record<string, string> = {
   accept_failed: 'Accept did not finish. Check and retry.',
   save_failed: 'The transcript did not save. Try again.',
   slow: 'Too many extractions at once. Wait a minute.',
+  prep_attached: 'Prep attached. The client sees it above this session.',
+  prep_removed: 'Prep removed.',
 }
 
 interface ProposalPayload {
@@ -47,7 +55,7 @@ export default async function PracticeSessionPage({
     .maybeSingle()
   if (!session) redirect('/engagements')
 
-  const [{ data: note }, { data: proposals }, { data: members }, { data: items }] =
+  const [{ data: note }, { data: proposals }, { data: members }, { data: items }, { data: prep }, { data: catalog }] =
     await Promise.all([
       supabase
         .from('session_notes')
@@ -65,6 +73,11 @@ export default async function PracticeSessionPage({
         .select('id, title, status, due_on, client_members:assigned_client_member_id(email)')
         .eq('session_id', id)
         .order('created_at', { ascending: true }),
+      supabase
+        .from('session_prep_resources')
+        .select('resource_id, resources(title, kind)')
+        .eq('session_id', id),
+      supabase.from('resources').select('id, title, kind').order('created_at', { ascending: false }),
     ])
 
   const when = new Intl.DateTimeFormat('en-US', {
@@ -183,6 +196,66 @@ export default async function PracticeSessionPage({
           </section>
         )
       })}
+
+      <section className="mt-8">
+        <h2 className="font-display text-2xl font-medium text-ink">Prep</h2>
+        <p className="mt-1 text-sm text-ink-dim">
+          Attach library resources; the client sees them above this session.
+        </p>
+        {(prep ?? []).length > 0 ? (
+          <ul className="mt-3 flex flex-col gap-2">
+            {(prep ?? []).map((p) => (
+              <li key={p.resource_id} className="flex flex-wrap items-center gap-3 text-sm">
+                <span className="text-ink">
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {((p.resources as any)?.title as string) ?? 'resource'}{' '}
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  <span className="font-mono text-xs uppercase text-ink-dim">{((p.resources as any)?.kind as string) ?? ''}</span>
+                </span>
+                <form action={removePrepResource}>
+                  <input type="hidden" name="sessionId" value={session.id} />
+                  <input type="hidden" name="resourceId" value={p.resource_id} />
+                  <button type="submit" className="text-ink-dim underline hover:text-ink">
+                    Remove
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {(catalog ?? []).filter((c) => !(prep ?? []).some((p) => p.resource_id === c.id)).length >
+        0 ? (
+          <form action={attachPrepResource} className="mt-3 flex flex-wrap items-center gap-2">
+            <input type="hidden" name="sessionId" value={session.id} />
+            <select
+              name="resourceId"
+              defaultValue=""
+              className="rounded-lg border border-ink/15 bg-paper-raised px-2 py-1 text-sm"
+            >
+              <option value="" disabled>
+                Pick a resource
+              </option>
+              {(catalog ?? [])
+                .filter((c) => !(prep ?? []).some((p) => p.resource_id === c.id))
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.title} ({c.kind})
+                  </option>
+                ))}
+            </select>
+            <button
+              type="submit"
+              className="rounded-lg border border-forest px-3 py-1.5 text-sm text-forest transition-colors duration-200 hover:bg-forest hover:text-paper active:scale-[0.98]"
+            >
+              Attach
+            </button>
+          </form>
+        ) : (prep ?? []).length === 0 ? (
+          <p className="mt-3 text-sm text-ink-dim">
+            The library is empty. Publish a resource under Library first.
+          </p>
+        ) : null}
+      </section>
 
       <section className="mt-8">
         <h2 className="font-display text-2xl font-medium text-ink">Transcript</h2>

@@ -182,6 +182,76 @@ export async function extractFromTranscript(formData: FormData): Promise<void> {
   redirect(back(sessionId, 'extracted'))
 }
 
+// ── Prep resources (Ring 4): attach a catalog entry to a session ─────
+
+const PrepShape = z.object({
+  sessionId: z.string().uuid(),
+  resourceId: z.string().uuid(),
+})
+
+export async function attachPrepResource(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = PrepShape.safeParse({
+    sessionId: formData.get('sessionId'),
+    resourceId: formData.get('resourceId'),
+  })
+  if (!parsed.success) redirect('/clients')
+  const { sessionId, resourceId } = parsed.data
+  const practiceId = viewer.practice!.practiceId
+
+  // Both ends verified in THIS practice before the link exists: the
+  // session (which carries the client scope) and the catalog entry.
+  const supabase = await createServerSupabase()
+  const [{ data: session }, { data: resource }] = await Promise.all([
+    supabase
+      .from('sessions')
+      .select('id, practice_id, client_id')
+      .eq('id', sessionId)
+      .eq('practice_id', practiceId)
+      .maybeSingle(),
+    supabase
+      .from('resources')
+      .select('id')
+      .eq('id', resourceId)
+      .eq('practice_id', practiceId)
+      .maybeSingle(),
+  ])
+  if (!session || !resource) redirect('/clients')
+
+  const { error } = await supabase.from('session_prep_resources').upsert(
+    {
+      session_id: session.id,
+      resource_id: resource.id,
+      practice_id: session.practice_id,
+      client_id: session.client_id,
+    },
+    { onConflict: 'session_id,resource_id', ignoreDuplicates: true }
+  )
+  if (error) console.error('[prep] attach failed:', error.message)
+  revalidatePath(`/sessions/${sessionId}/notes`)
+  redirect(back(sessionId, 'prep_attached'))
+}
+
+export async function removePrepResource(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = PrepShape.safeParse({
+    sessionId: formData.get('sessionId'),
+    resourceId: formData.get('resourceId'),
+  })
+  if (!parsed.success) redirect('/clients')
+
+  const supabase = await createServerSupabase()
+  const { error } = await supabase
+    .from('session_prep_resources')
+    .delete()
+    .eq('session_id', parsed.data.sessionId)
+    .eq('resource_id', parsed.data.resourceId)
+    .eq('practice_id', viewer.practice!.practiceId)
+  if (error) console.error('[prep] remove failed:', error.message)
+  revalidatePath(`/sessions/${parsed.data.sessionId}/notes`)
+  redirect(back(parsed.data.sessionId, 'prep_removed'))
+}
+
 // ── Decide (the single human path into live tables) ──────────────────
 
 const DecideShape = z.object({

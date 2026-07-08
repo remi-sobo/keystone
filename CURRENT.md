@@ -15,7 +15,7 @@ Last updated: 2026-07-08 (Ring 2 built; infrastructure live).
 
 1. Supabase auth: set the Site URL to the production domain and add the Vercel URLs (`https://keystone-blue-tau.vercel.app/**` and the preview pattern) to the auth redirect allow-list, so magic links land on `/auth/callback`.
 2. Vercel env (server-only, dashboard): `SUPABASE_SERVICE_ROLE_KEY` (rate limiting, audit, calendar), and before their rings: `KEYSTONE_TOKEN_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY`, `RESEND_API_KEY`, `CRON_SECRET`.
-3. Merge this branch to `main` when reviewed: the Vercel production domain builds from main.
+3. Merge this branch to `main` when reviewed: the Vercel production domain (`keystone-blue-tau.vercel.app`) builds from main and serves publicly. Branch previews build green on every push but sit behind Vercel SSO (open them while logged into Vercel; the build session's sandbox cannot reach vercel.app hosts, so its visual runs were against the identical commit locally).
 4. The "Client Login" nav link on soboconsulting.com stays a separately approved one-line PR in that repo.
 
 ## The ring queue

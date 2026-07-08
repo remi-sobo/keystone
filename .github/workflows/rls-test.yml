@@ -1,0 +1,48 @@
+# The Keystone cross-practice / cross-client RLS leak test.
+#
+# Applies all migrations to a throwaway Postgres and asserts the
+# two-level access matrix. Catches the failure modes that matter most:
+# a table left without RLS, a policy that leaks across practices, and a
+# practice-scoped policy that forgot the client dimension.
+
+name: RLS leak test
+
+on:
+  # Runs on every pull request (no path filter) so it can be a required
+  # status check without deadlocking; the job is well under a minute.
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/**"
+      - "scripts/test-rls.sh"
+      - ".github/workflows/rls-test.yml"
+
+jobs:
+  rls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Postgres client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+
+      - name: Run leak test
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+        run: scripts/test-rls.sh

@@ -1,0 +1,26 @@
+# Keystone CI: typecheck, lint, build, and the three static gates
+# (isolation, enumeration ratchet, config integrity). The live RLS
+# matrix runs in rls-test.yml against a throwaway Postgres.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+      - run: npx playwright test

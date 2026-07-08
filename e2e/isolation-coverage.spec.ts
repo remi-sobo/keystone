@@ -43,7 +43,10 @@ const KNOWN_COVERAGE_GAPS: ReadonlyArray<string> = []
  * The documented operator-ledger pattern. Starts empty; every addition
  * needs a SECURITY.md paragraph.
  */
-const SERVICE_ROLE_ONLY_TABLES: ReadonlyArray<string> = []
+const SERVICE_ROLE_ONLY_TABLES: ReadonlyArray<string> = [
+  'ai_spend_ledger',   // AI cost metadata; written by the anthropicClient chokepoint (SECURITY.md 5)
+  'voice_violations',  // voice drift log, model excerpts only (SECURITY.md 5)
+]
 
 function readAllMigrations(): string {
   if (!fs.existsSync(MIGRATIONS_DIR)) return ''

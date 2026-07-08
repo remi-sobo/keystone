@@ -52,12 +52,22 @@ export async function requirePracticeMember(
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
-  const { data: membership } = await supabase
+  let { data: membership } = await supabase
     .from('practice_members')
     .select('practice_id, role')
     .eq('user_id', user.id)
     .limit(1)
     .maybeSingle()
+  if (!membership) {
+    // First contact on an email-keyed invite: claim once, re-read.
+    await supabase.rpc('keystone_claim_membership')
+    ;({ data: membership } = await supabase
+      .from('practice_members')
+      .select('practice_id, role')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle())
+  }
   if (!membership) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
 
   if (role === 'owner' && membership.role !== 'owner') {
@@ -89,12 +99,22 @@ export async function requireClientMember(): Promise<ClientCtx | NextResponse> {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
-  const { data: membership } = await supabase
+  let { data: membership } = await supabase
     .from('client_members')
     .select('practice_id, client_id')
     .eq('user_id', user.id)
     .limit(1)
     .maybeSingle()
+  if (!membership) {
+    // First contact on an email-keyed invite: claim once, re-read.
+    await supabase.rpc('keystone_claim_membership')
+    ;({ data: membership } = await supabase
+      .from('client_members')
+      .select('practice_id, client_id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle())
+  }
   if (!membership) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
 
   return {

@@ -2,20 +2,22 @@
 
 The live operational doc. If it is happening and it is not here, it is not happening. Weekly ritual per SOBO_PLAYBOOK.md section 8.
 
-Last updated: 2026-07-08 (Ring 0).
+Last updated: 2026-07-08 (Ring 1 built).
 
 ## State
 
-- **Ring 0 (Preflight): in progress on branch `claude/nextjs-setup-verify-w0b2qx`.** Scaffold, platform layer, design tokens, operating docs, agents, and CI gate scaffolds landing as staged commits. Findings in `docs/keystone-preflight.md` (opens with FLAGS; review them before Ring 1).
-- Engagement status: proposal out to SafeSpace, decision expected Thu Jul 9. Ring 1 should land at kickoff, not after it.
-- Vercel project and Supabase project: not yet provisioned (Ring 0 is repo-only; provision before Ring 1 ships).
+- **Ring 0 (Preflight): done.** Findings in `docs/keystone-preflight.md`; FLAGS reviewed, spec amended where they won (`ring1: spec amendments`).
+- **Ring 1 (The spine): BUILT on branch `claude/nextjs-setup-verify-w0b2qx`, not yet shipped.** Schema, permission authority, RLS, the seeded cross-practice AND cross-client matrix (passing live against a scratch Postgres 16), login (magic link + email-keyed claim), the sidebar shell on both surfaces, the client progress view, and the SafeSpace seed. Merged + green is not shipped: shipped needs the Supabase and Vercel projects provisioned, migrations + seed applied, a deploy, and one real 390px run against live data. The login page has had a real 390px render locally (screenshot in the session); the data screens render empty states until a live project exists.
+- Engagement status: proposal out to SafeSpace, decision expected Thu Jul 9.
+- **Still owed before "shipped": provision Supabase + Vercel, set env vars, apply `0001_keystone_spine.sql` and `supabase/seed.sql`, configure the Supabase auth email redirect to `/auth/callback`, deploy, run the 390px pass on live data.**
+- The "Client Login" nav link on soboconsulting.com is a one-line PR in that repo; it ships as its own separately approved change (spec section 10 note), not from this session.
 
 ## The ring queue
 
 | Ring | Contents | Status |
 |---|---|---|
-| 0 | Preflight: repo, platform layer, tokens, docs, agents, gate scaffolds, preflight doc | in progress |
-| 1 | The spine: practices, clients, members, email-keyed invites, engagements, workstreams with the parallel arc, stage events, permission authority, RLS, the seeded cross-practice and cross-client isolation matrix, sidebar shell both surfaces, client progress view, login page, "Client Login" nav PR in sobo-consulting | queued (blocked on FLAG review + spec amendments) |
+| 0 | Preflight: repo, platform layer, tokens, docs, agents, gate scaffolds, preflight doc | done |
+| 1 | The spine: practices, clients, members, email-keyed invites, engagements, workstreams with the parallel arc, stage events, permission authority, RLS, the seeded cross-practice and cross-client isolation matrix, sidebar shell both surfaces, client progress view, login page | built; deploy owed |
 | 2 | Sessions and scheduling: availability windows, slot picking, Google Calendar OAuth, tz-correct sync, reschedule | queued |
 | 3 | Notes and homework: paste transcript, AI proposes (inert), consultant accepts, client checks off, review queue, session detail, readiness panel | queued |
 | 3.5 | Practice Home, the Monday screen | queued |
@@ -47,9 +49,10 @@ The spec numbers these 1 through 12 and 14; there is no gate 13 in the spec (fla
 
 ## Blocked
 
-- Ring 1 start: blocked on FLAG review in `docs/keystone-preflight.md` and any spec amendments where the flags win.
-- Domain wiring: blocked on CONFIRM 1.
+- Ring 1 "shipped": blocked on Supabase + Vercel provisioning (a cost and account decision, not a code task).
+- Domain wiring: blocked on CONFIRM 1 (`src/lib/env.ts` is the one-file change).
+- Invite sends: blocked on CONFIRM 2 (the seeded SafeSpace emails are the spec's proposal).
 
 ## Recently shipped
 
-- Nothing yet. Ring 0 commits land on this branch; this section starts filling when Ring 0 merges.
+- Nothing deployed yet. Built on this branch, in order: `ring0: platform layer` through `ring0: preflight findings`, `ring1: spec amendments`, `ring1: the spine schema, permission authority, and seeded isolation matrix`, `ring1: login, shell, and the client progress view`. The live RLS matrix passes against a scratch Postgres 16; all 35 static gate assertions pass; build and typecheck green.

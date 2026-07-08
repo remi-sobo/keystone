@@ -1,0 +1,213 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import {
+  Home,
+  CalendarDays,
+  ListChecks,
+  Package,
+  Library,
+  MessageCircle,
+  Users,
+  Briefcase,
+  Settings,
+  PanelLeftClose,
+  PanelLeftOpen,
+  type LucideIcon,
+} from 'lucide-react'
+
+/**
+ * The left sidebar, the room's spine (spec 6.3). 264px fixed on
+ * desktop, collapsible to a 72px icon rail (state persisted per
+ * browser). At 390px it does not shrink, it transforms: a bottom tab
+ * bar, five items max, brass tick on top of the active tab.
+ *
+ * Active state is never a filled pill: a 3px brass tick on the left
+ * edge, forest text, a whisper of paper-raised fill.
+ */
+
+export interface NavItem {
+  href: string
+  label: string
+  icon: string
+  mobile?: boolean
+}
+
+const ICONS: Record<string, LucideIcon> = {
+  home: Home,
+  sessions: CalendarDays,
+  homework: ListChecks,
+  deliverables: Package,
+  library: Library,
+  messages: MessageCircle,
+  clients: Users,
+  engagements: Briefcase,
+  settings: Settings,
+}
+
+export function clientNav(): NavItem[] {
+  return [
+    { href: '/home', label: 'Home', icon: 'home', mobile: true },
+    { href: '/sessions', label: 'Sessions', icon: 'sessions', mobile: true },
+    { href: '/homework', label: 'Homework', icon: 'homework', mobile: true },
+    { href: '/deliverables', label: 'Deliverables', icon: 'deliverables', mobile: true },
+    { href: '/library', label: 'Library', icon: 'library' },
+    { href: '/messages', label: 'Messages', icon: 'messages', mobile: true },
+  ]
+}
+
+export function practiceNav(): NavItem[] {
+  return [
+    { href: '/clients', label: 'Clients', icon: 'clients', mobile: true },
+    { href: '/engagements', label: 'Engagements', icon: 'engagements', mobile: true },
+    // /library belongs to the client surface; authoring sits beneath it
+    // (the App Router cannot give two route groups the same path).
+    { href: '/library/authoring', label: 'Library', icon: 'library', mobile: true },
+    { href: '/settings', label: 'Settings', icon: 'settings', mobile: true },
+  ]
+}
+
+const COLLAPSE_KEY = 'keystone.sidebar.collapsed'
+
+export default function Sidebar({
+  items,
+  practiceName,
+  clientName,
+  personEmail,
+}: {
+  items: NavItem[]
+  practiceName: string
+  clientName?: string
+  personEmail: string
+}) {
+  const pathname = usePathname()
+  const [collapsed, setCollapsed] = useState(false)
+
+  useEffect(() => {
+    // Rehydrate the persisted preference once on mount. The server
+    // renders expanded; a stored collapse applies after hydration.
+    if (window.localStorage.getItem(COLLAPSE_KEY) === '1') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCollapsed(true)
+    }
+  }, [])
+
+  function toggle() {
+    setCollapsed((c) => {
+      window.localStorage.setItem(COLLAPSE_KEY, c ? '0' : '1')
+      return !c
+    })
+  }
+
+  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
+
+  return (
+    <>
+      {/* Desktop rail */}
+      <aside
+        className={`sticky top-0 hidden h-screen shrink-0 flex-col border-r border-ink/10 bg-paper-deep transition-[width] duration-200 md:flex ${
+          collapsed ? 'w-[72px]' : 'w-[264px]'
+        }`}
+      >
+        <div className={`flex items-center py-6 ${collapsed ? 'justify-center' : 'px-6'}`}>
+          {collapsed ? (
+            <span className="font-display text-2xl font-medium text-ink">
+              K<span className="text-brass">.</span>
+            </span>
+          ) : (
+            <div>
+              <div className="font-display text-2xl font-medium text-ink">
+                Keystone<span className="text-brass">.</span>
+              </div>
+              <div className="eyebrow mt-1">by {practiceName}</div>
+            </div>
+          )}
+        </div>
+
+        <nav className="mt-2 flex flex-1 flex-col gap-1">
+          {items.map((item) => {
+            const Icon = ICONS[item.icon]
+            const active = isActive(item.href)
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? 'page' : undefined}
+                className={`relative flex items-center gap-3 py-2.5 text-[0.92rem] transition-colors duration-200 ${
+                  collapsed ? 'justify-center px-0' : 'px-6'
+                } ${
+                  active
+                    ? 'bg-paper-raised font-medium text-forest'
+                    : 'text-ink-dim hover:bg-paper-raised hover:text-ink'
+                }`}
+              >
+                {active ? (
+                  <span aria-hidden className="absolute inset-y-1 left-0 w-[3px] bg-brass" />
+                ) : null}
+                <Icon size={18} strokeWidth={1.75} aria-hidden />
+                {collapsed ? null : <span>{item.label}</span>}
+              </Link>
+            )
+          })}
+        </nav>
+
+        <div className={`border-t border-ink/10 py-4 ${collapsed ? 'px-2 text-center' : 'px-6'}`}>
+          {collapsed ? null : (
+            <>
+              {clientName ? (
+                <div className="mb-1 inline-block rounded-full border border-ink/15 px-2 py-0.5 text-xs text-ink-dim">
+                  {clientName}
+                </div>
+              ) : null}
+              <div className="truncate text-xs text-ink-dim">{personEmail}</div>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="mt-3 text-ink-dim transition-colors duration-200 hover:text-ink"
+          >
+            {collapsed ? (
+              <PanelLeftOpen size={18} strokeWidth={1.75} />
+            ) : (
+              <PanelLeftClose size={18} strokeWidth={1.75} />
+            )}
+          </button>
+        </div>
+      </aside>
+
+      {/* The 390px transform: bottom tab bar, five items max. */}
+      <nav
+        aria-label="Primary"
+        className="fixed inset-x-0 bottom-0 z-40 flex border-t border-ink/10 bg-paper-deep pb-[env(safe-area-inset-bottom)] md:hidden"
+      >
+        {items
+          .filter((i) => i.mobile)
+          .slice(0, 5)
+          .map((item) => {
+            const Icon = ICONS[item.icon]
+            const active = isActive(item.href)
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? 'page' : undefined}
+                className={`relative flex min-h-[52px] flex-1 flex-col items-center justify-center gap-0.5 text-[0.65rem] ${
+                  active ? 'font-medium text-forest' : 'text-ink-dim'
+                }`}
+              >
+                {active ? (
+                  <span aria-hidden className="absolute inset-x-3 top-0 h-[3px] bg-brass" />
+                ) : null}
+                <Icon size={20} strokeWidth={1.75} aria-hidden />
+                <span>{item.label}</span>
+              </Link>
+            )
+          })}
+      </nav>
+    </>
+  )
+}

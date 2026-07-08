@@ -56,7 +56,7 @@ function getClient(): SupabaseClient {
 }
 
 export const supabaseAdmin = new Proxy({} as SupabaseClient, {
-  get(_target, prop, _recv) {
+  get(_target, prop) {
     const client = getClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const value = (client as any)[prop]

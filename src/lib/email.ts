@@ -13,7 +13,9 @@ import { env } from '@/lib/env'
  * over client members individually).
  */
 
-const DEFAULT_FROM = env.KEYSTONE_FROM_EMAIL || 'Keystone <hello@soboconsulting.com>'
+// The from-address fallback lives in env.ts so domain literals stay in
+// one file (enforced by the config-integrity gate).
+const DEFAULT_FROM = env.KEYSTONE_FROM_EMAIL
 
 export interface SendResult {
   ok: boolean

@@ -28,6 +28,7 @@ import { z } from 'zod'
 // The config-integrity gate enforces this (e2e/config-integrity.spec.ts).
 // CONFIRM 1 in specs/keystone.md: the production domain is not final.
 const APP_URL_FALLBACK = 'https://app.soboconsulting.com'
+const FROM_EMAIL_FALLBACK = 'Keystone <hello@soboconsulting.com>'
 const SUPABASE_URL_FALLBACK = 'https://placeholder.supabase.co'
 const SUPABASE_ANON_KEY_FALLBACK = 'placeholder-anon-key'
 
@@ -116,7 +117,7 @@ export const env = {
   SUPABASE_SERVICE_ROLE_KEY: _SUPABASE_SERVICE_ROLE_KEY || '',
   ANTHROPIC_API_KEY: _ANTHROPIC_API_KEY || '',
   RESEND_API_KEY: _RESEND_API_KEY,
-  KEYSTONE_FROM_EMAIL: _KEYSTONE_FROM_EMAIL,
+  KEYSTONE_FROM_EMAIL: _KEYSTONE_FROM_EMAIL || FROM_EMAIL_FALLBACK,
   GOOGLE_CLIENT_ID: _GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET: _GOOGLE_CLIENT_SECRET,
   CRON_SECRET: _CRON_SECRET,

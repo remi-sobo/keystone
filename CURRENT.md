@@ -9,14 +9,17 @@ Last updated: 2026-07-08 (Ring 2 built; infrastructure live).
 - **Ring 0 (Preflight): done.** Findings in `docs/keystone-preflight.md`.
 - **Ring 1 (The spine): built and applied to live infrastructure.** The pre-provisioned Supabase project (`keystone`) carries migrations 0001, 0002, and the SafeSpace seed (1 practice, 3 practice members, 1 client, 4 client members, 1 engagement, 5 workstreams). The pre-provisioned Vercel project (`keystone`, git-linked to this repo) builds previews from this branch with the public env values in vercel.json.
 - **Ring 2 (Sessions and scheduling): built.** Migration 0003 applied locally and in CI; sessions, availability windows, the encrypted Google connection store, the pure slot engine (DST-pinned unit tests), client booking/reschedule/cancel (pure RLS plus the DB exclusion constraint), practice settings (windows, connect, sync).
+- **Ring 3 (Notes, AI extraction, homework): built.** Migration 0005 applied to the live project. Transcript paste, opus extraction into an inert ai_proposals row, the single accept path publishing notes and creating assigned homework, client check-off (assignment-scoped RLS), session detail on both surfaces, the readiness panel. The extraction end-to-end run waits on ANTHROPIC_API_KEY (setup checklist item 2); the request builder and parse are unit-tested and every AI call rides the Ring 0 chokepoint (spend guard, ledger, refusal fallback, voice sweep).
 - Engagement status: proposal out to SafeSpace, decision expected Thu Jul 9.
 
-## Manual dashboard steps owed (nothing else blocks the 390px live run)
+## Manual steps
 
-1. Supabase auth: set the Site URL to the production domain and add the Vercel URLs (`https://keystone-blue-tau.vercel.app/**` and the preview pattern) to the auth redirect allow-list, so magic links land on `/auth/callback`.
-2. Vercel env (server-only, dashboard): `SUPABASE_SERVICE_ROLE_KEY` (rate limiting, audit, calendar), and before their rings: `KEYSTONE_TOKEN_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY`, `RESEND_API_KEY`, `CRON_SECRET`.
-3. Merge this branch to `main` when reviewed: the Vercel production domain (`keystone-blue-tau.vercel.app`) builds from main and serves publicly. Branch previews build green on every push but sit behind Vercel SSO (open them while logged into Vercel; the build session's sandbox cannot reach vercel.app hosts, so its visual runs were against the identical commit locally).
-4. The "Client Login" nav link on soboconsulting.com stays a separately approved one-line PR in that repo.
+Every operational step (env vars, API setups, dashboard switches) lives
+in **`docs/setup-checklist.md`**, maintained per ring and done in one
+sweep after the full build. Note: branch previews build green on every
+push but sit behind Vercel SSO (open them while logged into Vercel; the
+build session's sandbox cannot reach vercel.app hosts, so its visual
+runs were against the identical commit locally).
 
 ## The ring queue
 
@@ -25,7 +28,7 @@ Last updated: 2026-07-08 (Ring 2 built; infrastructure live).
 | 0 | Preflight: repo, platform layer, tokens, docs, agents, gate scaffolds, preflight doc | done |
 | 1 | The spine: practices, clients, members, email-keyed invites, engagements, workstreams with the parallel arc, stage events, permission authority, RLS, the seeded cross-practice and cross-client isolation matrix, sidebar shell both surfaces, client progress view, login page | built; live DB seeded; 390px live run owed |
 | 2 | Sessions and scheduling: availability windows, slot picking, Google Calendar OAuth, tz-correct sync, reschedule | built; Google end-to-end run owed (needs env) |
-| 3 | Notes and homework: paste transcript, AI proposes (inert), consultant accepts, client checks off, review queue, session detail, readiness panel | queued |
+| 3 | Notes and homework: paste transcript, AI proposes (inert), consultant accepts, client checks off, review queue, session detail, readiness panel | built; live AI run owed (needs env) |
 | 3.5 | Practice Home, the Monday screen | queued |
 | 4 | Deliverables and library | queued |
 | 5 | Messages plus Resend notifications | queued |

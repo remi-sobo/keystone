@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import WorkstreamArc from '@/components/WorkstreamArc'
 import { createServerSupabase } from '@/lib/supabase/server'
@@ -31,16 +32,33 @@ export default async function ClientHomePage() {
   let stages = DEFAULT_STAGES
   const freshByWorkstream = new Map<string, string[]>()
 
-  const { data: nextSession } = await supabase
-    .from('sessions')
-    .select('starts_at, tz')
-    .eq('client_id', viewer.client.clientId)
-    .eq('status', 'booked')
-     
-    .gte('starts_at', new Date().toISOString())
-    .order('starts_at', { ascending: true })
-    .limit(1)
-    .maybeSingle()
+  const [{ data: nextSession }, { data: myMembership }] = await Promise.all([
+    supabase
+      .from('sessions')
+      .select('starts_at, tz')
+      .eq('client_id', viewer.client.clientId)
+      .eq('status', 'booked')
+      .gte('starts_at', new Date().toISOString())
+      .order('starts_at', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('client_members')
+      .select('id')
+      .eq('user_id', viewer.user!.id)
+      .eq('client_id', viewer.client.clientId)
+      .maybeSingle(),
+  ])
+
+  const { data: myOpenItems } = myMembership
+    ? await supabase
+        .from('action_items')
+        .select('id, title, due_on')
+        .eq('assigned_client_member_id', myMembership.id)
+        .eq('status', 'open')
+        .order('due_on', { ascending: true, nullsFirst: false })
+        .limit(3)
+    : { data: [] }
 
   if (engagement) {
     const [ws, practice, events] = await Promise.all([
@@ -112,23 +130,39 @@ export default async function ClientHomePage() {
                     minute: '2-digit',
                   }).format(new Date(nextSession.starts_at))}
                 </p>
-                <a href="/sessions" className="mt-1 inline-block text-sm text-forest underline">
+                <Link href="/sessions" className="mt-1 inline-block text-sm text-forest underline">
                   Reschedule
-                </a>
+                </Link>
               </>
             ) : (
               <p className="mt-2 text-sm text-ink-dim">
                 Nothing booked.{' '}
-                <a href="/sessions" className="text-forest underline">
+                <Link href="/sessions" className="text-forest underline">
                   Pick a time
-                </a>
+                </Link>
                 .
               </p>
             )}
           </div>
           <div className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-4">
             <p className="eyebrow">Homework due</p>
-            <p className="mt-2 text-sm text-ink-dim">Nothing due yet.</p>
+            {(myOpenItems ?? []).length === 0 ? (
+              <p className="mt-2 text-sm text-ink-dim">Nothing due. See you at the next session.</p>
+            ) : (
+              <ul className="mt-2 flex flex-col gap-1">
+                {(myOpenItems ?? []).map((it) => (
+                  <li key={it.id} className="text-sm text-ink">
+                    {it.title}
+                    {it.due_on ? <span className="text-ink-dim"> (due {it.due_on})</span> : null}
+                  </li>
+                ))}
+                <li>
+                  <Link href="/homework" className="text-sm text-forest underline">
+                    Check off
+                  </Link>
+                </li>
+              </ul>
+            )}
           </div>
           <div className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-4">
             <p className="eyebrow">Latest deliverable</p>

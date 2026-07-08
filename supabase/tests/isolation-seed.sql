@@ -107,6 +107,37 @@ select '10000000-0000-0000-0000-00000000000a', id, 'leak-test@gmail.test', 'kge1
 from practice_members
 where practice_id = '10000000-0000-0000-0000-00000000000a' and role = 'owner';
 
+-- Ring 3: notes (one unshared, one shared), items, a proposal, and a
+-- readiness marker, all in practice_a.
+insert into session_notes (session_id, engagement_id, practice_id, client_id,
+                           raw_transcript, summary_md, visibility) values
+  ('50000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   'leak-test transcript', 'unshared summary', 'practice');
+
+insert into action_items (id, engagement_id, practice_id, client_id, title,
+                          assigned_client_member_id, status) values
+  ('60000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   'member_a1 homework',
+   (select id from client_members where email = 'member_a1@client-a.test'), 'open'),
+  ('60000000-0000-0000-0000-0000000000a2', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   'unassigned item', null, 'open'),
+  ('60000000-0000-0000-0000-0000000000b1', '30000000-0000-0000-0000-0000000000b1',
+   '10000000-0000-0000-0000-00000000000b', '20000000-0000-0000-0000-0000000000b1',
+   'client_b homework',
+   (select id from client_members where email = 'member_b@client-b.test'), 'open');
+
+insert into ai_proposals (engagement_id, practice_id, client_id, session_id, kind, payload) values
+  ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+   '20000000-0000-0000-0000-0000000000a1', '50000000-0000-0000-0000-0000000000a1',
+   'extraction', '{"summary_md":"leak-test"}');
+
+insert into readiness_markers (engagement_id, practice_id, client_id, pillar, note_md) values
+  ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+   '20000000-0000-0000-0000-0000000000a1', 'execution', 'leak-test readiness prose');
+
 -- Service-role-only rows that must be invisible to every session.
 insert into ai_spend_ledger (practice_id, model, tier, cost_usd)
   values ('10000000-0000-0000-0000-00000000000a', 'leak-test', 'default', 0.01);
@@ -167,6 +198,12 @@ do $$ begin
   -- Ring 2: the owner sees both dimensions of their own practice only.
   if (select count(*) from sessions) <> 1 then raise exception 'owner_a session visibility wrong'; end if;
   if (select count(*) from availability_windows) <> 1 then raise exception 'owner_a window visibility wrong'; end if;
+  -- Ring 3: the workshop side sees everything of its practice,
+  -- including the unshared note, the proposal queue, and readiness.
+  if (select count(*) from session_notes) <> 1 then raise exception 'owner_a note visibility wrong'; end if;
+  if (select count(*) from ai_proposals) <> 1 then raise exception 'owner_a proposal visibility wrong'; end if;
+  if (select count(*) from readiness_markers) <> 1 then raise exception 'owner_a readiness visibility wrong'; end if;
+  if (select count(*) from action_items) <> 2 then raise exception 'owner_a item visibility wrong'; end if;
   -- Service-role-only tables: even the owner sees nothing.
   if (select count(*) from google_connections) <> 0 then raise exception 'LEAK: session reads google_connections (token store)'; end if;
   if (select count(*) from ai_spend_ledger) <> 0 then raise exception 'LEAK: session reads ai_spend_ledger'; end if;
@@ -253,6 +290,48 @@ do $$ begin
   if (select count(*) from keystone_busy_intervals('10000000-0000-0000-0000-00000000000b')) <> 0 then
     raise exception 'LEAK cross-practice: member_a1 reads practice_b busy intervals';
   end if;
+  -- Ring 3: an UNSHARED note (and its transcript) is invisible to the
+  -- client; proposals and readiness are invisible always; items show
+  -- the whole engagement but only their client's.
+  if (select count(*) from session_notes) <> 0 then
+    raise exception 'LEAK: client member reads an unshared session note';
+  end if;
+  if (select count(*) from ai_proposals) <> 0 then
+    raise exception 'LEAK: client member reads ai_proposals';
+  end if;
+  if (select count(*) from readiness_markers) <> 0 then
+    raise exception 'LEAK: client member reads readiness_markers (consultant-only lens)';
+  end if;
+  if (select count(*) from action_items) <> 2 then
+    raise exception 'member_a1 must see both of their client''s items';
+  end if;
+  if (select count(*) from action_items where client_id <> '20000000-0000-0000-0000-0000000000a1') <> 0 then
+    raise exception 'LEAK cross-client: member_a1 reads another client''s items';
+  end if;
+end $$;
+
+-- Ring 3: check-off is assignment-scoped. Own item: works. The
+-- unassigned item of the same client: zero rows updated, no error.
+do $$ begin
+  update action_items set status = 'done', done_at = now()
+    where id = '60000000-0000-0000-0000-0000000000a1';
+  if not found then raise exception 'member_a1 could not check off their own item'; end if;
+  update action_items set status = 'done', done_at = now()
+    where id = '60000000-0000-0000-0000-0000000000a2';
+  if found then raise exception 'LEAK role: member_a1 updated an item not assigned to them'; end if;
+end $$;
+
+-- After the consultant publishes (shares) the note, the client reads it.
+reset role;
+update session_notes set visibility = 'shared', summary_md = 'shared summary'
+  where session_id = '50000000-0000-0000-0000-0000000000a1';
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from session_notes) <> 1 then
+    raise exception 'member_a1 must read the SHARED note';
+  end if;
 end $$;
 
 -- Ring 2: a client member books within their own client...
@@ -326,6 +405,12 @@ do $$ begin
   if (select count(*) from availability_windows) <> 0 then
     raise exception 'LEAK cross-practice: member_b reads practice_a windows';
   end if;
+  -- Ring 3 cross-practice: only their own item; zero practice_a notes,
+  -- proposals, readiness.
+  if (select count(*) from action_items) <> 1 then raise exception 'member_b item visibility wrong'; end if;
+  if (select count(*) from session_notes) <> 0 then raise exception 'LEAK cross-practice: member_b reads practice_a notes'; end if;
+  if (select count(*) from ai_proposals) <> 0 then raise exception 'LEAK: member_b reads proposals'; end if;
+  if (select count(*) from readiness_markers) <> 0 then raise exception 'LEAK: member_b reads readiness'; end if;
 end $$;
 
 -- ── Stranger: valid session, no membership, zero rows everywhere ─────

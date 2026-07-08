@@ -133,13 +133,14 @@ function livePolicyBodiesByTable(sql: string): Record<string, string[]> {
   return out
 }
 
-// The canonical membership predicates. A membership subquery filtered on
-// the caller's auth.uid() within a bounded window, so a subquery MISSING
-// its auth.uid() filter does not spuriously match. The keystone_can
-// permission authority (SECURITY DEFINER, resolves from auth.uid()) also
-// counts once it exists.
+// The canonical membership predicates. Either a raw membership subquery
+// filtered on the caller's auth.uid() within a bounded window (so a
+// subquery MISSING its auth.uid() filter does not spuriously match), or
+// one of the SECURITY DEFINER scope helpers from 0001/0005, every one of
+// which resolves from auth.uid() internally: the permission authority
+// keystone_can, the membership predicates, and the assignment check.
 const MEMBERSHIP_PREDICATE =
-  /(practice_members|client_members)[\s\S]{0,160}?auth\.uid\(\)|keystone_can\s*\(/i
+  /(practice_members|client_members)[\s\S]{0,160}?auth\.uid\(\)|keystone_can\s*\(|is_practice_member\s*\(|is_member_of_client\s*\(|is_client_member_of_practice\s*\(|owns_client_membership\s*\(/i
 
 const sql = readAllMigrations()
 const practiceSet = tablesWithColumn(sql, 'practice_id')

@@ -45,7 +45,11 @@ export default async function EngagementsPage() {
               className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-6"
             >
               <div className="flex items-baseline justify-between gap-4">
-                <h2 className="font-display text-2xl font-medium text-ink">{e.title}</h2>
+                <h2 className="font-display text-2xl font-medium text-ink">
+                  <a href={`/engagements/${e.id}`} className="hover:underline">
+                    {e.title}
+                  </a>
+                </h2>
                 <span className="eyebrow">
                   {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                   {((e.clients as any)?.name as string) ?? ''}

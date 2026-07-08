@@ -182,8 +182,11 @@ export default async function SessionsPage({
         ) : (
           <ul className="mt-3 flex flex-col gap-2">
             {past.map((s) => (
-              <li key={s.id} className="text-sm text-ink-dim">
-                {fmt(s.starts_at, s.tz)}
+              <li key={s.id} className="text-sm">
+                <a href={`/sessions/${s.id}`} className="text-forest underline">
+                  {fmt(s.starts_at, s.tz)}
+                </a>
+                <span className="text-ink-dim"> notes and decisions</span>
               </li>
             ))}
           </ul>

@@ -3,7 +3,6 @@
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createServerSupabase } from '@/lib/supabase/server'
-import { appBaseUrl } from '@/lib/email'
 import { checkRateLimits } from '@/lib/rateLimit'
 import { headers } from 'next/headers'
 
@@ -30,6 +29,12 @@ export async function signInWithEmail(formData: FormData): Promise<void> {
 
   const h = await headers()
   const ip = (h.get('x-forwarded-for')?.split(',')[0] || 'unknown').trim()
+  // The redirect targets THIS deployment (production or preview), so
+  // the link lands where the person started. Supabase only honors it
+  // when the origin is on the auth redirect allow-list.
+  const host = h.get('x-forwarded-host') ?? h.get('host') ?? 'localhost:3000'
+  const proto = h.get('x-forwarded-proto') ?? 'https'
+  const origin = `${proto}://${host}`
   const limited = await checkRateLimits([
     { config: LOGIN_IP_PER_MIN, key: ip },
     { config: LOGIN_IP_PER_HOUR, key: ip },
@@ -44,7 +49,7 @@ export async function signInWithEmail(formData: FormData): Promise<void> {
       // lack of it) is what gates every read, so a stranger's account
       // holds nothing.
       shouldCreateUser: true,
-      emailRedirectTo: `${appBaseUrl()}/auth/callback`,
+      emailRedirectTo: `${origin}/auth/callback`,
     },
   })
 

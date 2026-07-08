@@ -1,9 +1,118 @@
-export default function Page() {
+import { redirect } from 'next/navigation'
+import { createServerSupabase } from '@/lib/supabase/server'
+import { getViewer } from '@/lib/membership'
+import { sendMessage } from './actions'
+
+/**
+ * The client message thread (Ring 5): one thread with the practice, per
+ * engagement. No presence, no typing indicators; write, and an email
+ * reaches your consultant with a link back here. Pure RLS surface.
+ * Opening the page marks the practice's messages read (read receipts
+ * ride a column-level grant; nothing else on a message can change).
+ */
+
+const STATES: Record<string, string> = {
+  sent: 'Sent. Your consultant gets an email.',
+  sent_no_email: 'Your message is saved and visible, but the email notification did not go out.',
+  invalid: 'Write something first.',
+  no_engagement: 'No active engagement to message on yet.',
+  slow: 'Too many messages at once. Wait a minute.',
+  error: 'That did not send. Try again.',
+}
+
+function fmt(dt: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(dt))
+}
+
+export default async function MessagesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ state?: string }>
+}) {
+  const { state } = await searchParams
+  const viewer = await getViewer()
+  if (!viewer.client) redirect('/login')
+  const supabase = await createServerSupabase()
+
+  const { data: thread } = await supabase
+    .from('message_threads')
+    .select('id')
+    .eq('client_id', viewer.client.clientId)
+    .order('last_message_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const { data: messages } = thread
+    ? await supabase
+        .from('messages')
+        .select('id, author_side, author_user_id, body, created_at, read_at')
+        .eq('thread_id', thread.id)
+        .order('created_at', { ascending: true })
+    : { data: [] }
+
+  // Read receipt: the practice's words, now seen by the client.
+  const unseen = (messages ?? []).filter((m) => m.author_side === 'practice' && !m.read_at)
+  if (unseen.length > 0) {
+    await supabase
+      .from('messages')
+      .update({ read_at: new Date().toISOString() })
+      .in('id', unseen.map((m) => m.id))
+      .is('read_at', null)
+  }
+
   return (
-    <div className="mx-auto max-w-4xl px-5 py-8 md:px-10 md:py-12">
-      <p className="eyebrow">Messages</p>
+    <div className="mx-auto max-w-3xl px-5 py-8 md:px-10 md:py-12">
+      <p className="eyebrow">{viewer.client.clientName}</p>
       <h1 className="text-page-title mt-2 text-ink">Messages</h1>
-      <p className="mt-6 text-ink-dim">The thread with your consultant opens in an upcoming ring.</p>
+
+      {state && STATES[state] ? (
+        <p role="status" className="mt-4 text-sm text-forest">
+          {STATES[state]}
+        </p>
+      ) : null}
+
+      <section className="mt-8 flex flex-col gap-3">
+        {(messages ?? []).length === 0 ? (
+          <p className="text-sm text-ink-dim">
+            Nothing yet. Write below; your consultant gets an email and replies here.
+          </p>
+        ) : (
+          (messages ?? []).map((m) => (
+            <div
+              key={m.id}
+              className={`max-w-[85%] rounded-[var(--radius)] border border-ink/10 p-3 ${
+                m.author_side === 'client' ? 'self-end bg-paper-raised' : 'self-start bg-paper-deep'
+              }`}
+            >
+              <p className="whitespace-pre-line text-sm leading-relaxed text-ink">{m.body}</p>
+              <p className="mt-1.5 font-mono text-[0.65rem] uppercase text-ink-dim">
+                {m.author_side === 'client' ? 'You' : 'Your consultant'} / {fmt(m.created_at)}
+                {m.author_side === 'client' && m.read_at ? ' / seen' : ''}
+              </p>
+            </div>
+          ))
+        )}
+      </section>
+
+      <form action={sendMessage} className="mt-8">
+        <textarea
+          name="body"
+          rows={4}
+          placeholder="Write to your consultant."
+          className="w-full rounded-lg border border-ink/15 bg-paper-raised p-3 text-sm text-ink"
+        />
+        <button
+          type="submit"
+          className="mt-3 rounded-lg bg-forest px-4 py-2 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98]"
+        >
+          Send
+        </button>
+      </form>
     </div>
   )
 }

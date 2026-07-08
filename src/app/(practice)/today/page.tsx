@@ -4,7 +4,7 @@ import { createServerSupabase } from '@/lib/supabase/server'
 /**
  * Practice Home, the Monday screen (Ring 3.5, spec 5.2): one view
  * across every client. This week's sessions, homework awaiting review,
- * the digest queue and unanswered messages (their rings land next), and
+ * the digest queue (Ring 6), unanswered messages with age (Ring 5), and
  * the stall flag: any workstream with no stage event, session, or
  * completed homework in three weeks (CONFIRM 11 may tighten this).
  * The queue is aspirational, what landed is factual, the gap is the
@@ -35,7 +35,7 @@ export default async function PracticeHomePage() {
   const twoWeeksAgo = new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString()
   const stallCutoff = new Date(now - STALL_DAYS * 24 * 60 * 60 * 1000).toISOString()
 
-  const [sessions, reviewItems, workstreams, events, doneItems, recentSessions] =
+  const [sessions, reviewItems, workstreams, events, doneItems, recentSessions, lastMessages] =
     await Promise.all([
       supabase
         .from('sessions')
@@ -68,7 +68,21 @@ export default async function PracticeHomePage() {
         .select('engagement_id, starts_at')
         .in('status', ['booked', 'held'])
         .gte('starts_at', stallCutoff),
+      supabase
+        .from('messages')
+        .select('thread_id, engagement_id, author_side, created_at, clients(name)')
+        .order('created_at', { ascending: false })
+        .limit(200),
     ])
+
+  // Unanswered: the last word in a thread is the client's. An
+  // unanswered message with age is the gap made visible.
+  const latestByThread = new Map<string, NonNullable<typeof lastMessages.data>[number]>()
+  for (const m of lastMessages.data ?? []) {
+    if (!latestByThread.has(m.thread_id)) latestByThread.set(m.thread_id, m)
+  }
+  const unanswered = [...latestByThread.values()].filter((m) => m.author_side === 'client')
+  const ageDays = (iso: string) => Math.floor((now - new Date(iso).getTime()) / (24 * 60 * 60 * 1000))
 
   // A workstream stalls when it is older than the window and neither it
   // nor its engagement moved: no stage event on the workstream, no
@@ -145,9 +159,27 @@ export default async function PracticeHomePage() {
 
         <section className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-5">
           <p className="eyebrow">Messages</p>
-          <p className="mt-3 text-sm text-ink-dim">
-            Unanswered client messages surface here when Ring 5 ships.
-          </p>
+          {unanswered.length === 0 ? (
+            <p className="mt-3 text-sm text-ink-dim">Every thread has your reply as the last word.</p>
+          ) : (
+            <ul className="mt-3 flex flex-col gap-2">
+              {unanswered.map((m) => (
+                <li key={m.thread_id} className="text-sm">
+                  <Link
+                    href={`/engagements/${m.engagement_id}#messages`}
+                    className="text-forest underline"
+                  >
+                    {clientOf(m)} is waiting
+                  </Link>{' '}
+                  <span className="text-ink-dim">
+                    {ageDays(m.created_at) === 0
+                      ? '(today)'
+                      : `(${ageDays(m.created_at)}d without a reply)`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </div>
 

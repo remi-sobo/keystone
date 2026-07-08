@@ -603,4 +603,117 @@ end $$;
 
 reset role;
 
+-- ── Ring 5: message threads, authorship, read receipts, notify RPC ───
+
+-- Client member A1 opens the thread and speaks (both writes ride the
+-- session, through the permission authority).
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+insert into message_threads (id, engagement_id, practice_id, client_id) values
+  ('90000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1');
+insert into messages (id, thread_id, engagement_id, practice_id, client_id,
+                      author_user_id, author_side, body) values
+  ('91000000-0000-0000-0000-0000000000a1', '90000000-0000-0000-0000-0000000000a1',
+   '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+   '20000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000a1',
+   'client', 'a question from the client');
+
+-- Never as someone else, never from the practice side of the wall, and
+-- never a thread for the sibling client.
+do $$ begin
+  insert into messages (thread_id, engagement_id, practice_id, client_id,
+                        author_user_id, author_side, body)
+    values ('90000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
+            '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+            '00000000-0000-0000-0000-0000000000a2', 'client', 'forged author');
+  raise exception 'LEAK authorship: member_a1 wrote as member_a2';
+exception when insufficient_privilege then null;
+end $$;
+do $$ begin
+  insert into messages (thread_id, engagement_id, practice_id, client_id,
+                        author_user_id, author_side, body)
+    values ('90000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
+            '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+            '00000000-0000-0000-0000-0000000000a1', 'practice', 'wrong wall');
+  raise exception 'LEAK side: client member wrote as the practice';
+exception when insufficient_privilege then null;
+end $$;
+do $$ begin
+  insert into message_threads (engagement_id, practice_id, client_id)
+    values ('30000000-0000-0000-0000-0000000000a2', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a2');
+  raise exception 'LEAK cross-client: member_a1 opened a thread for client_a2';
+exception when insufficient_privilege then null;
+end $$;
+
+-- The notify RPC: their own engagement yields the owner email, the
+-- sibling engagement yields zero rows.
+do $$ begin
+  if (select count(*) from keystone_message_notify_targets('30000000-0000-0000-0000-0000000000a1')) <> 1 then
+    raise exception 'member_a1 must get exactly the owner email for their engagement';
+  end if;
+  if (select count(*) from keystone_message_notify_targets('30000000-0000-0000-0000-0000000000a2')) <> 0 then
+    raise exception 'LEAK cross-client: notify targets for a sibling engagement';
+  end if;
+end $$;
+
+-- Consultant A replies and the reply marks the client message read; the
+-- body itself is immutable to every session (column-level grant).
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000b","email":"consultant_a@practice-a.test"}', false);
+insert into messages (thread_id, engagement_id, practice_id, client_id,
+                      author_user_id, author_side, body) values
+  ('90000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   '00000000-0000-0000-0000-00000000000b', 'practice', 'the reply');
+update messages set read_at = now()
+  where id = '91000000-0000-0000-0000-0000000000a1' and read_at is null;
+do $$ begin
+  if (select read_at from messages where id = '91000000-0000-0000-0000-0000000000a1') is null then
+    raise exception 'the read receipt did not stick';
+  end if;
+end $$;
+do $$ begin
+  update messages set body = 'rewritten history'
+    where id = '91000000-0000-0000-0000-0000000000a1';
+  raise exception 'HOLE: a session rewrote a message body';
+exception when insufficient_privilege then null;
+end $$;
+do $$ begin
+  delete from messages where id = '91000000-0000-0000-0000-0000000000a1';
+  if found then raise exception 'HOLE: a session deleted a message'; end if;
+end $$;
+
+-- Member A2, member B, stranger: the thread does not exist for them.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$ begin
+  if (select count(*) from message_threads) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 threads';
+  end if;
+  if (select count(*) from messages) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 messages';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000b1","email":"member_b@client-b.test"}', false);
+do $$ begin
+  if (select count(*) from messages) <> 0 then
+    raise exception 'LEAK cross-practice: member_b reads practice_a messages';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000ee","email":"stranger@example.test"}', false);
+do $$ begin
+  if (select count(*) from message_threads) <> 0 then raise exception 'LEAK: stranger reads threads'; end if;
+  if (select count(*) from messages) <> 0 then raise exception 'LEAK: stranger reads messages'; end if;
+  if (select count(*) from keystone_message_notify_targets('30000000-0000-0000-0000-0000000000a1')) <> 0 then
+    raise exception 'LEAK: stranger gets notify targets';
+  end if;
+end $$;
+
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

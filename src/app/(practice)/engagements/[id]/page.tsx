@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import WorkstreamArc from '@/components/WorkstreamArc'
 import AddDeliverableForm from './AddDeliverableForm'
-import { removeDeliverable, saveReadiness } from './actions'
+import { removeDeliverable, replyMessage, saveReadiness } from './actions'
 
 /**
  * Engagement detail (Ring 3): the early mission control. Workstreams,
@@ -14,6 +14,13 @@ import { removeDeliverable, saveReadiness } from './actions'
 
 const DEFAULT_STAGES = ['diagnose', 'design', 'build', 'train', 'stabilize']
 const PILLARS = ['philosophy', 'system', 'execution'] as const
+
+const STATES: Record<string, string> = {
+  msg_sent: 'Reply sent. The client gets an email.',
+  msg_sent_no_email: 'Your reply is saved and visible, but the email notification did not go out.',
+  msg_error: 'That did not send. Try again.',
+  slow: 'Too many messages at once. Wait a minute.',
+}
 
 function fmt(dt: string, tz: string): string {
   return new Intl.DateTimeFormat('en-US', {
@@ -26,12 +33,24 @@ function fmt(dt: string, tz: string): string {
   }).format(new Date(dt))
 }
 
+function fmt2(dt: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(dt))
+}
+
 export default async function EngagementDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ state?: string }>
 }) {
   const { id } = await params
+  const { state } = await searchParams
   const supabase = await createServerSupabase()
 
   const { data: engagement } = await supabase
@@ -74,6 +93,13 @@ export default async function EngagementDetailPage({
       .order('delivered_on', { ascending: false }),
   ])
 
+  const { data: messages } = await supabase
+    .from('messages')
+    .select('id, author_side, body, created_at, read_at')
+    .eq('engagement_id', id)
+    .order('created_at', { ascending: true })
+    .limit(200)
+
   const stages =
     Array.isArray(practice.data?.stage_config) && practice.data.stage_config.length > 0
       ? (practice.data.stage_config as string[])
@@ -92,6 +118,12 @@ export default async function EngagementDetailPage({
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <p className="eyebrow">{((engagement.clients as any)?.name as string) ?? ''}</p>
       <h1 className="text-page-title mt-2 text-ink">{engagement.title}</h1>
+
+      {state && STATES[state] ? (
+        <p role="status" className="mt-4 text-sm text-forest">
+          {STATES[state]}
+        </p>
+      ) : null}
 
       <section className="mt-10 flex flex-col gap-6">
         {(ws.data ?? []).map((w) => (
@@ -196,6 +228,48 @@ export default async function EngagementDetailPage({
           engagementId={engagement.id}
           workstreams={(ws.data ?? []).map((w) => ({ id: w.id, title: w.title }))}
         />
+      </section>
+
+      <section id="messages" className="mt-12">
+        <h2 className="font-display text-2xl font-medium text-ink">Messages</h2>
+        <p className="mt-1 text-sm text-ink-dim">
+          Replying sends the client an email with a link back to their thread.
+        </p>
+        <div className="mt-4 flex flex-col gap-3">
+          {(messages ?? []).length === 0 ? (
+            <p className="text-sm text-ink-dim">No messages on this engagement yet.</p>
+          ) : (
+            (messages ?? []).map((m) => (
+              <div
+                key={m.id}
+                className={`max-w-[85%] rounded-[var(--radius)] border border-ink/10 p-3 ${
+                  m.author_side === 'practice' ? 'self-end bg-paper-raised' : 'self-start bg-paper-deep'
+                }`}
+              >
+                <p className="whitespace-pre-line text-sm leading-relaxed text-ink">{m.body}</p>
+                <p className="mt-1.5 font-mono text-[0.65rem] uppercase text-ink-dim">
+                  {m.author_side === 'practice' ? 'You' : 'Client'} / {fmt2(m.created_at)}
+                  {m.author_side === 'practice' && m.read_at ? ' / seen' : ''}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+        <form action={replyMessage} className="mt-4">
+          <input type="hidden" name="engagementId" value={engagement.id} />
+          <textarea
+            name="body"
+            rows={4}
+            placeholder="Write to the client."
+            className="w-full rounded-lg border border-ink/15 bg-paper-raised p-3 text-sm text-ink"
+          />
+          <button
+            type="submit"
+            className="mt-3 rounded-lg bg-forest px-4 py-2 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98]"
+          >
+            Reply
+          </button>
+        </form>
       </section>
 
       <section className="mt-12">

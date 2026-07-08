@@ -2,7 +2,7 @@
 
 The live operational doc. If it is happening and it is not here, it is not happening. Weekly ritual per SOBO_PLAYBOOK.md section 8.
 
-Last updated: 2026-07-08 (Ring 4 built; infrastructure live).
+Last updated: 2026-07-08 (Ring 5 built; infrastructure live).
 
 ## State
 
@@ -11,6 +11,7 @@ Last updated: 2026-07-08 (Ring 4 built; infrastructure live).
 - **Ring 2 (Sessions and scheduling): built.** Migration 0003 applied locally and in CI; sessions, availability windows, the encrypted Google connection store, the pure slot engine (DST-pinned unit tests), client booking/reschedule/cancel (pure RLS plus the DB exclusion constraint), practice settings (windows, connect, sync).
 - **Ring 3 (Notes, AI extraction, homework): built.** Migration 0005 applied to the live project. Transcript paste, opus extraction into an inert ai_proposals row, the single accept path publishing notes and creating assigned homework, client check-off (assignment-scoped RLS), session detail on both surfaces, the readiness panel. The extraction end-to-end run waits on ANTHROPIC_API_KEY (setup checklist item 2); the request builder and parse are unit-tested and every AI call rides the Ring 0 chokepoint (spend guard, ledger, refusal fallback, voice sweep).
 - **Ring 3.5 (Practice Home): built.** `/today` composes the week across every client: sessions in the next seven days, homework awaiting review, digest and messages placeholders (Rings 6 and 5), and the three-week stall section (descriptive, never red-badged; threshold sits under CONFIRM 11). Practice members now land on /today from the root and the auth callback; practice mobile tabs are at the five-item max. No new tables, migrations, or env vars.
+- **Ring 5 (Messages): built.** Migration 0007 applied to the live project: one thread per engagement (unique constraint says so honestly), author-stamped messages whose insert policy demands self-authorship on the right side of the wall inside your own scope, bodies immutable to every session (column-level grant limits updates to read_at), no delete path. Client sends at /messages and the practice owners get a deep-linked email (targets via keystone_message_notify_targets, the minimal-disclosure definer RPC, since the pure-RLS client surface cannot read practice_members); the practice replies from the engagement page and the thread's client participants get one back. The /today messages card is live: unanswered threads with age. Email failure states are honest on both sides; the live send run waits on RESEND_API_KEY (setup checklist section 4).
 - **Ring 4 (Deliverables and library): built.** Migration 0006 applied to the live project: deliverables (file or link, kind-constrained), resources (the practice-wide catalog, the documented no-client_id case), session_prep_resources (flagged spec addition; the join behind prep surfacing), two private storage buckets with path-scoped read policies and zero write policies. Practice ships from the engagement page (signed-upload direct-to-storage), the client watches the brass timeline at /deliverables and downloads through their own session (pure RLS end to end); resource authoring at /library/authoring (voice-swept), client read at /library; prep attaches on the run of show and surfaces above upcoming sessions and on session detail. Live matrix extended (storage stub added to the scratch Postgres); 78 gate assertions green. No new env vars.
 - Engagement status: proposal out to SafeSpace, decision expected Thu Jul 9.
 
@@ -33,7 +34,7 @@ runs were against the identical commit locally).
 | 3 | Notes and homework: paste transcript, AI proposes (inert), consultant accepts, client checks off, review queue, session detail, readiness panel | built; live AI run owed (needs env) |
 | 3.5 | Practice Home, the Monday screen | built |
 | 4 | Deliverables and library | built |
-| 5 | Messages plus Resend notifications | queued |
+| 5 | Messages plus Resend notifications | built; live email run owed (needs RESEND_API_KEY) |
 | 6 | The weekly digest (cron, approval queue, refuses an empty week) | queued |
 
 Then stop and run SafeSpace on it for two weeks before any Ring 7 talk.

@@ -7,6 +7,8 @@ import { randomUUID } from 'crypto'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { getViewer } from '@/lib/membership'
+import { checkRateLimits, LIMITS } from '@/lib/rateLimit'
+import { appBaseUrl, sendEmail } from '@/lib/email'
 import { logAuditAction } from '@/lib/audit'
 
 /**
@@ -235,4 +237,127 @@ export async function removeDeliverable(formData: FormData): Promise<void> {
   }
   revalidatePath(`/engagements/${parsed.data.engagementId}`)
   revalidatePath('/deliverables')
+}
+
+// ── Messages (Ring 5): the practice reply ─────────────────────────────
+
+const ReplyShape = z.object({
+  engagementId: z.string().uuid(),
+  body: z.string().min(1).max(8000),
+})
+
+export async function replyMessage(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = ReplyShape.safeParse({
+    engagementId: formData.get('engagementId'),
+    body: formData.get('body'),
+  })
+  if (!parsed.success) redirect('/engagements')
+  const { engagementId, body } = parsed.data
+
+  const limited = await checkRateLimits([
+    { config: LIMITS.MESSAGES_PER_MIN, key: viewer.user!.id },
+    { config: LIMITS.MESSAGES_PER_HOUR, key: viewer.user!.id },
+  ])
+  if (!limited.ok) redirect(`/engagements/${engagementId}?state=slow#messages`)
+
+  const supabase = await createServerSupabase()
+  const { data: engagement } = await supabase
+    .from('engagements')
+    .select('id, title, practice_id, client_id')
+    .eq('id', engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!engagement) redirect('/engagements')
+
+  let { data: thread } = await supabase
+    .from('message_threads')
+    .select('id')
+    .eq('engagement_id', engagement.id)
+    .maybeSingle()
+  if (!thread) {
+    const { data: created, error: threadError } = await supabase
+      .from('message_threads')
+      .insert({
+        engagement_id: engagement.id,
+        practice_id: engagement.practice_id,
+        client_id: engagement.client_id,
+      })
+      .select('id')
+      .maybeSingle()
+    if (threadError && threadError.code !== '23505') {
+      console.error('[messages] thread open failed:', threadError.message)
+      redirect(`/engagements/${engagementId}?state=msg_error#messages`)
+    }
+    thread =
+      created ??
+      (
+        await supabase
+          .from('message_threads')
+          .select('id')
+          .eq('engagement_id', engagement.id)
+          .maybeSingle()
+      ).data
+  }
+  if (!thread) redirect(`/engagements/${engagementId}?state=msg_error#messages`)
+
+  const { error } = await supabase.from('messages').insert({
+    thread_id: thread.id,
+    engagement_id: engagement.id,
+    practice_id: engagement.practice_id,
+    client_id: engagement.client_id,
+    author_user_id: viewer.user!.id,
+    author_side: 'practice',
+    body,
+  })
+  if (error) {
+    console.error('[messages] reply failed:', error.message)
+    redirect(`/engagements/${engagementId}?state=msg_error#messages`)
+  }
+  await supabase
+    .from('message_threads')
+    .update({ last_message_at: new Date().toISOString() })
+    .eq('id', thread.id)
+
+  // Replying answers: the client's words in this thread are now read.
+  await supabase
+    .from('messages')
+    .update({ read_at: new Date().toISOString() })
+    .eq('thread_id', thread.id)
+    .eq('author_side', 'client')
+    .is('read_at', null)
+
+  // Email the client members who have spoken in this thread; if the
+  // practice speaks first, every member of the client hears it.
+  const [{ data: authors }, { data: roster }] = await Promise.all([
+    supabase.from('messages').select('author_user_id').eq('thread_id', thread.id).eq('author_side', 'client'),
+    supabase.from('client_members').select('email, user_id').eq('client_id', engagement.client_id),
+  ])
+  const spoke = new Set((authors ?? []).map((a) => a.author_user_id))
+  const participants = (roster ?? []).filter((m) => m.user_id && spoke.has(m.user_id))
+  const targets = (participants.length > 0 ? participants : roster ?? []).map((m) => m.email)
+
+  const link = `${appBaseUrl()}/messages`
+  const excerpt = body.slice(0, 200)
+  let allSent = targets.length > 0
+  for (const to of targets) {
+    const result = await sendEmail({
+      to,
+      subject: `Reply from your consultant on ${engagement.title}`,
+      html: [
+        `<p>Your consultant replied:</p>`,
+        `<blockquote>${excerpt.replace(/</g, '&lt;')}</blockquote>`,
+        `<p><a href="${link}">Read and reply in Keystone</a></p>`,
+      ].join('\n'),
+      replyTo: viewer.user!.email ?? undefined,
+    })
+    if (!result.ok) {
+      allSent = false
+      console.error('[messages] notify failed:', result.status, result.detail)
+    }
+  }
+
+  revalidatePath(`/engagements/${engagementId}`)
+  revalidatePath('/today')
+  redirect(`/engagements/${engagementId}?state=${allSent ? 'msg_sent' : 'msg_sent_no_email'}#messages`)
 }

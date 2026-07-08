@@ -1,26 +1,136 @@
 @import "tailwindcss";
 
+/*
+  Keystone design tokens. Structure copied from the sobo-consulting
+  globals.css (Tailwind v4 @theme, no tailwind.config), re-valued with
+  specs/keystone.md section 6.1 exactly: the ten Keystone tokens and
+  nothing more. The config-integrity gate freezes these values; do not
+  add colors.
+
+  Brass is the expensive signal and appears only thin: hairline rules,
+  the active-nav tick, a focus glint, keystone marks, the wordmark dot.
+*/
+
+@theme {
+  /* Canvas and palette (spec 6.1, warm paper, never stark) */
+  --color-paper:        #FBF4EA;   /* page canvas, the SOBO family cream */
+  --color-paper-raised: #FFFBF3;   /* cards, panels */
+  --color-paper-deep:   #F3EADC;   /* sidebar, wells, hover fills */
+  --color-forest:       #33503C;   /* primary structure, active states */
+  --color-forest-deep:  #26402E;   /* hover/active of primary */
+  --color-navy:         #3D4959;   /* ink for headings, secondary structure */
+  --color-ink:          #2A2620;   /* body text, warm near-black, never #000 */
+  --color-ink-dim:      #6E675C;   /* secondary text, AA-checked on paper */
+  --color-brass:        #B08D3E;   /* THE metallic. Sparingly. */
+  --color-sage:         #7A9471;   /* organic accent: progress fills, quiet success */
+
+  /* Type registers (spec 6.2). Three families, each one job. */
+  --font-display: var(--font-cormorant), Georgia, serif;
+  --font-sans:    var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    var(--font-jetbrains), ui-monospace, monospace;
+
+  /* Fluid type tokens (spec 6.2) */
+  --text-page:    clamp(1.9rem, 3.2vw, 2.6rem);   /* page titles, 1.05 leading */
+  --text-eyebrow: 0.72rem;
+
+  --tracking-eyebrow: 0.24em;
+
+  /* The single easing (spec 6.5), shared with src/lib/motion.ts */
+  --ease-keystone: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  /* Shape tokens. Defined here (not in @theme) so they always emit and
+     resolve in arbitrary values. One soft, low, forest-tinted shadow;
+     no hard drop shadows anywhere. */
+  --radius: 1rem;
+  --shadow-soft: 0 16px 44px -28px rgb(38 64 46 / 0.4);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Display face: Cormorant, with the ligatures that make it read set. */
+.font-display {
+  font-family: var(--font-display);
+  font-feature-settings: "liga" 1, "dlig" 1;
+}
+
+/* Page title register: Cormorant at the fluid size, tight leading,
+   negative tracking (spec 6.2). */
+.text-page-title {
+  font-family: var(--font-display);
+  font-size: var(--text-page);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+}
+
+/* Eyebrow: mono, uppercase, wide-tracked. Stage labels
+   (DIAGNOSE / DESIGN / BUILD), timestamps, file sizes, the footer
+   micro-line. Mono is what makes it read engineered, not decorated. */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+  font-weight: 500;
+  color: var(--color-ink-dim);
+}
+
+/* Display numerals for the progress view (sessions held, deliverables
+   shipped): Cormorant with lining figures. */
+.display-number {
+  font-family: var(--font-display);
+  font-weight: 500;
+  line-height: 0.9;
+  color: var(--color-forest);
+  font-feature-settings: "lnum" 1, "liga" 1;
+  letter-spacing: -0.01em;
+}
+
+/* Selection echoes the brand: forest field, paper type. */
+::selection {
+  background-color: var(--color-forest);
+  color: var(--color-paper);
+}
+
+/* One visible focus style on every interactive element, with the brass
+   glint the spec names. Never removed without replacement. */
+:focus-visible {
+  outline: 2px solid var(--color-forest);
+  outline-offset: 3px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--color-brass);
+}
+
+/* The breathing pulse for the current workstream stage (spec 6.4):
+   2.4s, opacity only, the sole allowed loop. Dies under reduced motion
+   via the global gate below. */
+@keyframes keystone-breathe {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+.stage-breathing {
+  animation: keystone-breathe 2.4s var(--ease-keystone) infinite;
+}
+
+/* Reduced-motion gate on everything: the app renders complete and
+   still. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

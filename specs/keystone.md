@@ -83,9 +83,12 @@ Personas to design for:
 ## 5. Architecture sketch
 
 ```
-app.soboconsulting.com  (Next.js 14 App Router, TS strict, Tailwind v4, Vercel)
+app.soboconsulting.com  (Next.js 16 App Router, TS strict, Tailwind v4, Vercel)
+│                              (amended from "Next.js 14" per Ring 0 FLAG 2;
+│                              create-next-app latest scaffolded 16.2.10)
 │
-├── /login                     Supabase Auth, cookie sessions, middleware refresh
+├── /login                     Supabase Auth, cookie sessions, proxy refresh
+│                              (Next 16 renamed middleware to proxy; src/proxy.ts)
 │
 ├── /(practice)  ── consultant surface, requirePracticeMember(role)
 │     /clients, /clients/[id]
@@ -204,6 +207,19 @@ One boundary inside the boundary: Remi also sits on SafeSpace's board. Board bus
 
 The cross-org isolation test the command center admittedly lacks gets written here in Ring 1, because Keystone is multi-org from its first commit.
 
+### 5.4 Model tiers (added in Ring 0; the Ring 0 prompt referenced this section before it existed, FLAG 5)
+
+One task-to-model map, in `src/lib/claudeModel.ts` and nowhere else:
+
+| Task | Model | Why |
+|---|---|---|
+| Transcript extraction | `claude-opus-4-8` | highest stakes: client PII in, structured homework out |
+| Digest draft, engagement Q&A | `claude-sonnet-5` | capable default tier |
+| Resource suggestion, voice sweep | `claude-haiku-4-5-20251001` | high frequency, low stakes |
+| (declared, wired to no job) | `claude-fable-5` | frontier tier; adopting it is a future, deliberate decision |
+
+Every model declares a fallback model; a response with `stop_reason: "refusal"` is retried once on the declared fallback and the answering model is logged (`src/lib/anthropicClient.ts`). Spend rides the per-practice ceilings and the per-engagement cost ledger (`src/lib/spend.ts`).
+
 ## 6. Design (the 10/10 section)
 
 Keystone should feel like walking into the architect's studio: warm paper, drawings pinned with intention, one brass detail. Calm, dense, and quietly expensive. A stressed ED should exhale when it loads.
@@ -314,7 +330,7 @@ Then stop and run SafeSpace on it for two weeks before any Ring 7 talk (Deepgram
 2. **SafeSpace logins:** susan@, liesl@, aris@, jasmine@ (all safespace.org), confirm the four and whether anyone else joins.
 3. **Library access after the engagement ends:** keeps or lapses?
 4. **Shannon:** practice login in v1?
-5. **SafeSpace workstream names:** the four seeded above, confirm or rename with Liesl's language.
+5. **SafeSpace workstream names:** the five seeded above (amended from "four" per Ring 0 FLAG 7; section 5.1 lists five), confirm or rename with Liesl's language.
 6. **Digest day and hour** (proposal: Friday 3pm Pacific).
 7. **Name clearance:** run trademark + domain check on Keystone before public use.
 8. **Session locations:** video link source (Meet from the calendar event, or Zoom)?
@@ -323,6 +339,15 @@ Then stop and run SafeSpace on it for two weeks before any Ring 7 talk (Deepgram
 11. **Stall threshold:** three weeks proposed; twice-weekly month-one cadence may want two.
 12. **Readiness notes:** consultant-only forever, or shareable per note as a deliberate act?
 14. **Nav label on soboconsulting.com:** "Client Login" until gate 7 clears; switch to "Keystone" only after the name is cleared and the product is something you want public. The marketing site should not announce an unlaunched product by accident.
+
+(There is no gate 13; numbering is kept as-is so existing references stay stable. Ring 0 FLAG 6.)
+
+Ring 1 note on the "Client Login" nav link: it is a one-line PR in the sobo-consulting repo, and the Keystone build session's quarry rule forbids writing there. It ships as its own separately approved change, and Ring 1 is not blocked on it.
+
+## 11. Build log (appended as rings ship)
+
+- **2026-07-08, Ring 0 (Preflight).** Scaffold (Next 16.2.10, TS strict, Tailwind v4, src dir, Node 22), platform layer copied from the quarries and renamed to practice/client, the ten 6.1 tokens, operating docs, three agents, the three CI gates plus the no-service-role guard (20 assertions green on the empty schema), `docs/keystone-preflight.md` with 14 FLAGS. Commits `ring0: platform layer` through `ring0: preflight findings`.
+- **2026-07-08, Ring 1 (The spine), in progress.** Spec amendments from the Ring 0 FLAGS (this edit), then schema, permission authority, RLS, the seeded isolation matrix, login, the sidebar shell, and the client progress view. Model note: the build session ran on Fable 5 end to end (the plan table said plan on Fable 5, execute on Sonnet; execution stayed on the stronger model rather than switching mid-ring).
 
 ---
 

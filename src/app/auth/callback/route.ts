@@ -45,6 +45,6 @@ export async function GET(req: NextRequest) {
   ])
 
   if (cm.data) return NextResponse.redirect(new URL('/home', url.origin))
-  if (pm.data) return NextResponse.redirect(new URL('/clients', url.origin))
+  if (pm.data) return NextResponse.redirect(new URL('/today', url.origin))
   return NextResponse.redirect(new URL('/login?state=no_access', url.origin))
 }

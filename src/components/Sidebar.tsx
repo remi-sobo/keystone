@@ -60,6 +60,7 @@ export function clientNav(): NavItem[] {
 
 export function practiceNav(): NavItem[] {
   return [
+    { href: '/today', label: 'Home', icon: 'home', mobile: true },
     { href: '/clients', label: 'Clients', icon: 'clients', mobile: true },
     { href: '/engagements', label: 'Engagements', icon: 'engagements', mobile: true },
     // /library belongs to the client surface; authoring sits beneath it

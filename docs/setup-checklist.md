@@ -50,7 +50,14 @@ ship in vercel.json.
 ## 3. Google Cloud (for calendar sync, Ring 2)
 
 - [ ] Create (or reuse) a Google Cloud project; enable the Google Calendar API.
-- [ ] OAuth consent screen: External, scopes `calendar.events`, `calendar.readonly`, `userinfo.email`; add remi@/kendra@/shannon@ as test users (or publish).
+- [ ] OAuth consent screen: External, scopes `calendar.events`, `calendar.readonly`, `userinfo.email`; add remi@/kendra@/shannon@ as test users to start.
+- [ ] Then publish the consent screen to production anyway (skip or defer
+      Google's verification review). Testing mode expires refresh tokens
+      after 7 DAYS, which would disconnect the calendar weekly and force
+      a reconnect. Published-but-unverified shows a "Google hasn't
+      verified this app" interstitial with a Continue link; only the
+      practice's own two or three people ever see it, and the token
+      then lives until revoked.
 - [ ] Create an OAuth client (Web application) with authorized redirect URIs:
       `https://app.soboconsulting.com/api/calendar/callback` (and
       `https://keystone-blue-tau.vercel.app/api/calendar/callback` as a spare).

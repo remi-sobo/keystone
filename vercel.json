@@ -11,5 +11,11 @@
     "NEXT_PUBLIC_SUPABASE_URL": "https://mvuycjxainskaylvupji.supabase.co",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12dXljanhhaW5za2F5bHZ1cGppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1Mzk4NjIsImV4cCI6MjA5OTExNTg2Mn0.zcefwDuX_k3DfccGYvmMEmmINzvSI2TcSMBpcfYqg_E",
     "NEXT_PUBLIC_APP_URL": "https://keystone-blue-tau.vercel.app"
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/digest",
+      "schedule": "0 22 * * 5"
+    }
+  ]
 }

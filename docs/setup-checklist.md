@@ -49,6 +49,7 @@ ship in vercel.json.
 
 - [ ] Merge branch `claude/nextjs-setup-verify-w0b2qx` to `main`; production deploys from main.
 - [ ] After env vars land: redeploy, then in the app connect Google Calendar from Settings and press "Sync sessions now" once.
+- [ ] The digest cron is already wired in vercel.json (Fridays 22:00 UTC, the CONFIRM 6 proposal of 3pm Pacific; that is 3pm PDT and 2pm PST, adjust when CONFIRM 6 lands). It runs once CRON_SECRET is set; the first drafts appear on the practice Home for approval, nothing sends without you.
 - [ ] Send yourself a magic link (remi@soboconsulting.com is seeded as owner) and do the 390px walk on live data.
 - [ ] The "Client Login" nav link on soboconsulting.com: one-line PR in that repo (kept out of this build by the quarry rule).
 - [ ] When CONFIRM 1 (domain) lands: point the domain at Vercel, update `NEXT_PUBLIC_APP_URL` in vercel.json, add the domain to the Supabase allow-list and the Google redirect URIs.

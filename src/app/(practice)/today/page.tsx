@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { decideDigest } from './actions'
 
 /**
  * Practice Home, the Monday screen (Ring 3.5, spec 5.2): one view
@@ -24,7 +25,21 @@ function fmt(dt: string, tz: string): string {
   }).format(new Date(dt))
 }
 
-export default async function PracticeHomePage() {
+const STATES: Record<string, string> = {
+  digest_sent: 'Approved and sent to the client.',
+  digest_no_email: 'Approved and recorded, but the email did not go out to everyone. Check the logs.',
+  digest_dismissed: 'Dismissed. No email went anywhere.',
+  digest_gone: 'That draft was already decided.',
+  digest_failed: 'The approval did not finish. Try again.',
+  digest_invalid: 'That request did not parse.',
+}
+
+export default async function PracticeHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ state?: string }>
+}) {
+  const { state } = await searchParams
   const supabase = await createServerSupabase()
   // Per-request wall clock is intended: the Monday screen is "this
   // week" as of THIS render.
@@ -75,6 +90,13 @@ export default async function PracticeHomePage() {
         .limit(200),
     ])
 
+  const { data: digestQueue } = await supabase
+    .from('ai_proposals')
+    .select('id, payload, model_used, created_at, clients(name)')
+    .eq('kind', 'digest')
+    .eq('status', 'proposed')
+    .order('created_at', { ascending: false })
+
   // Unanswered: the last word in a thread is the client's. An
   // unanswered message with age is the gap made visible.
   const latestByThread = new Map<string, NonNullable<typeof lastMessages.data>[number]>()
@@ -110,6 +132,12 @@ export default async function PracticeHomePage() {
     <div className="mx-auto max-w-4xl px-5 py-8 md:px-10 md:py-12">
       <p className="eyebrow">The week</p>
       <h1 className="text-page-title mt-2 text-ink">Home</h1>
+
+      {state && STATES[state] ? (
+        <p role="status" className="mt-4 text-sm text-forest">
+          {STATES[state]}
+        </p>
+      ) : null}
 
       <div className="mt-10 grid gap-8 lg:grid-cols-2">
         <section className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-5">
@@ -152,9 +180,51 @@ export default async function PracticeHomePage() {
 
         <section className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-5">
           <p className="eyebrow">Digest queue</p>
-          <p className="mt-3 text-sm text-ink-dim">
-            Weekly digest drafts land here for approval when Ring 6 ships.
-          </p>
+          {(digestQueue ?? []).length === 0 ? (
+            <p className="mt-3 text-sm text-ink-dim">
+              No drafts waiting. The Friday cron drafts one per engagement from the week that
+              actually happened; an empty week is skipped, not padded.
+            </p>
+          ) : (
+            <div className="mt-3 flex flex-col gap-4">
+              {(digestQueue ?? []).map((p) => {
+                const payload = p.payload as { week_of: string; subject: string; draft_md: string }
+                return (
+                  <div key={p.id} className="rounded-lg border border-brass/50 bg-paper p-3">
+                    <p className="eyebrow">
+                      {clientOf(p)} / week of {payload.week_of} / inert until you decide
+                    </p>
+                    <p className="mt-2 text-sm font-medium text-ink">{payload.subject}</p>
+                    <details className="mt-1">
+                      <summary className="cursor-pointer text-sm text-forest">Read the draft</summary>
+                      <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink">
+                        {payload.draft_md}
+                      </p>
+                    </details>
+                    <form action={decideDigest} className="mt-3 flex gap-3">
+                      <input type="hidden" name="proposalId" value={p.id} />
+                      <button
+                        type="submit"
+                        name="decision"
+                        value="approve"
+                        className="rounded-lg bg-forest px-3 py-1.5 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98]"
+                      >
+                        Approve and send
+                      </button>
+                      <button
+                        type="submit"
+                        name="decision"
+                        value="dismiss"
+                        className="rounded-lg border border-ink/20 px-3 py-1.5 text-sm text-ink-dim hover:text-ink"
+                      >
+                        Dismiss
+                      </button>
+                    </form>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </section>
 
         <section className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-5">

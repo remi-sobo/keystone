@@ -716,4 +716,55 @@ end $$;
 
 reset role;
 
+-- ── Ring 6: digests (practice-only read, no session writes) ──────────
+
+-- Seed as the platform: one approved digest per practice.
+insert into digests (engagement_id, practice_id, client_id, week_of, subject, draft_md) values
+  ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+   '20000000-0000-0000-0000-0000000000a1', '2026-07-06', 'This week at Client A1', 'a week'),
+  ('30000000-0000-0000-0000-0000000000b1', '10000000-0000-0000-0000-00000000000b',
+   '20000000-0000-0000-0000-0000000000b1', '2026-07-06', 'This week at Client B', 'b week');
+
+set role authenticated;
+-- Consultant A reads their practice's digest record and nothing else;
+-- even the consultant cannot write it from a session (the approve
+-- action goes through the service role after the check).
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000b","email":"consultant_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from digests) <> 1 then
+    raise exception 'consultant_a must read exactly their practice digest';
+  end if;
+end $$;
+do $$ begin
+  insert into digests (engagement_id, practice_id, client_id, week_of, subject, draft_md)
+    values ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1', '2026-07-13', 'forged', 'x');
+  raise exception 'HOLE: a session wrote a digest row';
+exception when insufficient_privilege then null;
+end $$;
+
+-- The client never meets the digest in-app: their copy is the email.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from digests) <> 0 then
+    raise exception 'LEAK: a client member reads digests';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000b1","email":"member_b@client-b.test"}', false);
+do $$ begin
+  if (select count(*) from digests) <> 0 then
+    raise exception 'LEAK: member_b reads digests';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000ee","email":"stranger@example.test"}', false);
+do $$ begin
+  if (select count(*) from digests) <> 0 then raise exception 'LEAK: stranger reads digests'; end if;
+end $$;
+
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

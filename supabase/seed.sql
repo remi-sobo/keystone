@@ -19,6 +19,9 @@ insert into practice_members (practice_id, email, role)
 select p.id, v.email, v.role
 from p, (values
   ('remi@soboconsulting.com', 'owner'),
+  -- Remi's working inbox; the soboconsulting.com mailboxes are not
+  -- live yet (added on the live project 2026-07-09 after first sign-in).
+  ('remi@ambitionangels.org', 'owner'),
   ('kendra@soboconsulting.com', 'consultant'),
   ('shannon@soboconsulting.com', 'consultant')
 ) as v(email, role)

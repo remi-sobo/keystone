@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
-import Sidebar, { clientNav } from '@/components/Sidebar'
+import Sidebar from '@/components/Sidebar'
+import { clientNav } from '@/components/nav'
 import { getViewer } from '@/lib/membership'
 
 /**

@@ -18,6 +18,8 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
+import type { NavItem } from './nav'
+
 /**
  * The left sidebar, the room's spine (spec 6.3). 264px fixed on
  * desktop, collapsible to a 72px icon rail (state persisted per
@@ -25,15 +27,10 @@ import {
  * bar, five items max, brass tick on top of the active tab.
  *
  * Active state is never a filled pill: a 3px brass tick on the left
- * edge, forest text, a whisper of paper-raised fill.
+ * edge, forest text, a whisper of paper-raised fill. The nav LISTS
+ * live in components/nav.ts (a server-safe module) because the
+ * layouts that call them are server components.
  */
-
-export interface NavItem {
-  href: string
-  label: string
-  icon: string
-  mobile?: boolean
-}
 
 const ICONS: Record<string, LucideIcon> = {
   home: Home,
@@ -45,29 +42,6 @@ const ICONS: Record<string, LucideIcon> = {
   clients: Users,
   engagements: Briefcase,
   settings: Settings,
-}
-
-export function clientNav(): NavItem[] {
-  return [
-    { href: '/home', label: 'Home', icon: 'home', mobile: true },
-    { href: '/sessions', label: 'Sessions', icon: 'sessions', mobile: true },
-    { href: '/homework', label: 'Homework', icon: 'homework', mobile: true },
-    { href: '/deliverables', label: 'Deliverables', icon: 'deliverables', mobile: true },
-    { href: '/library', label: 'Library', icon: 'library' },
-    { href: '/messages', label: 'Messages', icon: 'messages', mobile: true },
-  ]
-}
-
-export function practiceNav(): NavItem[] {
-  return [
-    { href: '/today', label: 'Home', icon: 'home', mobile: true },
-    { href: '/clients', label: 'Clients', icon: 'clients', mobile: true },
-    { href: '/engagements', label: 'Engagements', icon: 'engagements', mobile: true },
-    // /library belongs to the client surface; authoring sits beneath it
-    // (the App Router cannot give two route groups the same path).
-    { href: '/library/authoring', label: 'Library', icon: 'library', mobile: true },
-    { href: '/settings', label: 'Settings', icon: 'settings', mobile: true },
-  ]
 }
 
 const COLLAPSE_KEY = 'keystone.sidebar.collapsed'

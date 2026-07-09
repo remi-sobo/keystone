@@ -10,11 +10,16 @@ Infrastructure already live (nothing to do): the Supabase project
 SafeSpace seed; the Vercel project `keystone` builds this repo on every
 push, with the public env values committed in vercel.json.
 
+## 0. Vercel dashboard: attach the domain (do this first)
+
+- [ ] keystone project > Settings > Domains > add `app.soboconsulting.com`, assigned to Production. DNS already CNAMEs there, so today the domain 404s at Vercel's edge until this step lands. Vercel provisions the certificate itself.
+
 ## 1. Supabase dashboard (Authentication > URL Configuration)
 
-- [ ] Set Site URL to the production URL (today `https://keystone-blue-tau.vercel.app`; the real domain when CONFIRM 1 lands).
+- [ ] Set Site URL to `https://app.soboconsulting.com` (CONFIRM 1 decided).
 - [ ] Add to the redirect allow-list:
-      `https://keystone-blue-tau.vercel.app/auth/callback` and the
+      `https://app.soboconsulting.com/auth/callback`,
+      `https://keystone-blue-tau.vercel.app/auth/callback`, and the
       preview pattern `https://keystone-*-remi-3257s-projects.vercel.app/auth/callback`.
       Magic-link sign-in does not complete until this exists.
 
@@ -37,7 +42,8 @@ ship in vercel.json.
 - [ ] Create (or reuse) a Google Cloud project; enable the Google Calendar API.
 - [ ] OAuth consent screen: External, scopes `calendar.events`, `calendar.readonly`, `userinfo.email`; add remi@/kendra@/shannon@ as test users (or publish).
 - [ ] Create an OAuth client (Web application) with authorized redirect URIs:
-      `https://keystone-blue-tau.vercel.app/api/calendar/callback` (plus the real domain later).
+      `https://app.soboconsulting.com/api/calendar/callback` (and
+      `https://keystone-blue-tau.vercel.app/api/calendar/callback` as a spare).
 - [ ] Copy the client id and secret into the Vercel env vars above.
 
 ## 4. Resend (for messages and the digest, Rings 5 and 6)
@@ -52,4 +58,4 @@ ship in vercel.json.
 - [ ] The digest cron is already wired in vercel.json (Fridays 22:00 UTC, the CONFIRM 6 proposal of 3pm Pacific; that is 3pm PDT and 2pm PST, adjust when CONFIRM 6 lands). It runs once CRON_SECRET is set; the first drafts appear on the practice Home for approval, nothing sends without you.
 - [ ] Send yourself a magic link (remi@soboconsulting.com is seeded as owner) and do the 390px walk on live data.
 - [ ] The "Client Login" nav link on soboconsulting.com: one-line PR in that repo (kept out of this build by the quarry rule).
-- [ ] When CONFIRM 1 (domain) lands: point the domain at Vercel, update `NEXT_PUBLIC_APP_URL` in vercel.json, add the domain to the Supabase allow-list and the Google redirect URIs.
+- [x] CONFIRM 1 landed (app.soboconsulting.com): DNS is pointed, vercel.json carries the domain. Covered by sections 0, 1, and 3 above.

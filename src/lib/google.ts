@@ -27,6 +27,16 @@ export function redirectUri(origin: string): string {
   return `${origin}/api/calendar/callback`
 }
 
+// Read the OAuth pair trimmed at the point of use: a trailing newline or
+// space in a dashboard paste is invisible in the Vercel UI and Google
+// answers it with 401 invalid_client, which reads as a wrong secret.
+function googleCreds(): { id: string; secret: string } {
+  return {
+    id: (env.GOOGLE_CLIENT_ID ?? '').trim(),
+    secret: (env.GOOGLE_CLIENT_SECRET ?? '').trim(),
+  }
+}
+
 // ── OAuth state signing (CSRF defense) ────────────────────────────────
 
 const STATE_TTL_MS = 15 * 60 * 1000
@@ -96,7 +106,7 @@ export function verifyOAuthState(
 /** The consent screen URL for the connect redirect. */
 export function authUrl(origin: string, state: string): string {
   const params = new URLSearchParams({
-    client_id: env.GOOGLE_CLIENT_ID ?? '',
+    client_id: googleCreds().id,
     redirect_uri: redirectUri(origin),
     response_type: 'code',
     scope: GOOGLE_SCOPES,
@@ -117,37 +127,51 @@ export interface GoogleTokens {
 }
 
 export async function exchangeCode(origin: string, code: string): Promise<GoogleTokens | null> {
+  const { id, secret } = googleCreds()
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       code,
-      client_id: env.GOOGLE_CLIENT_ID ?? '',
-      client_secret: env.GOOGLE_CLIENT_SECRET ?? '',
+      client_id: id,
+      client_secret: secret,
       redirect_uri: redirectUri(origin),
       grant_type: 'authorization_code',
     }),
   })
   if (!res.ok) {
-    console.error('[google] code exchange failed:', res.status)
+    // Google's error body names the actual objection (invalid_client,
+    // redirect_uri_mismatch, invalid_grant). The client id is public;
+    // the secret is fingerprinted by length only, never printed.
+    const body = await res.text().catch(() => '')
+    console.error(
+      '[google] code exchange failed:',
+      res.status,
+      body.slice(0, 300),
+      `client_id=${id}`,
+      `secret_len=${secret.length}`,
+      `redirect_uri=${redirectUri(origin)}`
+    )
     return null
   }
   return (await res.json()) as GoogleTokens
 }
 
 export async function refreshAccessToken(refreshToken: string): Promise<GoogleTokens | null> {
+  const { id, secret } = googleCreds()
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       refresh_token: refreshToken,
-      client_id: env.GOOGLE_CLIENT_ID ?? '',
-      client_secret: env.GOOGLE_CLIENT_SECRET ?? '',
+      client_id: id,
+      client_secret: secret,
       grant_type: 'refresh_token',
     }),
   })
   if (!res.ok) {
-    console.error('[google] token refresh failed:', res.status)
+    const body = await res.text().catch(() => '')
+    console.error('[google] token refresh failed:', res.status, body.slice(0, 300))
     return null
   }
   return (await res.json()) as GoogleTokens

@@ -22,8 +22,11 @@ from p, (values
   -- Remi's working inbox; the soboconsulting.com mailboxes are not
   -- live yet (added on the live project 2026-07-09 after first sign-in).
   ('remi@ambitionangels.org', 'owner'),
-  ('kendra@soboconsulting.com', 'consultant'),
-  ('shannon@soboconsulting.com', 'consultant')
+  -- Real working addresses per Remi 2026-07-09 (CONFIRM 4 decided the
+  -- same day: Shannon gets a v1 login). The soboconsulting.com guesses
+  -- for these two were updated in place on the live project.
+  ('kendrasobo@gmail.com', 'consultant'),
+  ('shannon@ambitionangels.org', 'consultant')
 ) as v(email, role)
 on conflict do nothing;
 

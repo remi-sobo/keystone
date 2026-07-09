@@ -12,7 +12,8 @@
 --              four workstreams below, in the proposal's exact language.
 --              Live DBs seeded with the earlier five transition via
 --              seed-safespace-pilot.sql.
---   CONFIRM 9: fee_display is left null until gate 9 decides.
+--   CONFIRM 9: decided 2026-07-09: the fee shows in the charter,
+--              nowhere else; fee_display below carries it.
 
 insert into practices (name, slug) values ('Sobo Consulting', 'sobo')
 on conflict (slug) do nothing;
@@ -53,8 +54,9 @@ from c, (values
 on conflict do nothing;
 
 with c as (select id, practice_id from clients where name = 'SafeSpace')
-insert into engagements (practice_id, client_id, title, starts_on)
-select c.practice_id, c.id, 'Systems and leaders: fundraising first', current_date
+insert into engagements (practice_id, client_id, title, starts_on, fee_display)
+select c.practice_id, c.id, 'Systems and leaders: fundraising first', current_date,
+       '$25,000, one fee, all four workstreams'
 from c
 where not exists (
   select 1 from engagements e, c where e.client_id = c.id

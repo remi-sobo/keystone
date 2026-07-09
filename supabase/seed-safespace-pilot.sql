@@ -10,9 +10,10 @@
 --      (V1 CONFIRM 5, resolved by the client-approved proposal). The
 --      fundraising strategy work folds into workstream 1, so the fifth
 --      seeded row is removed when nothing references it.
---   3. Enters the July 7 working call and its decision log as session
---      notes (visibility stays 'practice' until fee gate 9 / V2-6
---      decides; decision 11 names the fee).
+--   3. Enters the July 7 working call and its decision log as shared
+--      session notes. Decision 11 carries the fee by reference; the
+--      number itself lives in the charter, per fee gate 9 / V2-6
+--      (decided 2026-07-09: charter only, nowhere else).
 --   4. Seeds the homework starters, the readiness marker notes, the
 --      charter draft and planned-deliverables ledger as pinned library
 --      resources, and the nine resource library starters.
@@ -30,6 +31,14 @@ set title = 'Systems and leaders: fundraising first',
     ends_on = coalesce(ends_on, (starts_on + interval '6 months')::date)
 where client_id = (select id from clients where name = 'SafeSpace')
   and title = 'SafeSpace and Sobo Consulting';
+
+-- Fee gate (V1 gate 9 / V2-6, decided 2026-07-09): the fee shows in the
+-- charter, nowhere else in the app. fee_display feeds the charter
+-- surface when 2A ships.
+update engagements
+set fee_display = '$25,000, one fee, all four workstreams'
+where client_id = (select id from clients where name = 'SafeSpace')
+  and fee_display is null;
 
 -- 2. Workstreams: the proposal's four, in its exact language ----------
 
@@ -90,10 +99,10 @@ $md$1. Fundraising first. The build and coaching order. (Proposal; confirmed on 
 8. Cadence set month by month, not fixed for six months upfront. (Call, Jul 7.)
 9. Collateral set: pitch deck, send deck, one-pager; website named the fourth artifact and held as a separate engagement. (Call, Jul 7.)
 10. Segmentation approach: custom strategies for the top tier, simple letter and giving-tree campaigns below. (Call, Jul 7, Susan and Remi together.)
-11. Fee accepted at $25,000 without negotiation, pending Aris and Jasmine's full buy-in; answer promised by Wednesday night or Thursday morning. (Call, Jul 7, Susan.)
+11. Fee accepted as proposed, one fee for all four workstreams, without negotiation, pending Aris and Jasmine's full buy-in; answer promised by Wednesday night or Thursday morning. (Call, Jul 7, Susan. The number lives in the charter, per the fee gate.)
 12. Weekly pitch practice as a standing rhythm from the start. (Call, Jul 7.)
 13. Go/no-go rests on the coachees: Susan wanted them 150 percent behind it before saying yes. (Call, Jul 7.)$md$,
-'practice'
+'shared'
 from s
 where not exists (select 1 from session_notes n where n.session_id = s.id);
 
@@ -175,7 +184,7 @@ $charter$This is the shared agreement for the SafeSpace engagement, drafted from
 The first ten years were liftoff. SafeSpace built a fundraising engine, a real financial picture, an active board, a footprint growing from San Mateo into Alameda County, and impact in the lives of young people through Campus, Community, and the Youth Action Board. The next ten are about sustainability: an organization rooted in this community and built to stay. This engagement is that investment. It is usually not the heart. It is the system.
 
 ## What we are building
-Over six months, Sobo Consulting brings SafeSpace's systems into one customized hub, builds a full fundraising strategy with the weekly rhythms to run it, and develops Aris and Jasmine to lead fundraising and operate like nonprofit executives. Fundraising first.
+Over six months, Sobo Consulting brings SafeSpace's systems into one customized hub, builds a full fundraising strategy with the weekly rhythms to run it, and develops Aris and Jasmine to lead fundraising and operate like nonprofit executives. Fundraising first. The engagement runs six months at one fee, $25,000, covering all four workstreams.
 
 ## Where this ends (the six outcomes)
 1. A full fundraising strategy, the internal rhythms to run it, and a digital tool built around how SafeSpace operates, from prospecting through cultivation, solicitation, and stewardship.

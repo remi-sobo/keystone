@@ -23,7 +23,7 @@ Last updated: 2026-07-09 (V1 ring queue built and live; the V2 program landed an
 | Phase | Contents | Status |
 |---|---|---|
 | 0 | Pilot and harvest; seed first; spec 1A during | seed entered; pilot waits on SafeSpace's yes |
-| 1 | Operability: 1A admin UI, 1B engagement builder, 1C one template, 1D first-run | not started; 1A spec next |
+| 1 | Operability: 1A admin UI, 1B engagement builder, 1C one template, 1D first-run | 1A specced (`specs/keystone-v2-admin-ui.md`, awaiting its four CONFIRM gates); build starts after the pilot window per V2-1 |
 | 2 | The Charter spine: 5D approvals (pulled forward), 2A charter, 2B decision log, 2F workstream detail, 2D next moves, 2C outcomes, 2E Q&A, search | not started |
 | 3 | Delivery craft: 3A editable AI review, 4F notifications infra (pulled forward), 3C homework loop with the wall, 3B run of show, 3D deliverable lifecycle, 3E anchors, 3F library, 3G digest archive | not started |
 | 4 | Practice OS: 4A action queue, 4B internal tasks, 4D readiness, 4C workload, 4E health, activity view, 4G pipeline (flagged), 4H knowledge base | not started |
@@ -33,18 +33,22 @@ Last updated: 2026-07-09 (V1 ring queue built and live; the V2 program landed an
 
 | # | Question | Status |
 |---|---|---|
-| V2-1 | Pilot length before Phase 1; Phase 1 specced during or after? | open (spec proposes three to four weeks; 1A specced during) |
-| V2-2 | Templates: practice-private, or shareable across practices? (Schema now.) | open |
-| V2-3 | Q&A: reads full consultant notes, or only client-published versions? | open |
-| V2-4 | Homework buyer-view wall on coachee revision history | open (spec recommends yes, firmly) |
-| V2-5 | Pipeline: product-tier, flagged off for SOBO | open (spec recommends yes) |
-| V2-6 | Fee in-app (revisits V1 gate 9); change orders with or without a number | open (seed doc 13 recommends: fee in the charter, nowhere else) |
+| V2-1 | Pilot length before Phase 1; Phase 1 specced during or after? | decided (Remi 2026-07-09, adopting the recommendations): three to four weeks of pilot before Phase 1 ships; 1A specced during the pilot |
+| V2-2 | Templates: practice-private, or shareable across practices? (Schema now.) | open; standing recommendation for the 1C spec: practice-private rows (practice_id not null) with sharing later as an explicit copy operation, never shared rows, so the isolation matrix stays simple |
+| V2-3 | Q&A: reads full consultant notes, or only client-published versions? | open; standing recommendation for the 2E spec: Q&A reads exactly what the asking user can already see (client members get published versions only; practice members get the full record) |
+| V2-4 | Homework buyer-view wall on coachee revision history | decided (Remi 2026-07-09): yes, firmly. Founders see workstream-level completion only, never a coachee's per-item revision history; built into the read policy |
+| V2-5 | Pipeline: product-tier, flagged off for SOBO | decided (Remi 2026-07-09): yes. Behind a practice-level feature flag SOBO leaves off; Trellis stays the business brain |
+| V2-6 | Fee in-app (revisits V1 gate 9); change orders with or without a number | fee half decided (Remi 2026-07-09): in the charter, nowhere else (gate 9 above). The change-order-number half stays open for the 5E spec |
+
+## Pilot harvest list (Phase 0's whole point; add items as the pilot surfaces them)
+
+1. 2026-07-09, Remi: messages and notifications should be a deliberately built, first-class sidebar surface (messages plus nudges in one place), not a thread page plus loose emails. Disposition: folds into 3E (message anchors) and 4F (the notifications layer, already pulled forward to the front of Phase 3). The 4F spec gets a unified-inbox treatment: one in-app surface per side holding the thread, anchored context, reminders, and waiting-on state, with per-user channel and quiet-hours preferences and batching over pings. The single-calm-thread law from 3E holds: an inbox is a reading surface, never a second place to write.
 
 ## FLAGS from the V2 landing (2026-07-09)
 
 - The V2 spec draft arrived with ten em dashes (the top-ten list) and three uses of a banned word (the opens-the-door one, in the Phase 1 heading and twice in prose); the seed doc carried a banned word once (decision 5's used-deliberately verb). Landed with mechanical substitutions only: the dashes became colons, and the two words became "opens" and "used" (the seed doc's own section 3 wording). No other content touched; Remi may reword.
 - The July 7 working call's hour is not in the record; the seeded session says noon Pacific as a placeholder. Correct in the DB when known.
-- The decision log sits in the July 7 session notes at visibility 'practice': decision 11 names the $25,000 fee, and fee visibility is still gated (V1 gate 9 / V2-6). Publish to 'shared' once the gate decides.
+- The decision log is published ('shared') as of the fee gate decision: decision 11 now says "accepted as proposed" and points at the charter, which is the one place the $25,000 appears (gate 9). The original numbered wording is preserved in this repo's git history only.
 - V1 `deliverables` holds shipped artifacts only (kind file or link), so the PLANNED ledger from seed doc section 8 lives as a pinned library resource until V2 3D (deliverable lifecycle) gives plans a first-class home.
 - The seed doc section 5 says the readiness markers are "already in Keystone"; the live table had zero rows (the panel existed, the content did not). The three pillar notes are now seeded from section 5.
 - The library is practice-wide in V1, so the charter draft and ledger resources are technically visible to any future client of the practice. Acceptable with one client; V2 3F adds client-specific visibility before tenant two's client sees a library.
@@ -87,7 +91,7 @@ The spec numbers these 1 through 12 and 14; there is no gate 13 in the spec (fla
 | 6 | Digest day and hour (proposal: Friday 3pm Pacific) | open |
 | 7 | Name clearance: trademark plus domain check on "Keystone" before public use | open |
 | 8 | Session locations: video link source (Meet from the calendar event, or Zoom)? | open |
-| 9 | Fee visibility: does the engagement show the $25,000 anywhere in-app, or never? | open; seed doc section 13 recommends charter-only (folds into V2-6); the seeded decision log stays practice-visibility until this decides |
+| 9 | Fee visibility: does the engagement show the $25,000 anywhere in-app, or never? | decided (Remi 2026-07-09, adopting the seed doc 13 recommendation): the fee shows in the charter, nowhere else. fee_display set; the charter resource carries the fee line; the shared decision log names the fee by reference only |
 | 10 | Liesl's posture: full login plus digest, or digest-first given the advisory move? | open |
 | 11 | Stall threshold: three weeks proposed; twice-weekly month-one cadence may want two | open |
 | 12 | Readiness notes: consultant-only forever, or shareable per note as a deliberate act? | open |
@@ -102,6 +106,8 @@ The spec numbers these 1 through 12 and 14; there is no gate 13 in the spec (fla
 - Invite sends: unblocked (CONFIRM 2 decided; the four seeded SafeSpace emails are confirmed as-is). The four can sign in as soon as the auth allow-list step lands.
 
 ## Recently shipped
+
+- 2026-07-09: gate day two. Remi adopted the standing recommendations: V2-1 (three to four weeks of pilot; spec during), V2-4 (the buyer-view wall, firmly), V2-5 (pipeline flagged off for SOBO), and the fee half of V2-6 with V1 gate 9 (charter only). Effects applied live and mirrored in the seed files: fee_display set, the charter resource carries the fee line, the decision log published to 'shared' with decision 11 naming the fee by reference. The 1A spec landed as `specs/keystone-v2-admin-ui.md` (members and access; revocation through the membership predicates; the invite email as a designed artifact with no bearer tokens). Pilot harvest list opened with Remi's messaging-and-notifications instinct, routed to the 4F unified-inbox spec.
 
 - 2026-07-09: the practice roster corrected in the live DB (pending rows updated, no schema change): Kendra signs in as kendrasobo@gmail.com and Shannon as shannon@ambitionangels.org; the seeded soboconsulting.com guesses for the two are retired. CONFIRM 2 and CONFIRM 4 decided the same day: the four SafeSpace addresses confirmed exactly as seeded, and Shannon gets a v1 consultant login.
 - 2026-07-09: the front door grew a second option: "Continue with Google" under the email form, magic link stays first and is the fail-safe (Remi's call). Spec 6.4 amended in place; SECURITY.md section 3 records the two-doors-one-credential story; the claim RPC needed no change because Google also presents a verified email. Checklist section 3b added: sign-in gets its OWN Google OAuth client (the calendar client's consent screen is Testing-mode with sensitive scopes and would refuse client members). Passwords considered and declined: set and reset both need an email link anyway, so they remove no dependency and add a stuffable credential; recorded in login/actions.ts and SECURITY.md.

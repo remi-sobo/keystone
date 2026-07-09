@@ -49,7 +49,7 @@ The spec numbers these 1 through 12 and 14; there is no gate 13 in the spec (fla
 | 1 | Domain: app.soboconsulting.com, or a keystone domain from day one? | decided: app.soboconsulting.com (DNS CNAMEd to Vercel 2026-07-09; attach the domain to the Vercel project, checklist section 1) |
 | 2 | SafeSpace logins: susan@, liesl@, aris@, jasmine@ (all safespace.org); confirm the four and whether anyone else joins | decided: the four confirmed by Remi 2026-07-09, exactly as seeded; nobody else joins for now |
 | 3 | Library access after the engagement ends: keeps or lapses? | open |
-| 4 | Shannon: practice login in v1? | open |
+| 4 | Shannon: practice login in v1? | decided: yes (Remi 2026-07-09); shannon@ambitionangels.org, consultant |
 | 5 | SafeSpace workstream names: confirm or rename with the client's language (spec lists five seeds but the gate says "the four seeded above"; flagged) | open |
 | 6 | Digest day and hour (proposal: Friday 3pm Pacific) | open |
 | 7 | Name clearance: trademark plus domain check on "Keystone" before public use | open |
@@ -70,6 +70,7 @@ The spec numbers these 1 through 12 and 14; there is no gate 13 in the spec (fla
 
 ## Recently shipped
 
+- 2026-07-09: the practice roster corrected in the live DB (pending rows updated, no schema change): Kendra signs in as kendrasobo@gmail.com and Shannon as shannon@ambitionangels.org; the seeded soboconsulting.com guesses for the two are retired. CONFIRM 2 and CONFIRM 4 decided the same day: the four SafeSpace addresses confirmed exactly as seeded, and Shannon gets a v1 consultant login.
 - 2026-07-09: the front door grew a second option: "Continue with Google" under the email form, magic link stays first and is the fail-safe (Remi's call). Spec 6.4 amended in place; SECURITY.md section 3 records the two-doors-one-credential story; the claim RPC needed no change because Google also presents a verified email. Checklist section 3b added: sign-in gets its OWN Google OAuth client (the calendar client's consent screen is Testing-mode with sensitive scopes and would refuse client members). Passwords considered and declined: set and reset both need an email link anyway, so they remove no dependency and add a stuffable credential; recorded in login/actions.ts and SECURITY.md.
 - 2026-07-09: main fast-forwarded to the full build (f4dc98b); production is live. Features that need keys stay dormant until the setup checklist sweep.
 - 2026-07-09: app.soboconsulting.com is live (CONFIRM 1 decided; domain attached in Vercel by Remi, NEXT_PUBLIC_APP_URL updated). Found and fixed a launch blocker in the same pass: the Vercel project predated the app, its framework preset stuck at "Other", and every deployment served the platform 404 on every path (masked by the SSO wall on preview URLs). "framework": "nextjs" in vercel.json (972688f) fixed it; the login page confirmed serving 200 on the public domain. Built on this branch, in order: `ring0: platform layer` through `ring0: preflight findings`, `ring1: spec amendments`, `ring1: the spine schema, permission authority, and seeded isolation matrix`, `ring1: login, shell, and the client progress view`. The live RLS matrix passes against a scratch Postgres 16; all 35 static gate assertions pass; build and typecheck green.

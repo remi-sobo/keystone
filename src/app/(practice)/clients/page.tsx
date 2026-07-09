@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { RoomShell } from '@/components/RoomShell'
 
 /**
  * The practice's client list. Reads under RLS with the session client;
@@ -14,12 +15,9 @@ export default async function ClientsPage() {
     .order('created_at', { ascending: true })
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-8 md:px-10 md:py-12">
-      <p className="eyebrow">Clients</p>
-      <h1 className="text-page-title mt-2 text-ink">Clients</h1>
-
+    <RoomShell eyebrow="Clients" title="Clients" maxWidth="max-w-4xl">
       {!clients || clients.length === 0 ? (
-        <p className="mt-6 text-ink-dim">
+        <p className="text-ink-dim">
           No clients yet. The first one arrives with the engagement seed.
         </p>
       ) : (
@@ -45,6 +43,6 @@ export default async function ClientsPage() {
       <p className="mt-8 text-sm text-ink-dim">
         Engagement detail lives under <Link href="/engagements" className="text-forest underline">Engagements</Link>.
       </p>
-    </div>
+    </RoomShell>
   )
 }

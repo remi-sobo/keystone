@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
+import { RoomShell } from '@/components/RoomShell'
 import { assembleSlots } from './slots'
 import { bookSession, cancelSession, rescheduleSession } from './actions'
 import type { Slot } from '@/lib/scheduling'
@@ -97,17 +98,14 @@ export default async function SessionsPage({
   const reschedulingId = upcoming.find((s) => s.id === reschedule)?.id ?? null
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-8 md:px-10 md:py-12">
-      <p className="eyebrow">{viewer.client.clientName}</p>
-      <h1 className="text-page-title mt-2 text-ink">Sessions</h1>
-
+    <RoomShell eyebrow={viewer.client.clientName} title="Sessions" maxWidth="max-w-4xl">
       {state && STATES[state] ? (
-        <p role="status" className="mt-4 text-sm text-forest">
+        <p role="status" className="mb-6 text-sm text-forest">
           {STATES[state]}
         </p>
       ) : null}
 
-      <section className="mt-8">
+      <section>
         <h2 className="font-display text-2xl font-medium text-ink">Upcoming</h2>
         {upcoming.length === 0 ? (
           <p className="mt-3 text-sm text-ink-dim">Nothing booked. Pick a time below.</p>
@@ -221,6 +219,6 @@ export default async function SessionsPage({
           </ul>
         )}
       </section>
-    </div>
+    </RoomShell>
   )
 }

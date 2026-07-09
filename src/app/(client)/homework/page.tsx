@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
+import { RoomShell } from '@/components/RoomShell'
 import { setHomeworkStatus } from './actions'
 
 /**
@@ -54,11 +55,8 @@ export default async function HomeworkPage() {
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-8 md:px-10 md:py-12">
-      <p className="eyebrow">{viewer.client.clientName}</p>
-      <h1 className="text-page-title mt-2 text-ink">Homework</h1>
-
-      <section className="mt-8">
+    <RoomShell eyebrow={viewer.client.clientName} title="Homework" maxWidth="max-w-4xl">
+      <section>
         <h2 className="font-display text-2xl font-medium text-ink">Yours</h2>
         {mine.length === 0 ? (
           <p className="mt-3 text-sm text-ink-dim">Nothing due. See you at the next session.</p>
@@ -132,6 +130,6 @@ export default async function HomeworkPage() {
           </ul>
         )}
       </section>
-    </div>
+    </RoomShell>
   )
 }

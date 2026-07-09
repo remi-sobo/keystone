@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import { FileText, Link2 } from 'lucide-react'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
+import { RoomShell } from '@/components/RoomShell'
+import { ArchEmptyState } from '@/components/ArchEmptyState'
 
 /**
  * The deliverables timeline (Ring 4, spec 6.4): a vertical line down a
@@ -35,14 +37,14 @@ export default async function DeliverablesPage() {
   const rows = deliverables ?? []
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-8 md:px-10 md:py-12">
-      <p className="eyebrow">{viewer.client.clientName}</p>
-      <h1 className="text-page-title mt-2 text-ink">Deliverables</h1>
-
+    <RoomShell eyebrow={viewer.client.clientName} title="Deliverables" maxWidth="max-w-3xl">
       {rows.length === 0 ? (
-        <p className="mt-6 text-ink-dim">Your first deliverable lands after the kickoff session.</p>
+        <ArchEmptyState
+          title="Your first deliverable lands after kickoff."
+          body="Each artifact your consultant delivers shows up here on a timeline, newest first, with its date and context."
+        />
       ) : (
-        <ol className="relative mt-10 flex flex-col gap-6 border-l border-brass/60 pl-6">
+        <ol className="relative flex flex-col gap-6 border-l border-brass/60 pl-6">
           {rows.map((d) => (
             <li key={d.id} className="relative">
               <span
@@ -85,6 +87,6 @@ export default async function DeliverablesPage() {
           ))}
         </ol>
       )}
-    </div>
+    </RoomShell>
   )
 }

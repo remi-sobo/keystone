@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
+import { RoomShell } from '@/components/RoomShell'
 import { sendMessage } from './actions'
 
 /**
@@ -66,17 +67,14 @@ export default async function MessagesPage({
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-8 md:px-10 md:py-12">
-      <p className="eyebrow">{viewer.client.clientName}</p>
-      <h1 className="text-page-title mt-2 text-ink">Messages</h1>
-
+    <RoomShell eyebrow={viewer.client.clientName} title="Messages" maxWidth="max-w-3xl">
       {state && STATES[state] ? (
-        <p role="status" className="mt-4 text-sm text-forest">
+        <p role="status" className="mb-6 text-sm text-forest">
           {STATES[state]}
         </p>
       ) : null}
 
-      <section className="mt-8 flex flex-col gap-3">
+      <section className="flex flex-col gap-3">
         {(messages ?? []).length === 0 ? (
           <p className="text-sm text-ink-dim">
             Nothing yet. Write below; your consultant gets an email and replies here.
@@ -113,6 +111,6 @@ export default async function MessagesPage({
           Send
         </button>
       </form>
-    </div>
+    </RoomShell>
   )
 }

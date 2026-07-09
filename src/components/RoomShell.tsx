@@ -16,12 +16,16 @@ export function RoomShell({
   title,
   description,
   children,
+  maxWidth = 'max-w-5xl',
   className = '',
 }: {
   eyebrow?: string
   title?: string
   description?: string
   children: React.ReactNode
+  /** Content column width. Narrow reading surfaces (timeline, chat,
+   *  library) pass their own so the room stays true to each page. */
+  maxWidth?: string
   className?: string
 }) {
   return (
@@ -30,7 +34,7 @@ export function RoomShell({
     >
       <NestedArchWatermark className="pointer-events-none fixed -right-28 top-16 hidden h-[720px] w-[520px] lg:block" />
 
-      <div className="relative mx-auto max-w-5xl px-5 py-8 md:px-10 md:py-12">
+      <div className={`relative mx-auto ${maxWidth} px-5 py-8 md:px-10 md:py-12`}>
         {eyebrow || title || description ? (
           <header className="mb-10">
             {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}

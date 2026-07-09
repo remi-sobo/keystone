@@ -1,5 +1,7 @@
 import { createServerSupabase } from '@/lib/supabase/server'
 import WorkstreamArc from '@/components/WorkstreamArc'
+import { RoomShell } from '@/components/RoomShell'
+import { KeystoneCard } from '@/components/KeystoneCard'
 
 const DEFAULT_STAGES = ['diagnose', 'design', 'build', 'train', 'stabilize']
 
@@ -31,19 +33,13 @@ export default async function EngagementsPage() {
       : DEFAULT_STAGES
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-8 md:px-10 md:py-12">
-      <p className="eyebrow">Engagements</p>
-      <h1 className="text-page-title mt-2 text-ink">Engagements</h1>
-
+    <RoomShell eyebrow="Engagements" title="Engagements" maxWidth="max-w-4xl">
       {!engagements || engagements.length === 0 ? (
-        <p className="mt-6 text-ink-dim">No engagements yet.</p>
+        <p className="text-ink-dim">No engagements yet.</p>
       ) : (
-        <div className="mt-8 flex flex-col gap-8">
+        <div className="flex flex-col gap-8">
           {engagements.map((e) => (
-            <section
-              key={e.id}
-              className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-6"
-            >
+            <KeystoneCard key={e.id}>
               <div className="flex items-baseline justify-between gap-4">
                 <h2 className="font-display text-2xl font-medium text-ink">
                   <a href={`/engagements/${e.id}`} className="hover:underline">
@@ -90,10 +86,10 @@ export default async function EngagementsPage() {
                   </ul>
                 </div>
               ) : null}
-            </section>
+            </KeystoneCard>
           ))}
         </div>
       )}
-    </div>
+    </RoomShell>
   )
 }

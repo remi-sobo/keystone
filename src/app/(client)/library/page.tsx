@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import { BookOpen, Grid2x2, FileText } from 'lucide-react'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
+import { RoomShell } from '@/components/RoomShell'
+import { ArchEmptyState } from '@/components/ArchEmptyState'
 
 /**
  * The client library (Ring 4): the practice's reference catalog,
@@ -28,17 +30,19 @@ export default async function LibraryPage() {
   const rows = resources ?? []
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-8 md:px-10 md:py-12">
-      <p className="eyebrow">{viewer.client.clientName}</p>
-      <h1 className="text-page-title mt-2 text-ink">Library</h1>
-      <p className="mt-2 text-sm text-ink-dim">
-        Session prep guides and frameworks from your consultant live here.
-      </p>
-
+    <RoomShell
+      eyebrow={viewer.client.clientName}
+      title="Library"
+      description="Session prep guides and frameworks from your consultant live here."
+      maxWidth="max-w-3xl"
+    >
       {rows.length === 0 ? (
-        <p className="mt-6 text-ink-dim">The first resources land before your next session.</p>
+        <ArchEmptyState
+          title="Your library fills before the next session."
+          body="Guides, frameworks, and templates your consultant shares appear here, ready to read any time."
+        />
       ) : (
-        <ul className="mt-8 flex flex-col gap-2">
+        <ul className="flex flex-col gap-2">
           {rows.map((r) => (
             <li
               key={r.id}
@@ -66,6 +70,6 @@ export default async function LibraryPage() {
           ))}
         </ul>
       )}
-    </div>
+    </RoomShell>
   )
 }

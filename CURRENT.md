@@ -69,4 +69,4 @@ The spec numbers these 1 through 12 and 14; there is no gate 13 in the spec (fla
 
 ## Recently shipped
 
-- Nothing deployed yet. Built on this branch, in order: `ring0: platform layer` through `ring0: preflight findings`, `ring1: spec amendments`, `ring1: the spine schema, permission authority, and seeded isolation matrix`, `ring1: login, shell, and the client progress view`. The live RLS matrix passes against a scratch Postgres 16; all 35 static gate assertions pass; build and typecheck green.
+- 2026-07-09: main fast-forwarded to the full build (f4dc98b); the production deployment is READY at keystone-blue-tau.vercel.app. Features that need keys stay dormant until the setup checklist sweep. Built on this branch, in order: `ring0: platform layer` through `ring0: preflight findings`, `ring1: spec amendments`, `ring1: the spine schema, permission authority, and seeded isolation matrix`, `ring1: login, shell, and the client progress view`. The live RLS matrix passes against a scratch Postgres 16; all 35 static gate assertions pass; build and typecheck green.

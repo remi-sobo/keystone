@@ -47,7 +47,7 @@ ship in vercel.json.
 
 ## 5. Ship steps
 
-- [ ] Merge branch `claude/nextjs-setup-verify-w0b2qx` to `main`; production deploys from main.
+- [x] Merge branch `claude/nextjs-setup-verify-w0b2qx` to `main`: done 2026-07-09 (fast-forward, f4dc98b); production is live at keystone-blue-tau.vercel.app and waits on the env steps above.
 - [ ] After env vars land: redeploy, then in the app connect Google Calendar from Settings and press "Sync sessions now" once.
 - [ ] The digest cron is already wired in vercel.json (Fridays 22:00 UTC, the CONFIRM 6 proposal of 3pm Pacific; that is 3pm PDT and 2pm PST, adjust when CONFIRM 6 lands). It runs once CRON_SECRET is set; the first drafts appear on the practice Home for approval, nothing sends without you.
 - [ ] Send yourself a magic link (remi@soboconsulting.com is seeded as owner) and do the 390px walk on live data.

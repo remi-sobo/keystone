@@ -1,10 +1,13 @@
+import { KeystoneWedge } from './keystone-motifs'
+
 /**
  * One workstream's five-stage arc (spec 6.4): five connected segments.
  * Completed stages fill sage, the current stage strokes forest with the
  * slow breathing pulse (the sole allowed loop; dies under reduced
- * motion), future stages are hairline. A brass keystone tick marks a
- * stage completed this week. Descriptive, never scored: no percentages,
- * no red, no judgment on a stage that holds.
+ * motion), future stages are hairline. The brass keystone wedge (the
+ * kit's signature mark) marks a stage completed this week. Descriptive,
+ * never scored: no percentages, no red, no judgment on a stage that
+ * holds.
  *
  * Server-renderable: pure props, no state, no browser APIs.
  */
@@ -49,10 +52,7 @@ export default function WorkstreamArc({
                 }`}
               />
               {isComplete && fresh ? (
-                <span
-                  aria-hidden
-                  className="absolute -top-1.5 right-0 h-2 w-2 rotate-45 bg-brass"
-                />
+                <KeystoneWedge className="absolute -top-3 right-0 h-2.5 w-2" />
               ) : null}
             </li>
           )

@@ -113,11 +113,11 @@ body {
 
 /* Paper grain (docs/keystone-motif-kit.md): the faint printed-paper
    texture that ties the app back to the login illustration. Ink at a
-   whisper, laid over the room canvas by RoomShell. Kept subtle on
-   purpose: if it reads as a pattern, it is too strong. */
-.keystone-paper-grain {
-  position: relative;
-}
+   whisper, laid over the room canvas by RoomShell and the sidebar.
+   The host must already be positioned (RoomShell is relative, the
+   sidebar sticky); the class deliberately sets no position of its own
+   so it can sit on the sticky rail without unsticking it. Kept subtle
+   on purpose: if it reads as a pattern, it is too strong. */
 .keystone-paper-grain::after {
   content: "";
   pointer-events: none;

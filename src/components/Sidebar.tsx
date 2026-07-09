@@ -82,7 +82,7 @@ export default function Sidebar({
     <>
       {/* Desktop rail */}
       <aside
-        className={`sticky top-0 hidden h-screen shrink-0 flex-col border-r border-ink/10 bg-paper-deep transition-[width] duration-200 md:flex ${
+        className={`keystone-paper-grain sticky top-0 hidden h-screen shrink-0 flex-col border-r border-ink/10 bg-paper-deep transition-[width] duration-200 md:flex ${
           collapsed ? 'w-[72px]' : 'w-[264px]'
         }`}
       >

@@ -47,7 +47,7 @@ The spec numbers these 1 through 12 and 14; there is no gate 13 in the spec (fla
 | # | Question | Status |
 |---|---|---|
 | 1 | Domain: app.soboconsulting.com, or a keystone domain from day one? | decided: app.soboconsulting.com (DNS CNAMEd to Vercel 2026-07-09; attach the domain to the Vercel project, checklist section 1) |
-| 2 | SafeSpace logins: susan@, liesl@, aris@, jasmine@ (all safespace.org); confirm the four and whether anyone else joins | open |
+| 2 | SafeSpace logins: susan@, liesl@, aris@, jasmine@ (all safespace.org); confirm the four and whether anyone else joins | decided: the four confirmed by Remi 2026-07-09, exactly as seeded; nobody else joins for now |
 | 3 | Library access after the engagement ends: keeps or lapses? | open |
 | 4 | Shannon: practice login in v1? | open |
 | 5 | SafeSpace workstream names: confirm or rename with the client's language (spec lists five seeds but the gate says "the four seeded above"; flagged) | open |
@@ -66,7 +66,7 @@ The spec numbers these 1 through 12 and 14; there is no gate 13 in the spec (fla
 - Google sign-in: code is live on the login page; the door opens after checklist section 3b (dedicated sign-in OAuth client) plus the Supabase provider switch in section 1. Until then the button shows its honest could-not-start state.
 - Calendar end-to-end: blocked on manual step 2 (Google OAuth creds + token secret).
 - Domain wiring: CONFIRM 1 decided (app.soboconsulting.com). Code and vercel.json now carry the domain; the remaining step is attaching it to the Vercel project (checklist section 1) and updating the Supabase allow-list and Google redirect URIs to match.
-- Invite sends: blocked on CONFIRM 2 (the seeded SafeSpace emails are the spec's proposal).
+- Invite sends: unblocked (CONFIRM 2 decided; the four seeded SafeSpace emails are confirmed as-is). The four can sign in as soon as the auth allow-list step lands.
 
 ## Recently shipped
 

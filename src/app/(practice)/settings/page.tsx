@@ -1,6 +1,8 @@
 import { createServerSupabase } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { getViewer } from '@/lib/membership'
+import { RoomShell } from '@/components/RoomShell'
+import { KeystoneCard } from '@/components/KeystoneCard'
 import { addWindow, removeWindow, syncNow } from './actions'
 
 /**
@@ -69,11 +71,8 @@ export default async function SettingsPage({
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-8 md:px-10 md:py-12">
-      <p className="eyebrow">Settings</p>
-      <h1 className="text-page-title mt-2 text-ink">Settings</h1>
-
-      <section className="mt-10">
+    <RoomShell eyebrow="Settings" title="Settings" maxWidth="max-w-4xl">
+      <section>
         <h2 className="font-display text-2xl font-medium text-ink">Availability</h2>
         <p className="mt-1 text-sm text-ink-dim">
           Clients pick session slots from these weekly windows.
@@ -168,7 +167,7 @@ export default async function SettingsPage({
             {CAL_NOTES[calendar]}
           </p>
         ) : null}
-        <div className="mt-4 rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-5">
+        <KeystoneCard className="mt-4">
           {connection ? (
             <>
               <p className="text-sm text-ink">
@@ -202,8 +201,8 @@ export default async function SettingsPage({
               </a>
             </>
           )}
-        </div>
+        </KeystoneCard>
       </section>
-    </div>
+    </RoomShell>
   )
 }

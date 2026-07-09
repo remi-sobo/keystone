@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import WorkstreamArc from '@/components/WorkstreamArc'
+import { RoomShell } from '@/components/RoomShell'
 import AddDeliverableForm from './AddDeliverableForm'
 import { removeDeliverable, replyMessage, saveReadiness } from './actions'
 
@@ -114,18 +115,19 @@ export default async function EngagementDetailPage({
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-8 md:px-10 md:py-12">
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <p className="eyebrow">{((engagement.clients as any)?.name as string) ?? ''}</p>
-      <h1 className="text-page-title mt-2 text-ink">{engagement.title}</h1>
-
+    <RoomShell
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      eyebrow={((engagement.clients as any)?.name as string) ?? ''}
+      title={engagement.title}
+      maxWidth="max-w-4xl"
+    >
       {state && STATES[state] ? (
-        <p role="status" className="mt-4 text-sm text-forest">
+        <p role="status" className="mb-6 text-sm text-forest">
           {STATES[state]}
         </p>
       ) : null}
 
-      <section className="mt-10 flex flex-col gap-6">
+      <section className="flex flex-col gap-6">
         {(ws.data ?? []).map((w) => (
           <WorkstreamArc key={w.id} title={w.title} stage={w.stage} stages={stages} freshStages={[]} />
         ))}
@@ -310,6 +312,6 @@ export default async function EngagementDetailPage({
           })}
         </div>
       </section>
-    </div>
+    </RoomShell>
   )
 }

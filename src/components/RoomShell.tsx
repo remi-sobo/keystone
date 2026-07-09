@@ -19,7 +19,8 @@ export function RoomShell({
   maxWidth = 'max-w-5xl',
   className = '',
 }: {
-  eyebrow?: string
+  /** Mono label above the title. A node so breadcrumb links fit. */
+  eyebrow?: React.ReactNode
   title?: string
   description?: string
   children: React.ReactNode

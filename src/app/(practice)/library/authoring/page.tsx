@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { RoomShell } from '@/components/RoomShell'
 import { createResource } from './actions'
 
 /**
@@ -29,21 +30,19 @@ export default async function AuthoringPage({
     .order('created_at', { ascending: false })
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-8 md:px-10 md:py-12">
-      <p className="eyebrow">Library</p>
-      <h1 className="text-page-title mt-2 text-ink">Authoring</h1>
-      <p className="mt-2 text-sm text-ink-dim">
-        Resources you publish here reach every client. Anything for one client only ships as a
-        deliverable instead.
-      </p>
-
+    <RoomShell
+      eyebrow="Library"
+      title="Authoring"
+      description="Resources you publish here reach every client. Anything for one client only ships as a deliverable instead."
+      maxWidth="max-w-3xl"
+    >
       {state && STATES[state] ? (
-        <p role="status" className="mt-4 text-sm text-forest">
+        <p role="status" className="mb-6 text-sm text-forest">
           {STATES[state]}
         </p>
       ) : null}
 
-      <section className="mt-8">
+      <section>
         {(resources ?? []).length === 0 ? (
           <p className="text-sm text-ink-dim">Nothing published yet. Author the first one below.</p>
         ) : (
@@ -108,6 +107,6 @@ export default async function AuthoringPage({
           </div>
         </form>
       </section>
-    </div>
+    </RoomShell>
   )
 }

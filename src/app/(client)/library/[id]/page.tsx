@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
+import { RoomShell } from '@/components/RoomShell'
 
 /**
  * One resource (Ring 4). Pure RLS: the row comes back only for members
@@ -27,25 +28,28 @@ export default async function ResourcePage({
   if (!resource) redirect('/library')
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-8 md:px-10 md:py-12">
-      <p className="eyebrow">
-        <Link href="/library" className="underline">
-          Library
-        </Link>{' '}
-        / {resource.kind}
-      </p>
-      <h1 className="text-page-title mt-2 text-ink">{resource.title}</h1>
-      {(resource.tags ?? []).length > 0 ? (
-        <p className="mt-2 text-xs text-ink-dim">{(resource.tags as string[]).join(', ')}</p>
-      ) : null}
-
+    <RoomShell
+      eyebrow={
+        <>
+          <Link href="/library" className="underline">
+            Library
+          </Link>{' '}
+          / {resource.kind}
+        </>
+      }
+      title={resource.title}
+      description={
+        (resource.tags ?? []).length > 0 ? (resource.tags as string[]).join(', ') : undefined
+      }
+      maxWidth="max-w-3xl"
+    >
       {resource.body_md ? (
-        <div className="mt-8 whitespace-pre-line text-sm leading-relaxed text-ink">
+        <div className="whitespace-pre-line text-sm leading-relaxed text-ink">
           {resource.body_md}
         </div>
       ) : (
-        <p className="mt-8 text-sm text-ink-dim">This resource has no body yet.</p>
+        <p className="text-sm text-ink-dim">This resource has no body yet.</p>
       )}
-    </div>
+    </RoomShell>
   )
 }

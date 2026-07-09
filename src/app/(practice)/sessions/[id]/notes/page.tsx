@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { RoomShell } from '@/components/RoomShell'
+import { KeystoneCard } from '@/components/KeystoneCard'
 import {
   attachPrepResource,
   decideProposal,
@@ -91,21 +93,20 @@ export default async function PracticeSessionPage({
   const pending = (proposals ?? []).filter((p) => p.status === 'proposed')
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-8 md:px-10 md:py-12">
-      <p className="eyebrow">
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        {((session.clients as any)?.name as string) ?? ''} / {session.kind} / {when}
-      </p>
-      <h1 className="text-page-title mt-2 text-ink">Session</h1>
-
+    <RoomShell
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      eyebrow={`${((session.clients as any)?.name as string) ?? ''} / ${session.kind} / ${when}`}
+      title="Session"
+      maxWidth="max-w-4xl"
+    >
       {state && STATES[state] ? (
-        <p role="status" className="mt-4 text-sm text-forest">
+        <p role="status" className="mb-6 text-sm text-forest">
           {STATES[state]}
         </p>
       ) : null}
 
       {note?.summary_md ? (
-        <section className="mt-8 rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-5">
+        <KeystoneCard feature>
           <p className="eyebrow">{note.visibility === 'shared' ? 'Shared with the client' : 'Not yet shared'}</p>
           <h2 className="font-display mt-2 text-2xl font-medium text-ink">Summary</h2>
           <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink">{note.summary_md}</p>
@@ -134,7 +135,7 @@ export default async function PracticeSessionPage({
               </ul>
             </>
           ) : null}
-        </section>
+        </KeystoneCard>
       ) : null}
 
       {pending.map((p) => {
@@ -293,6 +294,6 @@ export default async function PracticeSessionPage({
           </form>
         ) : null}
       </section>
-    </div>
+    </RoomShell>
   )
 }

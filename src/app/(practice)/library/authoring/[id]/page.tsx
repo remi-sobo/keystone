@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { RoomShell } from '@/components/RoomShell'
 import { deleteResource, updateResource } from '../actions'
 
 /**
@@ -33,22 +34,25 @@ export default async function EditResourcePage({
   if (!resource) redirect('/library/authoring')
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-8 md:px-10 md:py-12">
-      <p className="eyebrow">
-        <Link href="/library/authoring" className="underline">
-          Library
-        </Link>{' '}
-        / edit
-      </p>
-      <h1 className="text-page-title mt-2 text-ink">{resource.title}</h1>
-
+    <RoomShell
+      eyebrow={
+        <>
+          <Link href="/library/authoring" className="underline">
+            Library
+          </Link>{' '}
+          / edit
+        </>
+      }
+      title={resource.title}
+      maxWidth="max-w-3xl"
+    >
       {state && STATES[state] ? (
-        <p role="status" className="mt-4 text-sm text-forest">
+        <p role="status" className="mb-6 text-sm text-forest">
           {STATES[state]}
         </p>
       ) : null}
 
-      <form action={updateResource} className="mt-8 flex flex-col gap-3">
+      <form action={updateResource} className="flex flex-col gap-3">
         <input type="hidden" name="resourceId" value={resource.id} />
         <div className="flex flex-wrap gap-3">
           <input
@@ -94,6 +98,6 @@ export default async function EditResourcePage({
           Remove from the library
         </button>
       </form>
-    </div>
+    </RoomShell>
   )
 }

@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
+import { RoomShell } from '@/components/RoomShell'
+import { KeystoneCard } from '@/components/KeystoneCard'
 
 /**
  * Client session detail (Ring 3, spec 6.4): date and attendees in mono
@@ -55,14 +57,13 @@ export default async function ClientSessionPage({
   }).format(new Date(session.starts_at))
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-8 md:px-10 md:py-12">
-      <p className="eyebrow">
-        {viewer.client.clientName} / {session.kind} / {when}
-      </p>
-      <h1 className="text-page-title mt-2 text-ink">Session</h1>
-
+    <RoomShell
+      eyebrow={`${viewer.client.clientName} / ${session.kind} / ${when}`}
+      title="Session"
+      maxWidth="max-w-3xl"
+    >
       {(prep ?? []).length > 0 ? (
-        <section className="mt-6 rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-4">
+        <KeystoneCard feature>
           <p className="eyebrow">Prep for this session</p>
           <ul className="mt-2 flex flex-col gap-1">
             {(prep ?? []).map((p) => (
@@ -76,7 +77,7 @@ export default async function ClientSessionPage({
               </li>
             ))}
           </ul>
-        </section>
+        </KeystoneCard>
       ) : null}
 
       {note?.summary_md ? (
@@ -135,6 +136,6 @@ export default async function ClientSessionPage({
           </p>
         </details>
       ) : null}
-    </div>
+    </RoomShell>
   )
 }

@@ -63,11 +63,13 @@ The spec numbers these 1 through 12 and 14; there is no gate 13 in the spec (fla
 ## Blocked
 
 - The live 390px data run: blocked on manual step 1 above (auth redirect allow-list), then any seeded email can sign in with a magic link.
+- Google sign-in: code is live on the login page; the door opens after checklist section 3b (dedicated sign-in OAuth client) plus the Supabase provider switch in section 1. Until then the button shows its honest could-not-start state.
 - Calendar end-to-end: blocked on manual step 2 (Google OAuth creds + token secret).
 - Domain wiring: CONFIRM 1 decided (app.soboconsulting.com). Code and vercel.json now carry the domain; the remaining step is attaching it to the Vercel project (checklist section 1) and updating the Supabase allow-list and Google redirect URIs to match.
 - Invite sends: blocked on CONFIRM 2 (the seeded SafeSpace emails are the spec's proposal).
 
 ## Recently shipped
 
+- 2026-07-09: the front door grew a second option: "Continue with Google" under the email form, magic link stays first and is the fail-safe (Remi's call). Spec 6.4 amended in place; SECURITY.md section 3 records the two-doors-one-credential story; the claim RPC needed no change because Google also presents a verified email. Checklist section 3b added: sign-in gets its OWN Google OAuth client (the calendar client's consent screen is Testing-mode with sensitive scopes and would refuse client members). Passwords considered and declined: set and reset both need an email link anyway, so they remove no dependency and add a stuffable credential; recorded in login/actions.ts and SECURITY.md.
 - 2026-07-09: main fast-forwarded to the full build (f4dc98b); production is live. Features that need keys stay dormant until the setup checklist sweep.
 - 2026-07-09: app.soboconsulting.com is live (CONFIRM 1 decided; domain attached in Vercel by Remi, NEXT_PUBLIC_APP_URL updated). Found and fixed a launch blocker in the same pass: the Vercel project predated the app, its framework preset stuck at "Other", and every deployment served the platform 404 on every path (masked by the SSO wall on preview URLs). "framework": "nextjs" in vercel.json (972688f) fixed it; the login page confirmed serving 200 on the public domain. Built on this branch, in order: `ring0: platform layer` through `ring0: preflight findings`, `ring1: spec amendments`, `ring1: the spine schema, permission authority, and seeded isolation matrix`, `ring1: login, shell, and the client progress view`. The live RLS matrix passes against a scratch Postgres 16; all 35 static gate assertions pass; build and typecheck green.

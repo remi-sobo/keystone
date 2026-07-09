@@ -3,7 +3,7 @@ import { createServerSupabase } from '@/lib/supabase/server'
 
 /**
  * The sign-in landing. Handles both Supabase link shapes:
- *   - ?code=            PKCE code exchange
+ *   - ?code=            PKCE code exchange (magic link and Google OAuth)
  *   - ?token_hash=&type= OTP verification (the magic-link email)
  * Then claims any pending email-keyed membership (the RPC is a no-op
  * when there is nothing to claim) and routes the viewer to their
@@ -15,6 +15,13 @@ export async function GET(req: NextRequest) {
   const code = url.searchParams.get('code')
   const tokenHash = url.searchParams.get('token_hash')
   const type = url.searchParams.get('type')
+
+  // An OAuth bounce (cancelled at Google's consent screen, or a
+  // provider error) arrives with error params instead of a code.
+  // Honest state: "did not finish", not "expired".
+  if (url.searchParams.get('error')) {
+    return NextResponse.redirect(new URL('/login?state=cancelled', url.origin))
+  }
 
   const supabase = await createServerSupabase()
 

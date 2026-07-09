@@ -22,6 +22,10 @@ push, with the public env values committed in vercel.json.
       `https://keystone-blue-tau.vercel.app/auth/callback`, and the
       preview pattern `https://keystone-*-remi-3257s-projects.vercel.app/auth/callback`.
       Magic-link sign-in does not complete until this exists.
+- [ ] Authentication > Sign In / Providers > Google: turn it on and
+      paste the SIGN-IN OAuth client id and secret from section 3b
+      (not the calendar pair). The "Continue with Google" button on
+      /login shows its could-not-start state until this lands.
 - [ ] Authentication > Emails > SMTP Settings: point auth email at Resend
       (host smtp.resend.com, port 465, user `resend`, password = the
       Resend API key from section 4, from `hello@soboconsulting.com`).
@@ -46,11 +50,41 @@ ship in vercel.json.
 ## 3. Google Cloud (for calendar sync, Ring 2)
 
 - [ ] Create (or reuse) a Google Cloud project; enable the Google Calendar API.
-- [ ] OAuth consent screen: External, scopes `calendar.events`, `calendar.readonly`, `userinfo.email`; add remi@/kendra@/shannon@ as test users (or publish).
+- [ ] OAuth consent screen: External, scopes `calendar.events`, `calendar.readonly`, `userinfo.email`; add remi@/kendra@/shannon@ as test users to start.
+- [ ] Then publish the consent screen to production anyway (skip or defer
+      Google's verification review). Testing mode expires refresh tokens
+      after 7 DAYS, which would disconnect the calendar weekly and force
+      a reconnect. Published-but-unverified shows a "Google hasn't
+      verified this app" interstitial with a Continue link; only the
+      practice's own two or three people ever see it, and the token
+      then lives until revoked.
 - [ ] Create an OAuth client (Web application) with authorized redirect URIs:
       `https://app.soboconsulting.com/api/calendar/callback` (and
       `https://keystone-blue-tau.vercel.app/api/calendar/callback` as a spare).
 - [ ] Copy the client id and secret into the Vercel env vars above.
+
+## 3b. Google Cloud (for Google sign-in; a separate client on purpose)
+
+Sign-in must NOT ride the section 3 client: that consent screen sits in
+Testing mode with sensitive calendar scopes and only the three practice
+test users, so a SafeSpace member pressing "Continue with Google" would
+be refused at Google's door. Basic identity scopes need no Google
+verification, so a dedicated project publishes to production cleanly.
+
+- [ ] Create a second Google Cloud project (say `keystone-signin`).
+- [ ] OAuth consent screen: External, ONLY the non-sensitive identity
+      scopes (openid, userinfo.email, userinfo.profile), then publish
+      to production. No verification review at this scope level.
+- [ ] Create an OAuth client (Web application) with one authorized
+      redirect URI:
+      `https://mvuycjxainskaylvupji.supabase.co/auth/v1/callback`.
+      Google returns to Supabase; Supabase returns to the app's
+      /auth/callback via the section 1 allow-list, so no app domain
+      appears here.
+- [ ] Paste this client's id and secret into the Supabase Google
+      provider (section 1). These are Supabase-side config, never
+      Vercel env vars; GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET in
+      section 2 remain the calendar pair.
 
 ## 4. Resend (for messages and the digest, Rings 5 and 6)
 
@@ -63,5 +97,9 @@ ship in vercel.json.
 - [ ] After env vars land: redeploy, then in the app connect Google Calendar from Settings and press "Sync sessions now" once.
 - [ ] The digest cron is already wired in vercel.json (Fridays 22:00 UTC, the CONFIRM 6 proposal of 3pm Pacific; that is 3pm PDT and 2pm PST, adjust when CONFIRM 6 lands). It runs once CRON_SECRET is set; the first drafts appear on the practice Home for approval, nothing sends without you.
 - [ ] Send yourself a magic link (remi@soboconsulting.com is seeded as owner) and do the 390px walk on live data.
+- [ ] Press "Continue with Google" once on the live login page with an
+      invited Google-hosted email; confirm it lands on the right
+      surface, then once with an uninvited account to see the honest
+      no-access state.
 - [ ] The "Client Login" nav link on soboconsulting.com: one-line PR in that repo (kept out of this build by the quarry rule).
 - [x] CONFIRM 1 landed (app.soboconsulting.com): DNS is pointed, vercel.json carries the domain. Covered by sections 0, 1, and 3 above.

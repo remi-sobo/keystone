@@ -1,6 +1,9 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import WorkstreamArc from '@/components/WorkstreamArc'
+import { RoomShell } from '@/components/RoomShell'
+import { KeystoneCard } from '@/components/KeystoneCard'
+import { ArchEmptyState } from '@/components/ArchEmptyState'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
 
@@ -98,18 +101,17 @@ export default async function ClientHomePage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-8 md:px-10 md:py-12">
-      <p className="eyebrow">{viewer.client.clientName}</p>
-      <h1 className="text-page-title mt-2 text-ink">
-        {engagement ? engagement.title : 'Your engagement'}
-      </h1>
-
-      <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_280px]">
+    <RoomShell
+      eyebrow={viewer.client.clientName}
+      title={engagement ? engagement.title : 'Your engagement'}
+    >
+      <div className="grid gap-10 lg:grid-cols-[1fr_280px]">
         <section aria-label="Workstreams" className="flex flex-col gap-8">
           {workstreams.length === 0 ? (
-            <p className="text-ink-dim">
-              Your workstreams appear here after the kickoff session.
-            </p>
+            <ArchEmptyState
+              title="Your workstreams appear after kickoff."
+              body="Once the first session is held, each workstream shows up here at its own stage, so you can see where the engagement stands in a glance."
+            />
           ) : (
             workstreams.map((w) => (
               <WorkstreamArc
@@ -124,7 +126,7 @@ export default async function ClientHomePage() {
         </section>
 
         <aside className="flex flex-col gap-4">
-          <div className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-4">
+          <KeystoneCard>
             <p className="eyebrow">Next session</p>
             {nextSession ? (
               <>
@@ -151,8 +153,8 @@ export default async function ClientHomePage() {
                 .
               </p>
             )}
-          </div>
-          <div className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-4">
+          </KeystoneCard>
+          <KeystoneCard>
             <p className="eyebrow">Homework due</p>
             {(myOpenItems ?? []).length === 0 ? (
               <p className="mt-2 text-sm text-ink-dim">Nothing due. See you at the next session.</p>
@@ -171,8 +173,8 @@ export default async function ClientHomePage() {
                 </li>
               </ul>
             )}
-          </div>
-          <div className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-4">
+          </KeystoneCard>
+          <KeystoneCard feature corner>
             <p className="eyebrow">Latest deliverable</p>
             {latestDeliverable ? (
               <p className="mt-2 text-sm text-ink">
@@ -188,9 +190,9 @@ export default async function ClientHomePage() {
                 Your first deliverable lands after the kickoff session.
               </p>
             )}
-          </div>
+          </KeystoneCard>
         </aside>
       </div>
-    </div>
+    </RoomShell>
   )
 }

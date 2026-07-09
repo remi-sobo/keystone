@@ -111,6 +111,28 @@ body {
   box-shadow: 0 0 0 1px var(--color-brass);
 }
 
+/* Paper grain (docs/keystone-motif-kit.md): the faint printed-paper
+   texture that ties the app back to the login illustration. Ink at a
+   whisper, laid over the room canvas by RoomShell. Kept subtle on
+   purpose: if it reads as a pattern, it is too strong. */
+.keystone-paper-grain {
+  position: relative;
+}
+.keystone-paper-grain::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  opacity: 0.28;
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-ink) 8%, transparent) 0.6px,
+    transparent 0.8px
+  );
+  background-size: 18px 18px;
+  mix-blend-mode: multiply;
+}
+
 /* The breathing pulse for the current workstream stage (spec 6.4):
    2.4s, opacity only, the sole allowed loop. Dies under reduced motion
    via the global gate below. */

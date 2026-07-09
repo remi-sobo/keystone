@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { RoomShell } from '@/components/RoomShell'
+import { KeystoneCard } from '@/components/KeystoneCard'
 import { decideDigest } from './actions'
 
 /**
@@ -129,18 +131,15 @@ export default async function PracticeHomePage({
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-8 md:px-10 md:py-12">
-      <p className="eyebrow">The week</p>
-      <h1 className="text-page-title mt-2 text-ink">Home</h1>
-
+    <RoomShell eyebrow="The week" title="Home">
       {state && STATES[state] ? (
-        <p role="status" className="mt-4 text-sm text-forest">
+        <p role="status" className="mb-6 text-sm text-forest">
           {STATES[state]}
         </p>
       ) : null}
 
-      <div className="mt-10 grid gap-8 lg:grid-cols-2">
-        <section className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-5">
+      <div className="grid gap-8 lg:grid-cols-2">
+        <KeystoneCard>
           <p className="eyebrow">Sessions this week</p>
           {(sessions.data ?? []).length === 0 ? (
             <p className="mt-3 text-sm text-ink-dim">Nothing on the calendar this week.</p>
@@ -158,9 +157,9 @@ export default async function PracticeHomePage({
               ))}
             </ul>
           )}
-        </section>
+        </KeystoneCard>
 
-        <section className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-5">
+        <KeystoneCard>
           <p className="eyebrow">Homework awaiting review</p>
           {(reviewItems.data ?? []).length === 0 ? (
             <p className="mt-3 text-sm text-ink-dim">Nothing checked off in the last two weeks.</p>
@@ -176,9 +175,9 @@ export default async function PracticeHomePage({
               ))}
             </ul>
           )}
-        </section>
+        </KeystoneCard>
 
-        <section className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-5">
+        <KeystoneCard>
           <p className="eyebrow">Digest queue</p>
           {(digestQueue ?? []).length === 0 ? (
             <p className="mt-3 text-sm text-ink-dim">
@@ -225,9 +224,9 @@ export default async function PracticeHomePage({
               })}
             </div>
           )}
-        </section>
+        </KeystoneCard>
 
-        <section className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-5">
+        <KeystoneCard>
           <p className="eyebrow">Messages</p>
           {unanswered.length === 0 ? (
             <p className="mt-3 text-sm text-ink-dim">Every thread has your reply as the last word.</p>
@@ -250,7 +249,7 @@ export default async function PracticeHomePage({
               ))}
             </ul>
           )}
-        </section>
+        </KeystoneCard>
       </div>
 
       <section className="mt-8">
@@ -270,6 +269,6 @@ export default async function PracticeHomePage({
           </ul>
         )}
       </section>
-    </div>
+    </RoomShell>
   )
 }

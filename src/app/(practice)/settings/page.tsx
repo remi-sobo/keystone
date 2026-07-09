@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { getViewer } from '@/lib/membership'
@@ -72,6 +73,14 @@ export default async function SettingsPage({
 
   return (
     <RoomShell eyebrow="Settings" title="Settings" maxWidth="max-w-4xl">
+      {viewer.practice?.role === 'owner' ? (
+        <p className="mb-8 text-sm text-ink-dim">
+          Looking for people?{' '}
+          <Link href="/settings/members" className="underline hover:text-ink">
+            Members and access
+          </Link>
+        </p>
+      ) : null}
       <section>
         <h2 className="font-display text-2xl font-medium text-ink">Availability</h2>
         <p className="mt-1 text-sm text-ink-dim">

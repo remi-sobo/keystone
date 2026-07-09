@@ -56,6 +56,7 @@ export async function requirePracticeMember(
     .from('practice_members')
     .select('practice_id, role')
     .eq('user_id', user.id)
+    .is('revoked_at', null)
     .limit(1)
     .maybeSingle()
   if (!membership) {
@@ -65,6 +66,7 @@ export async function requirePracticeMember(
       .from('practice_members')
       .select('practice_id, role')
       .eq('user_id', user.id)
+      .is('revoked_at', null)
       .limit(1)
       .maybeSingle())
   }
@@ -103,6 +105,7 @@ export async function requireClientMember(): Promise<ClientCtx | NextResponse> {
     .from('client_members')
     .select('practice_id, client_id')
     .eq('user_id', user.id)
+    .is('revoked_at', null)
     .limit(1)
     .maybeSingle()
   if (!membership) {
@@ -112,6 +115,7 @@ export async function requireClientMember(): Promise<ClientCtx | NextResponse> {
       .from('client_members')
       .select('practice_id, client_id')
       .eq('user_id', user.id)
+      .is('revoked_at', null)
       .limit(1)
       .maybeSingle())
   }

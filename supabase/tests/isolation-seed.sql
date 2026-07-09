@@ -767,4 +767,102 @@ end $$;
 
 reset role;
 
+-- ── V2 1A: revocation closes every wall (migration 0009) ────────────
+-- Soft-deactivate consultant_a (practice side) and member_a1 (client
+-- side) as the service role would, then assert both read zero rows
+-- everywhere, the revoked consultant cannot write, a revoked pending
+-- row cannot be claimed, and reactivation restores access.
+
+update practice_members set revoked_at = now()
+  where email = 'consultant_a@practice-a.test';
+update client_members set revoked_at = now()
+  where email = 'member_a1@client-a.test';
+
+-- A revoked PENDING invite: signing in with the email must link nothing.
+insert into client_members (client_id, practice_id, email, revoked_at) values
+  ('20000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+   'revoked_pending@client-a.test', now());
+insert into auth.users (id, email) values
+  ('00000000-0000-0000-0000-0000000000dd', 'revoked_pending@client-a.test')
+on conflict do nothing;
+
+set role authenticated;
+
+-- The revoked consultant: zero rows on every practice-scoped surface.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000b","email":"consultant_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from practices) <> 0 then raise exception 'LEAK: revoked consultant reads practices'; end if;
+  if (select count(*) from clients) <> 0 then raise exception 'LEAK: revoked consultant reads clients'; end if;
+  if (select count(*) from engagements) <> 0 then raise exception 'LEAK: revoked consultant reads engagements'; end if;
+  if (select count(*) from workstreams) <> 0 then raise exception 'LEAK: revoked consultant reads workstreams'; end if;
+  if (select count(*) from sessions) <> 0 then raise exception 'LEAK: revoked consultant reads sessions'; end if;
+  if (select count(*) from session_notes) <> 0 then raise exception 'LEAK: revoked consultant reads notes'; end if;
+  if (select count(*) from action_items) <> 0 then raise exception 'LEAK: revoked consultant reads action items'; end if;
+  if (select count(*) from ai_proposals) <> 0 then raise exception 'LEAK: revoked consultant reads proposals'; end if;
+  if (select count(*) from readiness_markers) <> 0 then raise exception 'LEAK: revoked consultant reads readiness'; end if;
+  if (select count(*) from deliverables) <> 0 then raise exception 'LEAK: revoked consultant reads deliverables'; end if;
+  if (select count(*) from resources) <> 0 then raise exception 'LEAK: revoked consultant reads resources'; end if;
+  if (select count(*) from messages) <> 0 then raise exception 'LEAK: revoked consultant reads messages'; end if;
+  if (select count(*) from digests) <> 0 then raise exception 'LEAK: revoked consultant reads digests'; end if;
+end $$;
+do $$ begin
+  insert into workstream_stage_events (workstream_id, engagement_id, practice_id, client_id, from_stage, to_stage)
+    values ('40000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
+            '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+            'build', 'train');
+  raise exception 'HOLE: a revoked consultant wrote a stage event';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+-- The revoked client member: zero rows, including their own homework.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from engagements) <> 0 then raise exception 'LEAK: revoked client member reads engagements'; end if;
+  if (select count(*) from workstreams) <> 0 then raise exception 'LEAK: revoked client member reads workstreams'; end if;
+  if (select count(*) from action_items) <> 0 then raise exception 'LEAK: revoked client member reads action items'; end if;
+  if (select count(*) from session_notes) <> 0 then raise exception 'LEAK: revoked client member reads notes'; end if;
+  if (select count(*) from deliverables) <> 0 then raise exception 'LEAK: revoked client member reads deliverables'; end if;
+  if (select count(*) from messages) <> 0 then raise exception 'LEAK: revoked client member reads messages'; end if;
+  if (select count(*) from keystone_message_notify_targets('30000000-0000-0000-0000-0000000000a1')) <> 0 then
+    raise exception 'LEAK: revoked client member enumerates notify targets';
+  end if;
+end $$;
+
+-- The revoked pending row: the claim links nothing.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000dd","email":"revoked_pending@client-a.test"}', false);
+select keystone_claim_membership();
+reset role;
+do $$ begin
+  if (select count(*) from client_members
+      where email = 'revoked_pending@client-a.test' and user_id is not null) <> 0 then
+    raise exception 'HOLE: a revoked pending invite was claimed';
+  end if;
+end $$;
+
+-- Reactivation restores exactly the old access, nothing new.
+update practice_members set revoked_at = null
+  where email = 'consultant_a@practice-a.test';
+update client_members set revoked_at = null
+  where email = 'member_a1@client-a.test';
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000b","email":"consultant_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from engagements) <> 2 then
+    raise exception 'reactivated consultant visibility wrong';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from engagements) <> 1 then
+    raise exception 'reactivated client member visibility wrong';
+  end if;
+end $$;
+
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

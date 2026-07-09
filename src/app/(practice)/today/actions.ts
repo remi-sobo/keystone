@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { getViewer } from '@/lib/membership'
-import { appBaseUrl, sendEmail } from '@/lib/email'
+import { appBaseUrl, emailShell, sendEmail } from '@/lib/email'
 import { logAuditAction } from '@/lib/audit'
 
 /**
@@ -28,13 +28,13 @@ function digestHtml(draft: string, clientName: string): string {
     .split(/\n{2,}/)
     .map((p) => `<p style="margin:0 0 14px 0;">${p.replace(/</g, '&lt;').replace(/\n/g, '<br>')}</p>`)
     .join('\n')
-  return [
-    `<div style="max-width:560px;margin:0 auto;padding:24px;background:#FBF4EA;color:#2A2620;font-family:Georgia,serif;">`,
-    `<p style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#6E675C;margin:0 0 18px 0;">Keystone / weekly digest / ${clientName}</p>`,
-    paragraphs,
-    `<p style="margin:18px 0 0 0;"><a href="${appBaseUrl()}/home" style="color:#33503C;">See the full picture in Keystone</a></p>`,
-    `</div>`,
-  ].join('\n')
+  // The branded frame lives in lib/email.ts (emailShell) so the digest
+  // and the invite emails stay one voice.
+  return emailShell({
+    eyebrow: `Keystone / weekly digest / ${clientName}`,
+    bodyHtml: paragraphs,
+    cta: { href: `${appBaseUrl()}/home`, label: 'See the full picture in Keystone' },
+  })
 }
 
 export async function decideDigest(formData: FormData): Promise<void> {

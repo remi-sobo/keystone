@@ -2,7 +2,7 @@
 
 **Parent:** `specs/keystone-v2.md` Phase 1, epic 1A. First standalone V2 spec, written during the pilot per CONFIRM V2-1.
 **Grounded against:** the live V1 codebase (migrations 0001 to 0008, `src/lib/auth.ts`, the settings surface, the spine isolation matrix). Every claim about V1 below was read from the code, not remembered.
-**Status:** draft for Remi. Build starts after the pilot window (V2-1: three to four weeks) and after this spec's CONFIRM gates clear.
+**Status:** approved by Remi 2026-07-09; the four CONFIRM gates in section 9 decided as recommended the same day, and Remi pulled the build forward from the pilot window. Built as migration 0009 plus `/settings/members`.
 **Date:** 2026-07-09
 
 ---

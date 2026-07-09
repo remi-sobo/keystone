@@ -241,6 +241,20 @@ export const LIMITS = {
     max: 30,
   },
 
+  // Invite emails (V2 1A): each send is a Resend email carrying the
+  // practice's name, so both noise and spend are bounded. Per target
+  // row: one send per ten minutes. Per practice: a modest hourly cap.
+  INVITE_SEND_PER_TARGET: {
+    kind: 'invite-send:target:10min',
+    windowMs: 10 * 60 * 1000,
+    max: 1,
+  },
+  INVITE_SEND_PER_HOUR: {
+    kind: 'invite-send:practice:hour',
+    windowMs: 60 * 60 * 1000,
+    max: 30,
+  },
+
   // The per-practice model-spend ceiling: a call-count proxy for spend,
   // consumed by lib/spend.ts before every AI call. Every Keystone AI
   // call is max_tokens-bounded, so capping calls per practice per day

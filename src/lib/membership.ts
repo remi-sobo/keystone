@@ -42,12 +42,14 @@ async function readMemberships(
       .from('practice_members')
       .select('practice_id, role, practices(name)')
       .eq('user_id', userId)
+      .is('revoked_at', null)
       .limit(1)
       .maybeSingle(),
     supabase
       .from('client_members')
       .select('practice_id, client_id, clients(name), practices(name)')
       .eq('user_id', userId)
+      .is('revoked_at', null)
       .limit(1)
       .maybeSingle(),
   ])

@@ -60,6 +60,33 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
+/**
+ * The one branded email frame: paper background, ink text, a forest
+ * link. Extracted from the Ring 6 digest so every Keystone email
+ * (digest, invites, message notifications as they migrate) meets the
+ * client in the same voice. Hex values mirror the frozen tokens.
+ */
+export function emailShell(opts: {
+  eyebrow: string
+  bodyHtml: string
+  cta?: { href: string; label: string }
+}): string {
+  return [
+    `<div style="max-width:560px;margin:0 auto;padding:24px;background:#FBF4EA;color:#2A2620;font-family:Georgia,serif;">`,
+    `<p style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#6E675C;margin:0 0 18px 0;">${opts.eyebrow}</p>`,
+    opts.bodyHtml,
+    opts.cta
+      ? `<p style="margin:18px 0 0 0;"><a href="${opts.cta.href}" style="color:#33503C;">${opts.cta.label}</a></p>`
+      : '',
+    `</div>`,
+  ].join('\n')
+}
+
+/** Escape user-sourced text landing inside email HTML. */
+export function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
 /** The public base URL for building deep links in notification emails. */
 export function appBaseUrl(): string {
   return env.NEXT_PUBLIC_APP_URL

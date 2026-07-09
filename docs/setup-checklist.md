@@ -22,6 +22,12 @@ push, with the public env values committed in vercel.json.
       `https://keystone-blue-tau.vercel.app/auth/callback`, and the
       preview pattern `https://keystone-*-remi-3257s-projects.vercel.app/auth/callback`.
       Magic-link sign-in does not complete until this exists.
+- [ ] Authentication > Emails > SMTP Settings: point auth email at Resend
+      (host smtp.resend.com, port 465, user `resend`, password = the
+      Resend API key from section 4, from `hello@soboconsulting.com`).
+      Supabase's built-in sender is development-only and rate-limits to
+      a couple of emails per hour project-wide; four SafeSpace logins in
+      one morning would hit it. Fine to skip for your own first test.
 
 ## 2. Vercel dashboard (keystone project > Settings > Environment Variables)
 

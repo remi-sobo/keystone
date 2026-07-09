@@ -24,6 +24,8 @@ One permission authority, `private.keystone_can(p_practice, p_client, p_perm)` (
 
 Members are rows in `practice_members` (roles `owner | consultant`) and `client_members` (role `client_member`). Invites are email-keyed pending membership rows (`user_id` null, `email` set), claimed automatically by the verified JWT email on first sign-in via a SECURITY DEFINER RPC (the Pathway `pathway_claim_membership` pattern). The verified email is the credential; a URL alone grants nothing. No bearer-token invites.
 
+**Two doors, one credential (amended 2026-07-09).** Sign-in is the email magic link (first, and the fail-safe) or Google OAuth; both end in a session whose JWT carries a verified email, so the claim RPC and every wall behind it are identical for either door. Both doors are rate limited per IP in `src/app/login/actions.ts`. Google sign-in rides a dedicated OAuth client with only the basic identity scopes and is unrelated to the Ring 2 calendar client; Supabase performs the exchange and Keystone stores no Google tokens for sign-in. No passwords, by decision: setting and resetting one each need an email link anyway, so a password removes no email dependency and only adds a credential that can be stuffed on the stranger-facing surface.
+
 ## 4. Transcript PII (the most sensitive data in the system)
 
 Raw call transcripts contain client finances and personnel detail. The rules, all four load-bearing:

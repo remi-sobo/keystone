@@ -2,7 +2,7 @@
 
 The live operational doc. If it is happening and it is not here, it is not happening. Weekly ritual per SOBO_PLAYBOOK.md section 8.
 
-Last updated: 2026-07-09 (Ring 6 built; the full ring queue is built; infrastructure live).
+Last updated: 2026-07-09 (V1 ring queue built and live; the V2 program landed and Phase 0 seed entered).
 
 ## State
 
@@ -15,6 +15,39 @@ Last updated: 2026-07-09 (Ring 6 built; the full ring queue is built; infrastruc
 - **Ring 5 (Messages): built.** Migration 0007 applied to the live project: one thread per engagement (unique constraint says so honestly), author-stamped messages whose insert policy demands self-authorship on the right side of the wall inside your own scope, bodies immutable to every session (column-level grant limits updates to read_at), no delete path. Client sends at /messages and the practice owners get a deep-linked email (targets via keystone_message_notify_targets, the minimal-disclosure definer RPC, since the pure-RLS client surface cannot read practice_members); the practice replies from the engagement page and the thread's client participants get one back. The /today messages card is live: unanswered threads with age. Email failure states are honest on both sides; the live send run waits on RESEND_API_KEY (setup checklist section 4).
 - **Ring 4 (Deliverables and library): built.** Migration 0006 applied to the live project: deliverables (file or link, kind-constrained), resources (the practice-wide catalog, the documented no-client_id case), session_prep_resources (flagged spec addition; the join behind prep surfacing), two private storage buckets with path-scoped read policies and zero write policies. Practice ships from the engagement page (signed-upload direct-to-storage), the client watches the brass timeline at /deliverables and downloads through their own session (pure RLS end to end); resource authoring at /library/authoring (voice-swept), client read at /library; prep attaches on the run of show and surfaces above upcoming sessions and on session detail. Live matrix extended (storage stub added to the scratch Postgres); 78 gate assertions green. No new env vars.
 - Engagement status: proposal out to SafeSpace, decision expected Thu Jul 9.
+- **V2 program: landed.** The roadmap is `specs/keystone-v2.md` (five phases, each epic its own research, design, spec, build cycle); the engagement content is `docs/seed/keystone-safespace-seed.md`. Phase 0 (pilot and harvest) is in effect: no V2 feature build until the pilot yields signal; the SafeSpace seed is entered (see below); 1A (Practice admin UI) is the first V2 spec to write, during the pilot, per the V2 spec's closing note.
+- **Phase 0 seed: entered on the live project** via `supabase/seed-safespace-pilot.sql` (idempotent; fresh installs get the same shape from the updated `seed.sql`). What went in: the engagement retitled to the proposal's "Systems and leaders: fundraising first" with the six-month end date; the workstreams renamed to the proposal's four (V1 gate 5 resolved); the July 7 working call and its thirteen-decision log as practice-visibility session notes; the six homework starters; the three readiness pillar notes; the charter draft and planned-deliverables ledger pinned as library resources; the nine SOBO resource starters. The section 12 exclusion wall now rides in the extraction prompt (`src/lib/extract.ts`, pinned by the engine spec) and is recorded in SECURITY.md section 4.
+
+## V2 phase queue (specs/keystone-v2.md; each epic separately specced)
+
+| Phase | Contents | Status |
+|---|---|---|
+| 0 | Pilot and harvest; seed first; spec 1A during | seed entered; pilot waits on SafeSpace's yes |
+| 1 | Operability: 1A admin UI, 1B engagement builder, 1C one template, 1D first-run | not started; 1A spec next |
+| 2 | The Charter spine: 5D approvals (pulled forward), 2A charter, 2B decision log, 2F workstream detail, 2D next moves, 2C outcomes, 2E Q&A, search | not started |
+| 3 | Delivery craft: 3A editable AI review, 4F notifications infra (pulled forward), 3C homework loop with the wall, 3B run of show, 3D deliverable lifecycle, 3E anchors, 3F library, 3G digest archive | not started |
+| 4 | Practice OS: 4A action queue, 4B internal tasks, 4D readiness, 4C workload, 4E health, activity view, 4G pipeline (flagged), 4H knowledge base | not started |
+| 5 | Closeout: 5A closeout room, 5B portability, 5C case study, 5E scope and change orders | not started |
+
+## V2 CONFIRM gates (specs/keystone-v2.md)
+
+| # | Question | Status |
+|---|---|---|
+| V2-1 | Pilot length before Phase 1; Phase 1 specced during or after? | open (spec proposes three to four weeks; 1A specced during) |
+| V2-2 | Templates: practice-private, or shareable across practices? (Schema now.) | open |
+| V2-3 | Q&A: reads full consultant notes, or only client-published versions? | open |
+| V2-4 | Homework buyer-view wall on coachee revision history | open (spec recommends yes, firmly) |
+| V2-5 | Pipeline: product-tier, flagged off for SOBO | open (spec recommends yes) |
+| V2-6 | Fee in-app (revisits V1 gate 9); change orders with or without a number | open (seed doc 13 recommends: fee in the charter, nowhere else) |
+
+## FLAGS from the V2 landing (2026-07-09)
+
+- The V2 spec draft arrived with ten em dashes (the top-ten list) and three uses of a banned word (the opens-the-door one, in the Phase 1 heading and twice in prose); the seed doc carried a banned word once (decision 5's used-deliberately verb). Landed with mechanical substitutions only: the dashes became colons, and the two words became "opens" and "used" (the seed doc's own section 3 wording). No other content touched; Remi may reword.
+- The July 7 working call's hour is not in the record; the seeded session says noon Pacific as a placeholder. Correct in the DB when known.
+- The decision log sits in the July 7 session notes at visibility 'practice': decision 11 names the $25,000 fee, and fee visibility is still gated (V1 gate 9 / V2-6). Publish to 'shared' once the gate decides.
+- V1 `deliverables` holds shipped artifacts only (kind file or link), so the PLANNED ledger from seed doc section 8 lives as a pinned library resource until V2 3D (deliverable lifecycle) gives plans a first-class home.
+- The seed doc section 5 says the readiness markers are "already in Keystone"; the live table had zero rows (the panel existed, the content did not). The three pillar notes are now seeded from section 5.
+- The library is practice-wide in V1, so the charter draft and ledger resources are technically visible to any future client of the practice. Acceptable with one client; V2 3F adds client-specific visibility before tenant two's client sees a library.
 
 ## Manual steps
 
@@ -50,11 +83,11 @@ The spec numbers these 1 through 12 and 14; there is no gate 13 in the spec (fla
 | 2 | SafeSpace logins: susan@, liesl@, aris@, jasmine@ (all safespace.org); confirm the four and whether anyone else joins | decided: the four confirmed by Remi 2026-07-09, exactly as seeded; nobody else joins for now |
 | 3 | Library access after the engagement ends: keeps or lapses? | open |
 | 4 | Shannon: practice login in v1? | decided: yes (Remi 2026-07-09); shannon@ambitionangels.org, consultant |
-| 5 | SafeSpace workstream names: confirm or rename with the client's language (spec lists five seeds but the gate says "the four seeded above"; flagged) | open |
+| 5 | SafeSpace workstream names: confirm or rename with the client's language (spec lists five seeds but the gate says "the four seeded above"; flagged) | decided: the client-approved proposal names four (seed doc section 13); renamed in the live DB 2026-07-09 via seed-safespace-pilot.sql |
 | 6 | Digest day and hour (proposal: Friday 3pm Pacific) | open |
 | 7 | Name clearance: trademark plus domain check on "Keystone" before public use | open |
 | 8 | Session locations: video link source (Meet from the calendar event, or Zoom)? | open |
-| 9 | Fee visibility: does the engagement show the $25,000 anywhere in-app, or never? | open |
+| 9 | Fee visibility: does the engagement show the $25,000 anywhere in-app, or never? | open; seed doc section 13 recommends charter-only (folds into V2-6); the seeded decision log stays practice-visibility until this decides |
 | 10 | Liesl's posture: full login plus digest, or digest-first given the advisory move? | open |
 | 11 | Stall threshold: three weeks proposed; twice-weekly month-one cadence may want two | open |
 | 12 | Readiness notes: consultant-only forever, or shareable per note as a deliberate act? | open |

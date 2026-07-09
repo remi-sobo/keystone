@@ -5,6 +5,7 @@ This file is read by Claude at the start of every Keystone session. Read it full
 ## Read first
 
 - **`specs/keystone.md`**: the source of truth for the whole build. Read it in full before anything else.
+- **`specs/keystone-v2.md`**: the V2 roadmap (five phases; each epic becomes its own spec as `specs/keystone-v2-<epic>.md`). The SafeSpace engagement content is `docs/seed/keystone-safespace-seed.md`; its section 12 exclusion wall is a standing rule for every transcript review.
 - **`CURRENT.md`**: live state, the ring queue, and the CONFIRM gates. Read it at the start of every session.
 - **`SECURITY.md`**: the security program and the per-feature gate. Cross-practice and cross-client isolation is the product's spine, not a feature.
 - **`SOBO_PLAYBOOK.md`**: the cross-app method this repo instantiates.

@@ -1,0 +1,184 @@
+# Keystone seed: the SafeSpace engagement
+
+**Purpose:** the real content of the SafeSpace engagement, extracted and structured so it can be entered into Keystone at kickoff, and lifted directly into the Engagement Charter when V2 feature 2A ships. Until then, the charter draft in §3 can live as the engagement's first deliverable or a pinned resource.
+**Sources:** the client-facing proposal (June 2026), Remi's recap email to Susan and Liesl (July 8), and the Remi and Susan working call transcript (July 7).
+**Status:** ready to seed on SafeSpace's yes. Decision expected Wednesday night or Thursday morning per Susan.
+**Rule for this document:** everything in §1 through §11 is safe for the engagement record, which all four SafeSpace members can see. §12 lists what stays out, permanently.
+
+---
+
+## 1. Engagement record
+
+| Field | Value |
+|---|---|
+| Client | SafeSpace |
+| Title | Systems and leaders: fundraising first |
+| Length | Six months |
+| Fee | $25,000, one fee, all four workstreams (see gate note in §13) |
+| Method | Diagnose, Design, Build, Train, Stabilize |
+| Practice team | Remi (lead, builder and coach), Dr. Kendra (impact and evaluation), Shannon (back office, bi-weekly) |
+| Client members | Susan Bird (co-founder, day to day, watch posture), Liesl Moldow (co-founder, moving to advisory, digest-first candidate), Aris (coachee), Jasmine (coachee) |
+| Cadence | Twice weekly in month one (front-loaded while program is slow), then set month by month. Weekly coaching thereafter, plus up to two additional calls per month on whatever they want to think through. Shannon bi-weekly. |
+| Timing anchor | Ahead of the September to December fundraising season |
+
+## 2. Workstreams (four, in the proposal's language)
+
+The proposal SafeSpace reviewed names four workstreams. These are canonical; the app's seeded five should be renamed to match (see §13).
+
+1. **Build the system** (Remi). One customized hub for fundraising, finance, compliance, HR, and operations, fundraising first. Tracked in Keystone as progress and deliverables; the hub itself is the BloomOS build and lives there.
+2. **Develop the leaders** (Remi, weekly). Coaching and professional development so Aris and Jasmine operate like fundraisers and nonprofit executives. Homework before and after every session, tied to the real system.
+3. **Show the impact** (Dr. Kendra). An impact and evaluation framework across Campus, Community, and the Youth Action Board, with funder-ready artifacts, wired into the hub.
+4. **Hold the back office** (Shannon, bi-weekly). Financial management, compliance, HR, and operations rhythms, stood up, carried through the build, then handed over.
+
+All four start in **Diagnose**. Month one moves Build the system and Develop the leaders into Design.
+
+## 3. Charter draft (client-facing prose, voice-checked)
+
+### Why this engagement exists
+The first ten years were liftoff. SafeSpace built a fundraising engine, a real financial picture, an active board, a footprint growing from San Mateo into Alameda County, and impact in the lives of young people through Campus, Community, and the Youth Action Board. The next ten are about sustainability: an organization rooted in this community and built to stay. This engagement is that investment. It is usually not the heart. It is the system.
+
+### What we are building
+Over six months, Sobo Consulting brings SafeSpace's systems into one customized hub, builds a full fundraising strategy with the weekly rhythms to run it, and develops Aris and Jasmine to lead fundraising and operate like nonprofit executives. Fundraising first.
+
+### Where this ends (the six outcomes)
+1. A full fundraising strategy, the internal rhythms to run it, and a digital tool built around how SafeSpace operates, from prospecting through cultivation, solicitation, and stewardship.
+2. The financial picture in a live dashboard, with a board login and views the board controls.
+3. Compliance and HR streamlined and solid, including the protections that come with working with minors.
+4. Operating rhythms that hold the week, the month, and the quarter.
+5. Aris and Jasmine running all of it with confidence and without us, fully onboarded into the hub.
+6. An impact and evaluation framework and the funder-ready artifacts to track and showcase it.
+
+### How we will work
+Two modes at once: develop the people and build the system, then set it up to last. Five steps: Diagnose, Design, Build, Train, Stabilize. Every session is a working session with homework before and after, always tied to a real fundraising task. Each session adds one piece of the system, so by the end Aris and Jasmine are running something they built. Ownership transfers as they build it, not in one handoff at the end.
+
+### What you own at the end
+All of it, in perpetuity. The hub is a custom build and SafeSpace owns it moving forward: strategy and goals, projects and tasks, a full CRM with donor and grant pipelines, and areas for program, finance, data, and compliance. A board login SafeSpace controls. The fundraising collateral built together: a pitch deck, a send deck, and a one-pager. Remi stays available as a resource afterward, shape to be decided together.
+
+### Roles
+- **Remi** coaches the leadership and builds the system.
+- **Dr. Kendra** designs the impact and evaluation framework and the funder-facing artifacts.
+- **Shannon** holds the back office steady while the team learns to run it.
+- **Susan** stays close to the day to day, strategizes on existing donors, sits in on selected sessions, and brings Aris and Jasmine onto real calls.
+- **Liesl** moves toward an advisory seat. Her relationships are used deliberately: specific people assigned, letters drafted for her, made as easy as possible.
+- **Aris and Jasmine** do the work: homework, reps, rhythms, and, increasingly, the calls. Execution is theirs, and it is the part no one can do for them.
+
+### How we will know it worked
+Three things, checked honestly: **philosophy** (they understand how fundraising and nonprofit leadership actually work), **system** (a documented plan a professional fundraiser would respect), and **execution** (they are running it consistently, week to week). Stabilized means all three are true and running without us. The test: if a new person joined, they could pick up the system and run the play. If any piece needs more time at six months, Remi stays on as a resource until it holds. Nothing gets dropped at the finish line.
+
+### What this engagement is not
+- It is not a quick fundraising sprint. The goal is capability that lasts, and more raised along the way is the expected byproduct, not the deliverable.
+- The **Youth Action Board portal**, a **public website redesign**, and **ongoing support beyond the six months** are available as separate engagements, scoped on their own. They are named here so asking about them is easy and never awkward.
+- Program design stays with the program team. Fundraising touches every function, so we will talk about all of it, but this engagement does not run programs.
+
+## 4. Outcomes and baselines (feeds V2 2C)
+
+| Outcome | Baseline today | Evidence when done |
+|---|---|---|
+| Documented fundraising strategy and plan | No documented plan | Plan a professional fundraiser would respect, in the hub |
+| Donor pipeline running in a CRM | No CRM; Excel and Google Docs | Pipeline live with stages, journeys mapped for top donors |
+| Weekly fundraising rhythm held | No weekly fundraising rhythm exists in their roles | Rhythm sessions happening consistently, visible in the record |
+| Donor base segmented and worked | About 1,200 contacts, most giving little or nothing | Top tier on custom strategies; simple letter and giving-tree campaigns for the rest |
+| Collateral ready | None of the three artifacts exist | Pitch deck, send deck, one-pager shipped; weekly pitch practice happening |
+| Aris and Jasmine leading calls | Have shadowed Susan on a few calls | Leading conversations, with reps logged, Susan or Remi joining selectively |
+| Board sees the financial picture live | Board gets prepared updates | Board login live with views SafeSpace controls (hub deliverable) |
+| Impact evidence funder-ready | Story told well in person and video, evidence scattered | Framework live, funder-ready artifacts produced |
+
+## 5. Readiness markers seed (already in Keystone)
+
+- **Philosophy:** do they understand how fundraising and nonprofit leadership actually work? On Remi. Includes: nonprofit as a business with a double bottom line (impact and dollars); stewardship versus cultivation, both every week; donor journeys where the ask is never a surprise; foundations operate differently than individuals; the elevation from program leader to nonprofit executive.
+- **System:** do they have a documented plan and system a professional would respect? On Remi. Week, month, quarter, year rhythms; gift table; segmented strategies; the hub as the daily home.
+- **Execution:** are they running it consistently, week to week? On them, and the one thing no one can do for them. Evidence is history: rhythm sessions held, homework done, reps run.
+
+## 6. Month arc and session plan
+
+- **Month 1, Diagnose and Design.** Twice weekly, substantial homework, front-loaded while program is slow. Map what works across fundraising, finance, back office, and the Youth Action Board. Design the hub on paper. Start weekly coaching and bi-weekly back-office sessions. Define done for each workstream.
+- **Months 2 to 3, Fundraising and the core.** Build the fundraising system and the hub core. Coaching centers on fundraising strategy and leadership. Shannon streamlines finance and compliance basics. Sharpen narrative and collateral before the season.
+- **Months 4 to 5, The full hub.** Finance, compliance, HR, operations into the hub. Coaching moves to systems thinking and AI in the daily workflow. Shannon works HR and operating rhythms.
+- **Month 6, Train and Stabilize.** Develop until they run it alone. Document the rhythms. Hand it back clean.
+
+Scheduling is set month by month, never all six months upfront. Session kinds in Keystone: working sessions (default), donor calls (Remi joining selected calls at SafeSpace's request), reviews.
+
+## 7. Session zero and early homework starters
+
+Seed these as the first homework items once the kickoff cadence is set:
+
+1. **Susan:** map the top ten donors and bring them to an early session. (Her own suggested first homework; she has last year's numbers to refresh.) Becomes the donor-context interview that fills the CRM: who they are, why they give, connections, giving history, which stewardship has landed.
+2. **Aris and Jasmine:** begin the weekly five-minute pitch practice, each pitching the other, every week, from week one even before the deck exists.
+3. **Remi (internal task):** draft the narrative frame, "ten years in, here is the next ten," the two-sentence version and the fuller version, with the messaging angles below, for the team to react to.
+4. **Team:** backwards plan from the three-year picture: what should the annual budget be at sustainability (the conversation pointed at a steady, rooted number, not blow-up growth), and what does this year need to raise.
+5. **Newsletter strategy:** the ten-year kickoff newsletter, facts-led, positive framing always ("the grant completed" never "goodbye"), with the low-giving segment moved by simple letters and a giving-tree play ("help fund a share of one young person's journey").
+
+## 8. Planned deliverables (seed the ledger)
+
+- Fundraising strategy and plan document (workstream 1)
+- Donor pipeline and journeys live in the hub (workstream 1, hub milestone)
+- Pitch deck (workstream 2)
+- Send deck (workstream 2)
+- One-pager (workstream 2)
+- Narrative frame: the next ten years (workstream 2)
+- Gift table and segmentation strategy (workstream 1)
+- Impact and evaluation framework (workstream 3)
+- Funder-ready impact artifacts (workstream 3)
+- Finance dashboard and board login (workstream 1, hub milestone)
+- Compliance and HR foundations documented (workstream 4)
+- Operating rhythms documented for handoff (workstream 4, month 6)
+
+The website is deliberately not on this list: it was named on the call as the fourth fundraising artifact and explicitly held as a separate engagement. It is the first pre-named change order.
+
+## 9. Resource library starters (SOBO IP, reusable beyond SafeSpace)
+
+1. **Donor journeys:** stewardship and cultivation, both every week; the ask is never a surprise; quarterly touch cadence per donor.
+2. **How to run a fundraising meeting:** prepare, execute, follow up, then debrief: likelihood, giving potential, possible ask.
+3. **The weekly fundraising rhythm:** what a week looks like; planning the week around work blocks and priorities.
+4. **Messaging angles:** the same true story told to different hearts: youth mental health; peer-led leadership development; community rootedness (the peninsula's own kids, grandparent and parent framings); accurate always, tuned per funder.
+5. **Segmenting the base:** the 90/10 cut; custom strategies up top, letters and giving-tree below; program-cost framing for community fundraising, larger funders for the rest.
+6. **Foundations versus individuals:** how institutional funders think, what they need, how the ask differs.
+7. **Multi-year giving:** moving a yearly gift to a three-year commitment; when it is too early to push it (Susan's real experience: they tried once, too soon).
+8. **AI in the daily workflow:** how to use it, how not to; it cleans up your thinking, you do the thinking; drafts outreach, never sends on its own.
+9. **Positive framing:** no failure language, a learning organization; losses are lessons; never signal instability to donors.
+
+## 10. Decision log seed (dated, attributed, from the record)
+
+1. **Fundraising first.** The build and coaching order. (Proposal; confirmed on call, Jul 7.)
+2. **Start now, front-load month one at twice weekly** while program is slow, ahead of the season. (Call, Jul 7; recap email.)
+3. **SafeSpace owns everything in perpetuity.** Custom build; databases and AI programs included. (Call, Jul 7, direct answer to Susan.)
+4. **SafeSpace pauses its other software purchase** contingent on this engagement going ahead. (Call, Jul 7, Susan.)
+5. **Liesl moves to advisory** and is used deliberately: assigned relationships, drafted letters, made easy. (Call, Jul 7; recap email.)
+6. **Susan stays in:** strategizes existing donors, sits in selected meetings, brings the coachees on real calls. Not exiting. (Call, Jul 7.)
+7. **Reps model:** Aris and Jasmine go on calls with Susan or Liesl first; Remi joins selected calls at SafeSpace's request. (Call, Jul 7; Susan's follow-up note.)
+8. **Cadence set month by month,** not fixed for six months upfront. (Call, Jul 7.)
+9. **Collateral set:** pitch deck, send deck, one-pager; website named the fourth artifact and held as a separate engagement. (Call, Jul 7.)
+10. **Segmentation approach:** custom strategies for the top tier, simple letter and giving-tree campaigns below. (Call, Jul 7, Susan and Remi together.)
+11. **Fee accepted at $25,000 without negotiation,** pending Aris and Jasmine's full buy-in; answer promised by Wednesday night or Thursday morning. (Call, Jul 7, Susan.)
+12. **Weekly pitch practice** as a standing rhythm from the start. (Call, Jul 7.)
+13. **Go/no-go rests on the coachees:** Susan wanted them 150 percent behind it before saying yes. (Call, Jul 7.)
+
+## 11. Scope boundary and pre-named change orders
+
+Available as separate engagements, already in the client-facing proposal, so the change-order conversation is pre-seeded and never awkward:
+
+1. **Youth Action Board portal:** applications, roster, onboarding, hours, communications, with the protections minors require.
+2. **Public website:** redesign as fundraising collateral, video-forward, donor-audience-first with a "for teens" area the youth design. (Discussed at length on the call; explicitly not in this build.)
+3. **Ongoing support beyond six months:** coaching or back-office help, scoped on its own. The call sketched the shape: Remi as a lighter resource once the three readiness pillars hold.
+
+## 12. What stays out of the engagement record (the wall, permanent)
+
+The transcript contains material that must never enter Keystone, because all four client members can read the engagement record, and because some of it was shared in explicit confidence. This section exists so the wall is written down, not remembered.
+
+- **Everything about the former ED:** the departure, the criticism in either direction, Susan's candid assessments, the "this does not go anywhere" passages. All of it. Aris and Jasmine can log in; none of this is theirs to find, and none of it serves the engagement.
+- **Personnel opinions about current staff** shared founder-to-consultant (assessments of working styles, past restrictions, comparisons). The coaching record captures growth going forward, never backstory said in confidence.
+- **Susan's personal finances:** her donor-advised fund, tax situation, remodel, personal giving mechanics.
+- **Named-donor personal details** shared as context (who married whom, who does not open email, personal histories). Donor intelligence belongs in SafeSpace's CRM inside the hub (BloomOS), entered by SafeSpace, not in the consulting engagement record.
+- **SafeSpace's runway, rent, and sublease details.** Financial operations context, sensitive, and BloomOS-side in any case.
+- **Board matters.** Remi sits on the SafeSpace board; board material never enters the engagement record, in either direction. The transcript's board-adjacent commentary stays out.
+- **Personal chatter** (family, camp, mutual acquaintances).
+
+Rule of thumb for every future transcript: the engagement record holds decisions, commitments, and work product. Confidence, gossip, personnel history, and personal finance never cross into it, even when the AI extraction proposes them. This is a standing instruction for the extract review step: reject any proposed item sourced from the categories above.
+
+## 13. Open items and gate updates
+
+- **Workstream rename (V1 gate 5, now resolved by the proposal):** the app seeded five workstreams; the client-approved proposal names four. Rename in-app to the proposal's four, in its exact language, before SafeSpace's first login. The fundraising strategy work folds into workstream 1 (Build the system) and the coaching arc is workstream 2, as the proposal has it.
+- **Fee visibility (V1 gate 9):** the client-facing proposal states $25,000 plainly, so showing the fee in the charter matches what they already saw. Recommend: show it in the charter, nowhere else in the app. Remi confirms.
+- **Client emails (V1 gate 2):** susan@safespace.org and liesl@safespace.org known. Aris and Jasmine's addresses still needed before invites go out.
+- **Awaiting the yes:** Susan committed to an answer by Wednesday night or Thursday morning. On yes: Remi opens the email thread, sets month-one cadence (twice weekly), and the seed above goes in.
+- **First-session candidates:** top-ten donor mapping with Susan; narrative frame kickoff; pitch practice rhythm established.

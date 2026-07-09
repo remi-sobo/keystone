@@ -34,6 +34,7 @@ Raw call transcripts contain client finances and personnel detail. The rules, al
 2. **Excluded from AI context except extraction.** The one extraction call (task `extract`) reads the transcript; no other AI job (digest, Q&A, suggestion, voice sweep) ever receives raw transcript text in its context. Q&A reads the accepted, structured record only.
 3. **Never logged.** No transcript text in server logs, audit rows, voice-violation excerpts, or error messages. The spend ledger stores token counts and dollars, never content.
 4. **Deletion path.** Deleting a session note deletes the storage object in the same operation and audits the deletion (metadata only: which note, who, when). Engagement deletion cascades over its notes and their storage objects. There is no orphaned-transcript state.
+5. **The exclusion wall (standing, per engagement seed docs).** The engagement record is readable by every client member, so some transcript material never enters it: confidences shared founder-to-consultant, personnel opinions and past-staff history, personal finances, personal details about named donors, internal financial operations, board matters, personal chatter. The extraction prompt names these categories and instructs the model to leave them out (`src/lib/extract.ts`, pinned by `e2e/extract-engine.spec.ts`), and the human review step is the enforcement: reject any proposed item sourced from them. The SafeSpace-specific wall is `docs/seed/keystone-safespace-seed.md` section 12.
 
 ## 5. AI surfaces
 

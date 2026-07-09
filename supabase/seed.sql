@@ -7,8 +7,11 @@
 --              confirm before sending invites.
 --   CONFIRM 4: Shannon's practice login is seeded; remove if gate 4
 --              lands "not in v1".
---   CONFIRM 5: the five workstream names are the spec's seeds; rename
---              with the client's own language once confirmed.
+--   CONFIRM 5: resolved 2026-07-09 by the client-approved proposal
+--              (docs/seed/keystone-safespace-seed.md section 13): the
+--              four workstreams below, in the proposal's exact language.
+--              Live DBs seeded with the earlier five transition via
+--              seed-safespace-pilot.sql.
 --   CONFIRM 9: fee_display is left null until gate 9 decides.
 
 insert into practices (name, slug) values ('Sobo Consulting', 'sobo')
@@ -51,7 +54,7 @@ on conflict do nothing;
 
 with c as (select id, practice_id from clients where name = 'SafeSpace')
 insert into engagements (practice_id, client_id, title, starts_on)
-select c.practice_id, c.id, 'SafeSpace and Sobo Consulting', current_date
+select c.practice_id, c.id, 'Systems and leaders: fundraising first', current_date
 from c
 where not exists (
   select 1 from engagements e, c where e.client_id = c.id
@@ -65,11 +68,10 @@ with e as (
 insert into workstreams (engagement_id, practice_id, client_id, title, sort)
 select e.id, e.practice_id, e.client_id, v.title, v.sort
 from e, (values
-  ('Fundraising system and rhythms', 0),
-  ('Leadership development, Aris and Jasmine', 1),
-  ('The operating hub', 2),
-  ('Impact and evaluation', 3),
-  ('Back office', 4)
+  ('Build the system', 0),
+  ('Develop the leaders', 1),
+  ('Show the impact', 2),
+  ('Hold the back office', 3)
 ) as v(title, sort)
 where not exists (
   select 1 from workstreams w, e where w.engagement_id = e.id

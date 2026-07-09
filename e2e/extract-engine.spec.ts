@@ -35,6 +35,18 @@ test('the system prompt treats the transcript as data, never directives', () => 
   expect(req.system).toContain('no scores or grades on people')
 })
 
+test('the exclusion wall rides in the prompt (seed doc section 12)', () => {
+  // The engagement record is readable by every client member, so the
+  // prompt names the categories that never cross into it: confidences,
+  // personnel history, personal finance, donor personal detail, board
+  // matters. The human review step is the enforcement; this is the
+  // first fence.
+  const req = buildExtractionRequest('hello', CTX)
+  expect(req.system).toContain('shared in confidence')
+  expect(req.system).toContain('board matters')
+  expect(req.system).toContain('leave it out entirely')
+})
+
 test('the transcript rides in the user message, capped', () => {
   const long = 'x'.repeat(TRANSCRIPT_CHAR_CAP + 5000)
   const req = buildExtractionRequest(long, CTX)

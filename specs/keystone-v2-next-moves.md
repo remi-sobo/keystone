@@ -2,7 +2,7 @@
 
 **Parent:** `specs/keystone-v2.md` Phase 2 epic 2D: small build, large felt value, especially on mobile.
 **Grounded against:** the live codebase after 2F (migrations 0001 to 0014). Everything this surface shows already exists behind walls that already hold: assigned homework (Ring 3), pending sign-offs (5D), prep resources on upcoming sessions (Ring 4), unread practice replies (Ring 5), the next booked session (Ring 2). 2D is composition; no migration.
-**Status:** draft for Remi. CONFIRM gates in section 5.
+**Status:** approved by Remi 2026-07-10 (section 5 gates decided as recommended) and built the same day: the strip at the top of the client Home, no migration.
 **Date:** 2026-07-10
 
 ---

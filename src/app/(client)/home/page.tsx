@@ -45,7 +45,7 @@ export default async function ClientHomePage() {
   const [{ data: nextSession }, { data: myMembership }, { data: latestDeliverable }, { data: agreement }, { data: charter }] = await Promise.all([
     supabase
       .from('sessions')
-      .select('starts_at, tz')
+      .select('id, starts_at, tz')
       .eq('client_id', viewer.client.clientId)
       .eq('status', 'booked')
       .gte('starts_at', new Date().toISOString())
@@ -101,6 +101,32 @@ export default async function ClientHomePage() {
         .limit(1)
         .maybeSingle()
     : { data: null }
+
+  // Your Next Moves (V2 2D): what needs YOU, composed from standing
+  // walls. Pending sign-offs any member may decide (5D-1); unread
+  // practice replies; prep on the next booked session.
+  const [{ data: pendingApprovals }, { count: unreadCount }, { count: prepCount }] =
+    await Promise.all([
+      supabase
+        .from('approvals')
+        .select('id, subject_type, subject_label')
+        .eq('client_id', viewer.client.clientId)
+        .eq('status', 'pending')
+        .order('requested_at', { ascending: true })
+        .limit(3),
+      supabase
+        .from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('client_id', viewer.client.clientId)
+        .eq('author_side', 'practice')
+        .is('read_at', null),
+      nextSession
+        ? supabase
+            .from('session_prep_resources')
+            .select('id', { count: 'exact', head: true })
+            .eq('session_id', nextSession.id)
+        : Promise.resolve({ count: 0 } as { count: number | null }),
+    ])
 
   const { data: myOpenItems } = myMembership
     ? await supabase
@@ -189,6 +215,73 @@ export default async function ClientHomePage() {
       eyebrow={viewer.client.clientName}
       title={engagement ? engagement.title : 'Your engagement'}
     >
+      {(() => {
+        const hasMoves =
+          (pendingApprovals ?? []).length > 0 ||
+          (myOpenItems ?? []).length > 0 ||
+          (prepCount ?? 0) > 0 ||
+          (unreadCount ?? 0) > 0
+        return (
+          <section aria-label="Your next moves" className="mb-8">
+            <p className="eyebrow">Your next moves</p>
+            {hasMoves ? (
+              <ul className="mt-2 flex flex-col gap-1.5">
+                {(pendingApprovals ?? []).map((a) => (
+                  <li key={a.id} className="text-sm text-ink">
+                    Your sign-off is waited on: {a.subject_label}.{' '}
+                    {a.subject_type === 'charter' ? (
+                      <Link href="/charter" className="text-forest underline">
+                        Read and sign
+                      </Link>
+                    ) : null}
+                  </li>
+                ))}
+                {(myOpenItems ?? []).map((it) => (
+                  <li key={it.id} className="text-sm text-ink">
+                    Homework: {it.title}
+                    {it.due_on ? <span className="text-ink-dim"> (due {it.due_on})</span> : null}{' '}
+                    <Link href="/homework" className="text-forest underline">
+                      Open
+                    </Link>
+                  </li>
+                ))}
+                {(prepCount ?? 0) > 0 ? (
+                  <li className="text-sm text-ink">
+                    {prepCount} prep item{prepCount === 1 ? '' : 's'} for your next session.{' '}
+                    <Link href="/sessions" className="text-forest underline">
+                      Have a look
+                    </Link>
+                  </li>
+                ) : null}
+                {(unreadCount ?? 0) > 0 ? (
+                  <li className="text-sm text-ink">
+                    {unreadCount} unread repl{unreadCount === 1 ? 'y' : 'ies'} from your
+                    consultant.{' '}
+                    <Link href="/messages" className="text-forest underline">
+                      Read
+                    </Link>
+                  </li>
+                ) : null}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-ink-dim">
+                Nothing needs you right now.
+                {nextSession
+                  ? ` See you ${new Intl.DateTimeFormat('en-US', {
+                      timeZone: nextSession.tz,
+                      weekday: 'long',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    }).format(new Date(nextSession.starts_at))}.`
+                  : ' See you at the next session.'}
+              </p>
+            )}
+          </section>
+        )
+      })()}
+
       <div className="grid gap-10 lg:grid-cols-[1fr_280px]">
         <section aria-label="Workstreams" className="flex flex-col gap-8">
           {workstreams.length === 0 ? (

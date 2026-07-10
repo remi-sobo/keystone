@@ -361,3 +361,199 @@ export async function replyMessage(formData: FormData): Promise<void> {
   revalidatePath('/today')
   redirect(`/engagements/${engagementId}?state=${allSent ? 'msg_sent' : 'msg_sent_no_email'}#messages`)
 }
+
+// ── Engagement documents (the client agreement store) ────────────────
+
+/**
+ * Mint a signed upload URL for a formal document PDF. Same contract as
+ * deliverables: direct-to-storage after the membership check, the row
+ * recorded only once the object landed. PDF only, by extension here
+ * and by declared type at the form.
+ */
+export async function prepareDocumentUpload(
+  engagementId: string,
+  filename: string
+): Promise<{ path: string; token: string } | { error: string }> {
+  const viewer = await guardPractice()
+  const idCheck = z.string().uuid().safeParse(engagementId)
+  if (!idCheck.success) return { error: 'invalid' }
+  if (!/\.pdf$/i.test(filename)) return { error: 'pdf_only' }
+
+  const supabase = await createServerSupabase()
+  const { data: engagement } = await supabase
+    .from('engagements')
+    .select('id, practice_id, client_id')
+    .eq('id', idCheck.data)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!engagement) return { error: 'not_found' }
+
+  const safeName =
+    filename
+      .split(/[\\/]/)
+      .pop()!
+      .replace(/[^a-zA-Z0-9._ -]/g, '_')
+      .slice(0, 120) || 'document.pdf'
+  const objectPath = `${engagement.practice_id}/${engagement.client_id}/${engagement.id}/${randomUUID()}/${safeName}`
+
+  const { data, error } = await supabaseAdmin.storage
+    .from('engagement-documents')
+    .createSignedUploadUrl(objectPath)
+  if (error || !data) {
+    console.error('[documents] signed upload mint failed:', error?.message)
+    return { error: 'upload_unavailable' }
+  }
+  return { path: data.path, token: data.token }
+}
+
+const DocumentShape = z.object({
+  engagementId: z.string().uuid(),
+  title: z.string().min(1).max(200),
+  storagePath: z.string().max(500),
+  fileName: z.string().max(255),
+  fileSize: z.number().int().min(0).max(20 * 1024 * 1024),
+  status: z.enum(['uploaded', 'signed']),
+  visibleToClient: z.boolean(),
+})
+
+export async function createEngagementDocument(
+  input: z.input<typeof DocumentShape>
+): Promise<{ ok: true } | { error: string }> {
+  const viewer = await guardPractice()
+  const parsed = DocumentShape.safeParse(input)
+  if (!parsed.success) return { error: 'invalid' }
+  const d = parsed.data
+
+  const supabase = await createServerSupabase()
+  const { data: engagement } = await supabase
+    .from('engagements')
+    .select('id, practice_id, client_id')
+    .eq('id', d.engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!engagement) return { error: 'not_found' }
+
+  // The path must sit inside THIS engagement's folder; anything else is
+  // a spoofed pointer at someone else's object.
+  const prefix = `${engagement.practice_id}/${engagement.client_id}/${engagement.id}/`
+  if (!d.storagePath.startsWith(prefix)) return { error: 'invalid' }
+
+  const { error } = await supabase.from('engagement_documents').insert({
+    engagement_id: engagement.id,
+    practice_id: engagement.practice_id,
+    client_id: engagement.client_id,
+    doc_type: 'agreement',
+    title: d.title,
+    status: d.status,
+    storage_path: d.storagePath,
+    file_name: d.fileName.slice(0, 255),
+    file_size: d.fileSize,
+    mime_type: 'application/pdf',
+    visible_to_client: d.visibleToClient,
+    uploaded_by: viewer.user!.id,
+  })
+  if (error) {
+    console.error('[documents] insert failed:', error.message)
+    // Reconcile the orphan: the object landed but the row did not.
+    const { error: cleanupError } = await supabaseAdmin.storage
+      .from('engagement-documents')
+      .remove([d.storagePath])
+    if (cleanupError) {
+      console.error('[documents] orphan cleanup failed:', cleanupError.message)
+    }
+    return { error: 'save_failed' }
+  }
+
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    action: 'documents.uploaded',
+    target: engagement.id,
+    detail: { status: d.status, visible_to_client: d.visibleToClient },
+  })
+  revalidatePath(`/engagements/${engagement.id}`)
+  revalidatePath('/home')
+  return { ok: true }
+}
+
+const DocVisibilityShape = z.object({
+  documentId: z.string().uuid(),
+  engagementId: z.string().uuid(),
+  to: z.enum(['shared', 'hidden']),
+})
+
+export async function setDocumentVisibility(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = DocVisibilityShape.safeParse({
+    documentId: formData.get('documentId'),
+    engagementId: formData.get('engagementId'),
+    to: formData.get('to'),
+  })
+  if (!parsed.success) redirect('/engagements')
+
+  const supabase = await createServerSupabase()
+  const { error } = await supabase
+    .from('engagement_documents')
+    .update({
+      visible_to_client: parsed.data.to === 'shared',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', parsed.data.documentId)
+    .eq('practice_id', viewer.practice!.practiceId)
+  if (error) console.error('[documents] visibility update failed:', error.message)
+  else {
+    await logAuditAction({
+      actorEmail: viewer.user!.email ?? '',
+      action: 'documents.visibility_changed',
+      target: parsed.data.documentId,
+      detail: { to: parsed.data.to },
+    })
+  }
+  revalidatePath(`/engagements/${parsed.data.engagementId}`)
+  revalidatePath('/home')
+}
+
+const DocRemoveShape = z.object({
+  documentId: z.string().uuid(),
+  engagementId: z.string().uuid(),
+})
+
+export async function removeEngagementDocument(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = DocRemoveShape.safeParse({
+    documentId: formData.get('documentId'),
+    engagementId: formData.get('engagementId'),
+  })
+  if (!parsed.success) redirect('/engagements')
+
+  const supabase = await createServerSupabase()
+  const { data: row } = await supabase
+    .from('engagement_documents')
+    .select('id, storage_path')
+    .eq('id', parsed.data.documentId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!row) redirect(`/engagements/${parsed.data.engagementId}`)
+
+  const { error } = await supabase.from('engagement_documents').delete().eq('id', row.id)
+  if (error) {
+    console.error('[documents] delete failed:', error.message)
+  } else {
+    if (row.storage_path) {
+      // The object goes with the row; the service role acts only after
+      // the scoped row read above proved membership.
+      const { error: storageError } = await supabaseAdmin.storage
+        .from('engagement-documents')
+        .remove([row.storage_path])
+      if (storageError) {
+        console.error('[documents] object removal failed:', storageError.message)
+      }
+    }
+    await logAuditAction({
+      actorEmail: viewer.user!.email ?? '',
+      action: 'documents.removed',
+      target: row.id,
+    })
+  }
+  revalidatePath(`/engagements/${parsed.data.engagementId}`)
+  revalidatePath('/home')
+}

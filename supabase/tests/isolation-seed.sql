@@ -1692,4 +1692,28 @@ end $$;
 
 reset role;
 
+-- ── V2 3A: the AI payload is immutable, for every writer ─────────────
+-- The trigger fires regardless of role: even the service role (the
+-- superuser here) cannot rewrite what the AI said. Edits belong in
+-- edited_payload, which updates freely. A practice session cannot
+-- touch the row at all (no session write policies since Ring 3).
+
+do $$ begin
+  update ai_proposals set payload = '{"summary_md":"rewritten history"}'::jsonb;
+  raise exception 'HOLE: ai_proposals.payload was rewritten';
+exception when raise_exception then null; -- the immutability trigger fired
+end $$;
+do $$ begin
+  update ai_proposals set edited_payload = '{"summary_md":"the human copy"}'::jsonb;
+  if not found then raise exception 'edited_payload must accept the human copy'; end if;
+end $$;
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  update ai_proposals set edited_payload = '{"summary_md":"session write"}'::jsonb;
+  if found then raise exception 'LEAK: a session wrote ai_proposals directly'; end if;
+end $$;
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

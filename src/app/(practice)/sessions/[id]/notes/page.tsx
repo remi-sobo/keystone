@@ -7,8 +7,10 @@ import {
   decideProposal,
   extractFromTranscript,
   removePrepResource,
+  reviewProposal,
   saveTranscript,
 } from '../actions'
+import { draftFromPayload, type EditedPayload, type ExtractionPayload } from '@/lib/aiReview'
 
 /**
  * Practice session detail (Ring 3): the run of show. Paste the
@@ -19,8 +21,11 @@ import {
 
 const STATES: Record<string, string> = {
   saved: 'Transcript saved.',
-  extracted: 'Proposal ready below. Nothing is live until you accept.',
+  extracted: 'Proposal ready below. Nothing is live until you publish.',
   accepted: 'Accepted. The note and homework are live for the client.',
+  draft_saved: 'Draft saved. Nothing is live; pick it back up any time.',
+  published: 'Published. The checked groups are live; the original stays on record.',
+  review_error: 'That did not save. Try again.',
   dismissed: 'Dismissed.',
   no_transcript: 'Save a transcript first.',
   budget: 'The AI budget for this month is spent. The transcript is saved; extract next month or raise the ceiling.',
@@ -33,11 +38,6 @@ const STATES: Record<string, string> = {
   prep_removed: 'Prep removed.',
 }
 
-interface ProposalPayload {
-  summary_md: string
-  decisions_md: string
-  action_items: Array<{ title: string; assignee_hint?: string; due_hint?: string; timing: string }>
-}
 
 export default async function PracticeSessionPage({
   params,
@@ -52,7 +52,7 @@ export default async function PracticeSessionPage({
 
   const { data: session } = await supabase
     .from('sessions')
-    .select('id, starts_at, tz, kind, status, client_id, clients(name)')
+    .select('id, starts_at, tz, kind, status, practice_id, client_id, clients(name)')
     .eq('id', id)
     .maybeSingle()
   if (!session) redirect('/engagements')
@@ -66,7 +66,7 @@ export default async function PracticeSessionPage({
         .maybeSingle(),
       supabase
         .from('ai_proposals')
-        .select('id, payload, status, model_used, created_at')
+        .select('id, payload, edited_payload, status, model_used, created_at')
         .eq('session_id', id)
         .order('created_at', { ascending: false }),
       supabase.from('client_members').select('id, email').eq('client_id', session.client_id),
@@ -81,6 +81,13 @@ export default async function PracticeSessionPage({
         .eq('session_id', id),
       supabase.from('resources').select('id, title, kind').order('created_at', { ascending: false }),
     ])
+
+  const { data: practiceRoster } = await supabase
+    .from('practice_members')
+    .select('id, email')
+    .eq('practice_id', session.practice_id)
+    .is('revoked_at', null)
+    .order('email')
 
   const when = new Intl.DateTimeFormat('en-US', {
     timeZone: session.tz,
@@ -139,60 +146,234 @@ export default async function PracticeSessionPage({
       ) : null}
 
       {pending.map((p) => {
-        const payload = p.payload as ProposalPayload
+        const original = p.payload as unknown as ExtractionPayload
+        const sessionDate = new Date(session.starts_at).toISOString().slice(0, 10)
+        const draft =
+          (p.edited_payload as unknown as EditedPayload | null) ??
+          draftFromPayload(original, sessionDate)
+        const hints = original.action_items
+        const fieldCls = 'rounded border border-ink/15 bg-paper px-2 py-1 text-sm text-ink'
         return (
           <section
             key={p.id}
             className="mt-8 rounded-[var(--radius)] border border-brass/50 bg-paper-raised p-5"
           >
-            <p className="eyebrow">Proposal / {p.model_used ?? 'model'} / inert until you decide</p>
-            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-ink">{payload.summary_md}</p>
-            {payload.decisions_md ? (
-              <p className="mt-2 whitespace-pre-line text-sm text-ink-dim">{payload.decisions_md}</p>
-            ) : null}
+            <p className="eyebrow">
+              Proposal / {p.model_used ?? 'model'} / inert until you publish
+              {p.edited_payload ? ' / edited, unpublished' : ''}
+            </p>
 
-            <form action={decideProposal} className="mt-4">
+            <form action={reviewProposal} className="mt-4 flex flex-col gap-6">
               <input type="hidden" name="proposalId" value={p.id} />
               <input type="hidden" name="sessionId" value={session.id} />
-              <div className="flex flex-col gap-3">
-                {payload.action_items.map((item, i) => (
-                  <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg border border-ink/10 bg-paper px-3 py-2">
-                    <span className="min-w-[200px] flex-1 text-sm text-ink">
-                      {item.title}
-                      {item.assignee_hint ? (
-                        <span className="text-ink-dim"> (heard: {item.assignee_hint}{item.due_hint ? `, ${item.due_hint}` : ''})</span>
-                      ) : null}
-                    </span>
-                    <select name={`assign_${i}`} className="rounded border border-ink/15 bg-paper px-2 py-1 text-sm" defaultValue="">
+
+              <div>
+                <h3 className="font-display text-xl font-medium text-ink">Summary</h3>
+                <textarea
+                  name="summary"
+                  rows={6}
+                  maxLength={8000}
+                  defaultValue={draft.summary_md}
+                  className="mt-2 w-full rounded-lg border border-ink/15 bg-paper p-3 text-sm leading-relaxed text-ink"
+                />
+              </div>
+
+              <div>
+                <h3 className="font-display text-xl font-medium text-ink">Decisions</h3>
+                <p className="mt-1 text-sm text-ink-dim">
+                  Checked lines enter the decision log; every line stays in the published note.
+                </p>
+                <input type="hidden" name="dec_count" value={draft.decisions.length} />
+                {draft.decisions.length === 0 ? (
+                  <p className="mt-2 text-sm text-ink-dim">The model heard no decisions.</p>
+                ) : (
+                  <div className="mt-2 flex flex-col gap-2">
+                    {draft.decisions.map((d, i) => (
+                      <div
+                        key={i}
+                        className="flex flex-wrap items-center gap-2 rounded-lg border border-ink/10 bg-paper px-3 py-2"
+                      >
+                        <label className="flex items-center gap-1 text-xs text-ink-dim">
+                          <input type="checkbox" name={`dec_log_${i}`} defaultChecked={d.log} />
+                          log
+                        </label>
+                        <input
+                          name={`dec_text_${i}`}
+                          defaultValue={d.text}
+                          maxLength={500}
+                          className={`min-w-[240px] flex-1 ${fieldCls}`}
+                        />
+                        <input
+                          name={`dec_date_${i}`}
+                          type="date"
+                          defaultValue={d.decided_on}
+                          className={fieldCls}
+                        />
+                        <input
+                          name={`dec_who_${i}`}
+                          defaultValue={d.who}
+                          maxLength={120}
+                          placeholder="who"
+                          className={`w-28 ${fieldCls}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h3 className="font-display text-xl font-medium text-ink">Action items</h3>
+                <p className="mt-1 text-sm text-ink-dim">
+                  Shape each one: client homework, an internal task the client never sees, or drop
+                  it. Needs review runs the submit-and-accept loop.
+                </p>
+                <input type="hidden" name="item_count" value={draft.action_items.length} />
+                <div className="mt-2 flex flex-col gap-2">
+                  {draft.action_items.map((it, i) => (
+                    <div
+                      key={i}
+                      className="flex flex-wrap items-center gap-2 rounded-lg border border-ink/10 bg-paper px-3 py-2"
+                    >
+                      <input type="hidden" name={`item_timing_${i}`} value={it.timing} />
+                      <div className="min-w-[220px] flex-1">
+                        <input
+                          name={`item_title_${i}`}
+                          defaultValue={it.title}
+                          maxLength={300}
+                          className={`w-full ${fieldCls}`}
+                        />
+                        {hints[i]?.assignee_hint || hints[i]?.due_hint ? (
+                          <p className="mt-0.5 text-xs text-ink-dim">
+                            heard: {hints[i]?.assignee_hint ?? ''}
+                            {hints[i]?.due_hint ? `, ${hints[i]?.due_hint}` : ''}
+                          </p>
+                        ) : null}
+                      </div>
+                      <select name={`item_disp_${i}`} defaultValue={it.disposition} className={fieldCls}>
+                        <option value="homework">Client homework</option>
+                        <option value="internal">Internal task</option>
+                        <option value="drop">Drop</option>
+                      </select>
+                      <select
+                        name={`item_assign_${i}`}
+                        defaultValue={
+                          it.assigned_client_member_id
+                            ? `client:${it.assigned_client_member_id}`
+                            : it.assigned_practice_member_id
+                              ? `practice:${it.assigned_practice_member_id}`
+                              : ''
+                        }
+                        className={fieldCls}
+                      >
+                        <option value="">Unassigned</option>
+                        {(members ?? []).map((m) => (
+                          <option key={m.id} value={`client:${m.id}`}>
+                            {m.email}
+                          </option>
+                        ))}
+                        {(practiceRoster ?? []).map((m) => (
+                          <option key={m.id} value={`practice:${m.id}`}>
+                            {m.email} (practice)
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        name={`item_due_${i}`}
+                        type="date"
+                        defaultValue={it.due_on ?? ''}
+                        className={fieldCls}
+                      />
+                      <label className="flex items-center gap-1 text-xs text-ink-dim">
+                        <input
+                          type="checkbox"
+                          name={`item_review_${i}`}
+                          defaultChecked={it.review_requested}
+                        />
+                        needs review
+                      </label>
+                    </div>
+                  ))}
+                  <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-ink/15 bg-paper px-3 py-2">
+                    <input
+                      name="item_title_new"
+                      maxLength={300}
+                      placeholder="Add what the model missed"
+                      className={`min-w-[220px] flex-1 ${fieldCls}`}
+                    />
+                    <select name="item_disp_new" defaultValue="homework" className={fieldCls}>
+                      <option value="homework">Client homework</option>
+                      <option value="internal">Internal task</option>
+                    </select>
+                    <select name="item_assign_new" defaultValue="" className={fieldCls}>
                       <option value="">Unassigned</option>
                       {(members ?? []).map((m) => (
-                        <option key={m.id} value={m.id}>
+                        <option key={m.id} value={`client:${m.id}`}>
                           {m.email}
                         </option>
                       ))}
+                      {(practiceRoster ?? []).map((m) => (
+                        <option key={m.id} value={`practice:${m.id}`}>
+                          {m.email} (practice)
+                        </option>
+                      ))}
                     </select>
-                    <input name={`due_${i}`} type="date" className="rounded border border-ink/15 bg-paper px-2 py-1 text-sm" />
+                    <input name="item_due_new" type="date" className={fieldCls} />
+                    <label className="flex items-center gap-1 text-xs text-ink-dim">
+                      <input type="checkbox" name="item_review_new" />
+                      needs review
+                    </label>
                   </div>
-                ))}
+                </div>
               </div>
-              <div className="mt-4 flex gap-3">
+
+              <div className="flex flex-wrap items-center gap-4 border-t border-ink/10 pt-4">
+                <span className="text-sm text-ink-dim">Publish:</span>
+                <label className="flex items-center gap-1.5 text-sm text-ink">
+                  <input type="checkbox" name="pub_note" defaultChecked />
+                  the note
+                </label>
+                <label className="flex items-center gap-1.5 text-sm text-ink">
+                  <input type="checkbox" name="pub_decisions" defaultChecked />
+                  the decision log
+                </label>
+                <label className="flex items-center gap-1.5 text-sm text-ink">
+                  <input type="checkbox" name="pub_items" defaultChecked />
+                  the items
+                </label>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
                 <button
                   type="submit"
-                  name="decision"
-                  value="accept"
+                  name="mode"
+                  value="publish"
                   className="rounded-lg bg-forest px-4 py-2 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98]"
                 >
-                  Accept and assign
+                  Publish
                 </button>
                 <button
                   type="submit"
-                  name="decision"
-                  value="dismiss"
-                  className="rounded-lg border border-ink/20 px-4 py-2 text-sm text-ink-dim hover:text-ink"
+                  name="mode"
+                  value="draft"
+                  className="rounded-lg border border-forest px-4 py-2 text-sm text-forest transition-colors duration-200 hover:bg-forest hover:text-paper active:scale-[0.98]"
                 >
-                  Dismiss
+                  Save draft
                 </button>
               </div>
+            </form>
+
+            <form action={decideProposal} className="mt-3">
+              <input type="hidden" name="proposalId" value={p.id} />
+              <input type="hidden" name="sessionId" value={session.id} />
+              <button
+                type="submit"
+                name="decision"
+                value="dismiss"
+                className="text-sm text-ink-dim underline hover:text-ink"
+              >
+                Dismiss the whole proposal
+              </button>
             </form>
           </section>
         )

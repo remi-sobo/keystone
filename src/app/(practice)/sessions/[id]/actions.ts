@@ -13,6 +13,13 @@ import { buildExtractionRequest, parseExtraction, TRANSCRIPT_CHAR_CAP } from '@/
 import { validateVoice } from '@/lib/voice'
 import { logVoiceViolation } from '@/lib/voiceViolations'
 import { logAuditAction } from '@/lib/audit'
+import {
+  decisionsBlock,
+  type EditedPayload,
+  type ItemDisposition,
+  type ReviewDecision,
+  type ReviewItem,
+} from '@/lib/aiReview'
 
 /**
  * Practice session-detail actions (Ring 3). The AI contract in code:
@@ -252,12 +259,12 @@ export async function removePrepResource(formData: FormData): Promise<void> {
   redirect(back(parsed.data.sessionId, 'prep_removed'))
 }
 
-// ── Decide (the single human path into live tables) ──────────────────
+// ── Dismiss (the review workspace below is the only accept path) ─────
 
 const DecideShape = z.object({
   proposalId: z.string().uuid(),
   sessionId: z.string().uuid(),
-  decision: z.enum(['accept', 'dismiss']),
+  decision: z.literal('dismiss'),
 })
 
 export async function decideProposal(formData: FormData): Promise<void> {
@@ -268,88 +275,236 @@ export async function decideProposal(formData: FormData): Promise<void> {
     decision: formData.get('decision'),
   })
   if (!parsed.success) redirect('/clients')
-  const { proposalId, sessionId, decision } = parsed.data
-  const practiceId = viewer.practice!.practiceId
+  const { proposalId, sessionId } = parsed.data
 
   const { data: proposal } = await supabaseAdmin
     .from('ai_proposals')
-    .select('id, kind, payload, status, engagement_id, practice_id, client_id, session_id')
+    .select('id, status, practice_id')
     .eq('id', proposalId)
-    .eq('practice_id', practiceId)
+    .eq('practice_id', viewer.practice!.practiceId)
     .eq('status', 'proposed')
     .maybeSingle()
   if (!proposal) redirect(back(sessionId, 'proposal_gone'))
 
-  if (decision === 'dismiss') {
-    await supabaseAdmin
-      .from('ai_proposals')
-      .update({ status: 'dismissed', decided_at: new Date().toISOString(), decided_by: viewer.user!.id })
-      .eq('id', proposal.id)
-    await logAuditAction({
-      actorEmail: viewer.user!.email ?? '',
-      action: 'ai.proposal.dismiss',
-      target: proposal.id,
-    })
-    revalidatePath(`/sessions/${sessionId}/notes`)
-    redirect(back(sessionId, 'dismissed'))
-  }
-
-  // Accept: publish the note and create the items, with per-item
-  // assignments the consultant set in the form (assign_<index> fields
-  // carrying a client_members id or empty). Every assignee id is
-  // validated against the proposal's OWN client before it is written.
-  const payload = proposal.payload as {
-    summary_md: string
-    decisions_md: string
-    action_items: Array<{ title: string; timing: string; due_hint?: string }>
-  }
-
-  const { data: validMembers } = await supabaseAdmin
-    .from('client_members')
-    .select('id')
-    .eq('client_id', proposal.client_id)
-  const validIds = new Set((validMembers ?? []).map((m) => m.id))
-
-  const items = payload.action_items.map((item, i) => {
-    const rawAssign = String(formData.get(`assign_${i}`) ?? '')
-    const rawDue = String(formData.get(`due_${i}`) ?? '')
-    const due = /^\d{4}-\d{2}-\d{2}$/.test(rawDue) ? rawDue : null
-    return {
-      engagement_id: proposal.engagement_id,
-      practice_id: proposal.practice_id,
-      client_id: proposal.client_id,
-      session_id: proposal.session_id,
-      title: item.title.slice(0, 200),
-      assigned_client_member_id: validIds.has(rawAssign) ? rawAssign : null,
-      due_on: due,
-      timing: ['before_session', 'after_session', 'standing'].includes(item.timing)
-        ? item.timing
-        : 'standing',
-      status: 'open',
-      source: 'accepted_proposal',
-      proposal_id: proposal.id,
-    }
+  await supabaseAdmin
+    .from('ai_proposals')
+    .update({ status: 'dismissed', decided_at: new Date().toISOString(), decided_by: viewer.user!.id })
+    .eq('id', proposal.id)
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    action: 'ai.proposal.dismiss',
+    target: proposal.id,
   })
+  revalidatePath(`/sessions/${sessionId}/notes`)
+  redirect(back(sessionId, 'dismissed'))
+}
 
-  const { error: noteError } = await supabaseAdmin
-    .from('session_notes')
-    .update({
-      summary_md: payload.summary_md,
-      decisions_md: payload.decisions_md,
-      visibility: 'shared',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('session_id', proposal.session_id)
+// ── The review workspace (V2 3A): edit, save as draft, publish ───────
+// The original payload is trigger-immutable; every edit lands in
+// edited_payload. Publishing stays the ONE human path into the record,
+// now selective: the note, the decision-log rows, and the items each
+// publish only when checked. Accepted is accepted (gate 3A-4): a
+// published proposal never reopens.
+
+const ReviewShape = z.object({
+  proposalId: z.string().uuid(),
+  sessionId: z.string().uuid(),
+  mode: z.enum(['draft', 'publish']),
+})
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
+export async function reviewProposal(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = ReviewShape.safeParse({
+    proposalId: formData.get('proposalId'),
+    sessionId: formData.get('sessionId'),
+    mode: formData.get('mode'),
+  })
+  if (!parsed.success) redirect('/clients')
+  const { proposalId, sessionId, mode } = parsed.data
+  const practiceId = viewer.practice!.practiceId
+
+  const { data: proposal } = await supabaseAdmin
+    .from('ai_proposals')
+    .select('id, kind, status, engagement_id, practice_id, client_id, session_id')
+    .eq('id', proposalId)
     .eq('practice_id', practiceId)
-  if (noteError) {
-    console.error('[accept] note publish failed:', noteError.message)
-    redirect(back(sessionId, 'accept_failed'))
+    .eq('kind', 'extraction')
+    .eq('status', 'proposed')
+    .maybeSingle()
+  if (!proposal) redirect(back(sessionId, 'proposal_gone'))
+
+  // Client-facing prose rides the voice gate like every shipped string.
+  const sweep = (text: string): string => {
+    const check = validateVoice(text)
+    if (check.ok) return text
+    void logVoiceViolation({
+      practiceId,
+      source: 'ai_review',
+      violations: check.violations,
+      rawExcerpt: text.slice(0, 400),
+      cleanedExcerpt: check.cleaned.slice(0, 400),
+    })
+    return check.cleaned
+  }
+  const str = (name: string, cap: number) => String(formData.get(name) ?? '').trim().slice(0, cap)
+  const count = (name: string) => Math.min(Number(formData.get(name) ?? 0) || 0, 40)
+
+  // Both rosters, so a forged assignee id from the browser never lands.
+  const [{ data: clientRoster }, { data: practiceRoster }] = await Promise.all([
+    supabaseAdmin.from('client_members').select('id').eq('client_id', proposal.client_id),
+    supabaseAdmin.from('practice_members').select('id').eq('practice_id', proposal.practice_id),
+  ])
+  const clientIds = new Set((clientRoster ?? []).map((m) => m.id))
+  const practiceIds = new Set((practiceRoster ?? []).map((m) => m.id))
+
+  const decisions: ReviewDecision[] = []
+  for (let i = 0; i < count('dec_count'); i++) {
+    const text = sweep(str(`dec_text_${i}`, 500))
+    if (!text) continue
+    const rawDate = str(`dec_date_${i}`, 10)
+    decisions.push({
+      text,
+      log: formData.get(`dec_log_${i}`) === 'on',
+      decided_on: DATE_RE.test(rawDate) ? rawDate : new Date().toISOString().slice(0, 10),
+      who: str(`dec_who_${i}`, 120),
+    })
   }
 
-  if (items.length > 0) {
-    const { error: itemsError } = await supabaseAdmin.from('action_items').insert(items)
+  const items: ReviewItem[] = []
+  const readItem = (key: string) => {
+    const title = sweep(str(`item_title_${key}`, 300))
+    if (!title) return
+    const rawDisp = str(`item_disp_${key}`, 20)
+    const disposition: ItemDisposition =
+      rawDisp === 'internal' || rawDisp === 'drop' ? rawDisp : 'homework'
+    const [side, memberId] = str(`item_assign_${key}`, 60).split(':')
+    const assignedClient =
+      disposition === 'homework' && side === 'client' && clientIds.has(memberId) ? memberId : null
+    const assignedPractice =
+      disposition === 'internal' && side === 'practice' && practiceIds.has(memberId)
+        ? memberId
+        : null
+    const rawDue = str(`item_due_${key}`, 10)
+    const rawTiming = str(`item_timing_${key}`, 20)
+    items.push({
+      title,
+      disposition,
+      assigned_client_member_id: assignedClient,
+      assigned_practice_member_id: assignedPractice,
+      due_on: DATE_RE.test(rawDue) ? rawDue : null,
+      timing: ['before_session', 'after_session', 'standing'].includes(rawTiming)
+        ? rawTiming
+        : 'standing',
+      // The loop needs a coachee to run it (3C's rule, kept here).
+      review_requested:
+        formData.get(`item_review_${key}`) === 'on' &&
+        disposition === 'homework' &&
+        assignedClient != null,
+    })
+  }
+  for (let i = 0; i < count('item_count'); i++) readItem(String(i))
+  readItem('new') // the row for what the model missed
+
+  const edited: EditedPayload = {
+    summary_md: sweep(str('summary', 8000)),
+    decisions,
+    action_items: items,
+  }
+
+  const stamp = {
+    edited_payload: edited as unknown as Record<string, unknown>,
+    edited_at: new Date().toISOString(),
+    edited_by: viewer.user!.id,
+  }
+
+  if (mode === 'draft') {
+    const { error } = await supabaseAdmin.from('ai_proposals').update(stamp).eq('id', proposal.id)
+    if (error) {
+      console.error('[review] draft save failed:', error.message)
+      redirect(back(sessionId, 'review_error'))
+    }
+    revalidatePath(`/sessions/${sessionId}/notes`)
+    redirect(back(sessionId, 'draft_saved'))
+  }
+
+  // Publish, selectively. The edited copy is stamped first so the
+  // record always shows exactly what was reviewed.
+  const pubNote = formData.get('pub_note') === 'on'
+  const pubDecisions = formData.get('pub_decisions') === 'on'
+  const pubItems = formData.get('pub_items') === 'on'
+
+  const { error: stampError } = await supabaseAdmin
+    .from('ai_proposals')
+    .update(stamp)
+    .eq('id', proposal.id)
+  if (stampError) {
+    console.error('[review] edited stamp failed:', stampError.message)
+    redirect(back(sessionId, 'review_error'))
+  }
+
+  if (pubNote) {
+    const { error: noteError } = await supabaseAdmin
+      .from('session_notes')
+      .update({
+        summary_md: edited.summary_md,
+        decisions_md: decisionsBlock(edited.decisions),
+        visibility: 'shared',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('session_id', proposal.session_id)
+      .eq('practice_id', practiceId)
+    if (noteError) {
+      console.error('[review] note publish failed:', noteError.message)
+      redirect(back(sessionId, 'accept_failed'))
+    }
+  }
+
+  const logged = pubDecisions ? edited.decisions.filter((d) => d.log) : []
+  if (logged.length > 0) {
+    const { error: decError } = await supabaseAdmin.from('decisions').insert(
+      logged.map((d) => ({
+        engagement_id: proposal.engagement_id,
+        practice_id: proposal.practice_id,
+        client_id: proposal.client_id,
+        session_id: proposal.session_id,
+        title: d.text.slice(0, 300),
+        decided_on: d.decided_on,
+        decided_by_label: d.who || null,
+        source: 'accepted_proposal',
+        proposal_id: proposal.id,
+        created_by: viewer.user!.id,
+      }))
+    )
+    if (decError) {
+      console.error('[review] decisions insert failed:', decError.message)
+      redirect(back(sessionId, 'accept_failed'))
+    }
+  }
+
+  const kept = pubItems ? edited.action_items.filter((it) => it.disposition !== 'drop') : []
+  if (kept.length > 0) {
+    const { error: itemsError } = await supabaseAdmin.from('action_items').insert(
+      kept.map((it) => ({
+        engagement_id: proposal.engagement_id,
+        practice_id: proposal.practice_id,
+        client_id: proposal.client_id,
+        session_id: proposal.session_id,
+        title: it.title.slice(0, 200),
+        assigned_client_member_id: it.assigned_client_member_id,
+        assigned_practice_member_id: it.assigned_practice_member_id,
+        audience: it.disposition === 'internal' ? 'practice' : 'client',
+        review_requested: it.review_requested,
+        due_on: it.due_on,
+        timing: it.timing,
+        status: 'open',
+        source: 'accepted_proposal',
+        proposal_id: proposal.id,
+      }))
+    )
     if (itemsError) {
-      console.error('[accept] items insert failed:', itemsError.message)
+      console.error('[review] items insert failed:', itemsError.message)
       redirect(back(sessionId, 'accept_failed'))
     }
   }
@@ -361,12 +516,22 @@ export async function decideProposal(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
-    action: 'ai.proposal.accept',
+    action: 'ai.proposal.publish',
     target: proposal.id,
-    detail: { items: items.length, assigned: items.filter((i) => i.assigned_client_member_id).length },
+    detail: {
+      note: pubNote,
+      decisions: logged.length,
+      items: kept.length,
+      internal: kept.filter((it) => it.disposition === 'internal').length,
+      dropped: edited.action_items.length - (pubItems ? kept.length : 0),
+    },
   })
 
   revalidatePath(`/sessions/${sessionId}/notes`)
+  revalidatePath(`/engagements/${proposal.engagement_id}`)
   revalidatePath('/homework')
-  redirect(back(sessionId, 'accepted'))
+  revalidatePath('/decisions')
+  revalidatePath('/home')
+  revalidatePath('/today')
+  redirect(back(sessionId, 'published'))
 }

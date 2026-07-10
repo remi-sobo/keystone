@@ -2,7 +2,7 @@
 
 **Parent:** `specs/keystone-v2.md` Phase 3 epic 3A, sequenced first in the phase because it is a hub, not a leaf: decisions (2B) and internal tasks (4B) are born here.
 **Grounded against:** the live codebase after Phase 2. Today `extract.ts` proposes `{summary_md, decisions_md, action_items[]}` into ONE `ai_proposals` row and `decideProposal` is coarse: accept everything (publish the note, create every item as client homework) or dismiss everything. The decisions table already carries `source = 'accepted_proposal'` and `proposal_id` (pre-landed in 0013, waiting for this epic). `action_items_read` currently shows every engagement item to every client member, which is exactly why the internal-task convert target needs a wall in this same PR.
-**Status:** draft for Remi. CONFIRM gates in section 7.
+**Status:** BUILT 2026-07-10. All four gates approved as recommended (Remi, "recommendation approved"). Migration 0019 applied live; gate 3A-1's audience wall had already shipped with 3C per gate 3C-5.
 **Date:** 2026-07-10
 
 ---

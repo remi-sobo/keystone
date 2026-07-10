@@ -79,14 +79,20 @@ test.describe('the AI contract in the actions', () => {
     expect(src).toContain('logVoiceViolation')
   })
 
-  test('decideProposal is the single path into live tables and validates assignees against the proposal client', () => {
+  test('reviewProposal (3A) is the single publish path and validates every assignee against the proposal scope', () => {
     const src = read(ACTIONS)
     expect(src).toContain("eq('status', 'proposed')")
-    // Assignee ids are checked against the proposal's own client roster.
+    // Assignee ids are checked against the proposal's OWN rosters,
+    // both sides, before anything is written.
     expect(src).toMatch(/from\('client_members'\)[\s\S]{0,120}eq\('client_id', proposal\.client_id\)/)
-    expect(src).toContain('validIds.has(rawAssign)')
-    // Accept publishes the note and audits metadata only.
+    expect(src).toMatch(/from\('practice_members'\)[\s\S]{0,140}eq\('practice_id', proposal\.practice_id\)/)
+    expect(src).toContain('clientIds.has(memberId)')
+    expect(src).toContain('practiceIds.has(memberId)')
+    // Publish shares the note, stamps the edited copy first, and
+    // audits metadata only; dismiss is the only other verb.
     expect(src).toContain("visibility: 'shared'")
+    expect(src).toContain('edited_payload')
+    expect(src).toContain("decision: z.literal('dismiss')")
     expect(src).toContain('logAuditAction')
   })
 

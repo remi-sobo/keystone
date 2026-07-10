@@ -2,7 +2,7 @@
 
 **Parent:** `specs/keystone-v2.md` Phase 2 epic 2E. The V1 spec named Q&A as one of the four AI jobs; extraction, digest, and suggestion shipped, Q&A did not. It is the highest-value, lowest-danger place for AI in the product PRECISELY BECAUSE of the constraints in this spec; without them it is neither.
 **Grounded against:** the live codebase after 2C (migrations 0001 to 0015). The plumbing already exists and is waiting: `ModelTask` includes `'qa'` mapped to the Sonnet tier in `claudeModel.ts`; `LIMITS.AI_QA_PER_MIN` (10) and `AI_QA_PER_HOUR` (60) sit unused in `rateLimit.ts`; `callClaudeChecked` carries the spend guard, per-practice ceilings, cost ledger, refusal fallback, and the voice boundary. SECURITY.md section 4 rule 2 already binds Q&A: it NEVER receives raw transcript text, only the accepted, structured record.
-**Status:** draft for Remi. This epic settles program gate V2-3. CONFIRM gates in section 8.
+**Status:** approved by Remi 2026-07-10 (section 8 gates decided as recommended; V2-3 settled by gate 2E-1) and built the same day: migration 0016, lib/qa.ts and lib/qaCorpus.ts, /ask and the practice ask box. The live end-to-end answer waits on ANTHROPIC_API_KEY per the setup checklist; the engine is unit-tested at the gates.
 **Date:** 2026-07-10
 
 ---

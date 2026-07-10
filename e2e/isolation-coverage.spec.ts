@@ -47,6 +47,7 @@ const SERVICE_ROLE_ONLY_TABLES: ReadonlyArray<string> = [
   'ai_spend_ledger',    // AI cost metadata; written by the anthropicClient chokepoint (SECURITY.md 5)
   'voice_violations',   // voice drift log, model excerpts only (SECURITY.md 5)
   'google_connections', // encrypted OAuth tokens; deny-all, calendar routes only (SECURITY.md 7)
+  'qa_exchanges',       // Q&A accountability copy; no session reads it (SECURITY.md 5, V2 2E)
 ]
 
 function readAllMigrations(): string {

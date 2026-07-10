@@ -6,8 +6,10 @@ import { RoomShell } from '@/components/RoomShell'
 import AddDeliverableForm from './AddDeliverableForm'
 import UploadAgreementForm from './UploadAgreementForm'
 import { MarkdownLite } from '@/components/MarkdownLite'
+import AskRecordForm from '@/components/AskRecordForm'
 import {
   addDecision,
+  askEngagementQuestion,
   attachEvidence,
   removeDeliverable,
   removeEvidence,
@@ -394,6 +396,17 @@ export default async function EngagementDetailPage({
             </button>
           </div>
         </form>
+      </section>
+
+      <section className="mt-12">
+        <h2 className="font-display text-2xl font-medium text-ink">Ask the record</h2>
+        <p className="mt-1 text-sm text-ink-dim">
+          Sonnet reads this engagement&apos;s record through your session and answers with
+          sources. It refuses when the record is silent.
+        </p>
+        <div className="mt-4">
+          <AskRecordForm ask={askEngagementQuestion.bind(null, engagement.id)} />
+        </div>
       </section>
 
       <section id="outcomes" className="mt-12">

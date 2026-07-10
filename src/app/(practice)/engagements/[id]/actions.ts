@@ -12,6 +12,12 @@ import { appBaseUrl, sendEmail } from '@/lib/email'
 import { logAuditAction } from '@/lib/audit'
 import { validateVoice } from '@/lib/voice'
 import { logVoiceViolation } from '@/lib/voiceViolations'
+import { callClaudeChecked } from '@/lib/anthropicClient'
+import { AiBudgetExceededError } from '@/lib/spend'
+import { buildQaRequest, parseAnswer, QUESTION_CHAR_CAP } from '@/lib/qa'
+import { buildQaCorpus } from '@/lib/qaCorpus'
+import { recordQaExchange } from '@/lib/qaExchange'
+import type { AskResult } from '@/components/AskRecordForm'
 
 /**
  * Engagement-detail actions: the readiness panel (Ring 3) and
@@ -941,4 +947,97 @@ export async function removeEvidence(formData: FormData): Promise<void> {
   revalidatePath(`/engagements/${engagementId.data}`)
   revalidatePath('/outcomes')
   redirect(`/engagements/${engagementId.data}?state=evidence_removed#outcomes`)
+}
+
+// ── Engagement Q&A (V2 2E), practice side ─────────────────────────────
+
+/**
+ * The practice's Q&A over the fuller record. Same engine as the
+ * client's /ask; the corpus is built on THIS session, so
+ * practice-visibility notes ride in and nothing changes hands twice.
+ */
+export async function askEngagementQuestion(
+  engagementId: string,
+  question: string
+): Promise<AskResult> {
+  const viewer = await guardPractice()
+  const idCheck = z.string().uuid().safeParse(engagementId)
+  const q = question.trim()
+  if (!idCheck.success || !q || q.length > QUESTION_CHAR_CAP)
+    return { ok: false, error: 'invalid' }
+
+  const limited = await checkRateLimits([
+    { config: LIMITS.AI_QA_PER_MIN, key: viewer.user!.id },
+    { config: LIMITS.AI_QA_PER_HOUR, key: viewer.user!.id },
+  ])
+  if (!limited.ok) return { ok: false, error: 'slow' }
+
+  const supabase = await createServerSupabase()
+  const { data: engagement } = await supabase
+    .from('engagements')
+    .select('id, title, practice_id, client_id, clients(name)')
+    .eq('id', idCheck.data)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!engagement) return { ok: false, error: 'failed' }
+
+  const corpus = await buildQaCorpus(supabase, engagement.id)
+  const request = buildQaRequest(q, corpus, {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    clientName: ((engagement.clients as any)?.name as string) ?? 'the client',
+    engagementTitle: engagement.title,
+  })
+
+  let result
+  try {
+    result = await callClaudeChecked({
+      ...request,
+      practiceId: engagement.practice_id,
+      engagementId: engagement.id,
+    })
+  } catch (e) {
+    if (e instanceof AiBudgetExceededError) return { ok: false, error: 'budget' }
+    console.error('[qa] practice call failed:', e instanceof Error ? e.message : 'unknown')
+    return { ok: false, error: 'unavailable' }
+  }
+
+  const supplied = new Set(corpus.map((c) => c.id))
+  const answer = parseAnswer(result.data, supplied)
+  if (!answer) return { ok: false, error: 'failed' }
+
+  const check = validateVoice(answer.answer_md)
+  if (!check.ok) {
+    void logVoiceViolation({
+      practiceId: engagement.practice_id,
+      source: 'qa',
+      violations: check.violations,
+      rawExcerpt: answer.answer_md.slice(0, 400),
+      cleanedExcerpt: check.cleaned.slice(0, 400),
+    })
+    answer.answer_md = check.cleaned
+  }
+
+  void recordQaExchange({
+    engagementId: engagement.id,
+    practiceId: engagement.practice_id,
+    clientId: engagement.client_id,
+    askedBy: viewer.user!.id,
+    askerSide: 'practice',
+    question: q,
+    answerMd: answer.answer_md,
+    sources: answer.sources,
+    grounded: answer.grounded,
+    modelUsed: result.modelUsed,
+  })
+
+  const byId = new Map(corpus.map((c) => [c.id, c]))
+  return {
+    ok: true,
+    answer: answer.answer_md,
+    grounded: answer.grounded,
+    sources: answer.sources
+      .map((s) => byId.get(s))
+      .filter((c): c is NonNullable<typeof c> => !!c)
+      .map((c) => ({ label: c.label, href: c.href })),
+  }
 }

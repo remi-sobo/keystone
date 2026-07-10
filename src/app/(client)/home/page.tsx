@@ -398,6 +398,11 @@ export default async function ClientHomePage() {
                 <Link href="/outcomes" className="text-forest underline">
                   the outcomes
                 </Link>
+                <br />
+                Questions?{' '}
+                <Link href="/ask" className="text-forest underline">
+                  Ask the record
+                </Link>
               </p>
             ) : null}
           </KeystoneCard>

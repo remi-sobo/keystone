@@ -1333,4 +1333,35 @@ end $$;
 
 reset role;
 
+-- ── Q&A exchanges (V2 2E): deny-all to every session ────────────────
+
+insert into qa_exchanges (engagement_id, practice_id, client_id, asker_side, question, answer_md) values
+  ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+   '20000000-0000-0000-0000-0000000000a1', 'client', 'leak-test question', 'leak-test answer');
+
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from qa_exchanges) <> 0 then
+    raise exception 'LEAK: a session reads qa_exchanges (owner)';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from qa_exchanges) <> 0 then
+    raise exception 'LEAK: a session reads qa_exchanges (client member, own question included)';
+  end if;
+end $$;
+do $$ begin
+  insert into qa_exchanges (engagement_id, practice_id, client_id, asker_side, question)
+    values ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1', 'client', 'forged');
+  raise exception 'HOLE: a session wrote a qa exchange';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

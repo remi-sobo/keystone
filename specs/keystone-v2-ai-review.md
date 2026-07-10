@@ -14,7 +14,7 @@ The review workspace between "what the AI said" and "what you publish." On the s
 1. **The original is never lost.** The AI's payload is immutable from the moment it lands; every edit is a separate copy. "What the AI said" versus "what you published" is recoverable forever, which is the honesty that makes propose-then-accept mean something.
 2. **Publishing stays the ONE human path into the record**, now with finer hands. Nothing here adds an autonomous write; it adds precision to the existing accept.
 
-## 2. Schema (migration 0017, two small deltas)
+## 2. Schema (migration 0018 once 3C lands first, two small deltas)
 
 ```sql
 alter table ai_proposals
@@ -26,6 +26,8 @@ alter table action_items
   add column audience text not null default 'client'
     check (audience in ('client','practice'));
 ```
+
+*Sequencing note (2026-07-10): 3C (`specs/keystone-v2-homework.md`) was pulled ahead of this epic. If its gate 3C-5 is approved, the `action_items.audience` delta and the rebuilt client read policy ship with 3C, gate 3A-1 closes as transferred, and this migration shrinks to the `ai_proposals` deltas alone.*
 
 - `payload` becomes structurally immutable: a trigger rejects any UPDATE that changes it (the same never-rides-the-payload discipline the approvals trigger set). Edits live only in `edited_payload`; publish reads `edited_payload ?? payload`.
 - **The internal-task wall (the 4B kernel, pulled in because leaking is worse than waiting):** `action_items_read` is rebuilt so a client member sees only `audience = 'client'` rows; the practice sees everything. The check-off policy already keys on own-membership, and internal tasks are practice-assigned, so no other policy moves. 4B's fuller surfaces (the split views, shared commitments) come later; the wall comes now.

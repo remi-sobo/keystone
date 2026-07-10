@@ -212,6 +212,26 @@ export default async function SettingsPage({
           )}
         </KeystoneCard>
       </section>
+
+      <section className="mt-12">
+        <h2 className="font-display text-2xl font-medium text-ink">Your account</h2>
+        <KeystoneCard className="mt-4">
+          <p className="text-sm text-ink">
+            Signed in as <span className="font-medium">{viewer.user?.email}</span>
+            {viewer.practice ? (
+              <span className="text-ink-dim"> ({viewer.practice.role} at {viewer.practice.practiceName})</span>
+            ) : null}
+          </p>
+          <form action="/auth/signout" method="post" className="mt-4">
+            <button
+              type="submit"
+              className="rounded-lg border border-ink/20 px-4 py-2 text-sm font-medium text-ink transition-colors duration-200 hover:border-ink/40 active:scale-[0.98]"
+            >
+              Sign out
+            </button>
+          </form>
+        </KeystoneCard>
+      </section>
     </RoomShell>
   )
 }

@@ -506,6 +506,13 @@ export default async function ClientHomePage() {
           </KeystoneCard>
         </aside>
       </div>
+
+      <p className="mt-12 border-t border-ink/10 pt-4 text-xs text-ink-dim md:hidden">
+        Signed in as {viewer.user!.email}.{' '}
+        <Link href="/account" className="underline hover:text-ink">
+          Your account
+        </Link>
+      </p>
     </RoomShell>
   )
 }

@@ -2,11 +2,11 @@
 
 The live operational doc. If it is happening and it is not here, it is not happening. Weekly ritual per SOBO_PLAYBOOK.md section 8.
 
-Last updated: 2026-07-10 (Phases 0 through 2 built and deployed; BUILD PAUSED for Remi's hands-on test pass before Phase 3).
+Last updated: 2026-07-10 (Phases 0 through 2 built and deployed; test-pass fixes shipped; Phase 3 next).
 
-## Paused: Remi tests everything
+## Build resumed 2026-07-10 after Remi's test pass
 
-The build stops here until Remi has walked the app. The three keys that wake the dormant features (all in `docs/setup-checklist.md`): the Supabase auth redirect allow-list (unblocks every sign-in), RESEND_API_KEY (invite, message, digest email), ANTHROPIC_API_KEY (extraction, digest drafting, Q&A). Everything else is live. On resume: Phase 3 opens with 3A (editable AI proposal review), then 4F notifications infra pulled forward; the pilot's harvest list steers depth.
+The walkthrough surfaced two asks, both shipped the same day (sign-out and accounts everywhere; the nine library guides written in full). Four test personas (remi+susan/liesl/aris/jasmine@ambitionangels.org) sit on the SafeSpace roster for Remi's client-view testing; deactivate them from Members and access before the real four arrive. The three keys in `docs/setup-checklist.md` still gate the dormant features (auth allow-list, RESEND_API_KEY, ANTHROPIC_API_KEY). Next: Phase 3 opens with 3A (editable AI proposal review), then 4F notifications infra pulled forward.
 
 ## State
 
@@ -110,6 +110,8 @@ The spec numbers these 1 through 12 and 14; there is no gate 13 in the spec (fla
 - Invite sends: unblocked (CONFIRM 2 decided; the four seeded SafeSpace emails are confirmed as-is). The four can sign in as soon as the auth allow-list step lands.
 
 ## Recently shipped
+
+- 2026-07-10: the test-pass pair, on Remi's walkthrough. (1) Sign-out and accounts for everyone: a POST-only /auth/signout route, a sign-out in the sidebar footer on both surfaces (collapsed rail included), the client /account page (who you are in this room, since when, the door out) on the desktop nav with a quiet reach from the bottom of Home for phones, and a Your account section with sign-out on practice Settings. (2) The nine library guides written in full in Remi's voice (donor journeys, running a fundraising meeting, the weekly rhythm, messaging angles, segmenting the base, foundations versus individuals, multi-year giving, AI in the daily workflow, positive framing): straightforward, actionable, each with a this-week move; applied live (editable at /library/authoring) and checked in as seed-library-guides.sql; the client library reader upgraded to the MarkdownLite renderer so the guides read as documents. Also: four remi+ test personas added to the SafeSpace roster for client-view testing. 156 gate assertions green.
 
 - 2026-07-10: engagement search built; PHASE 2 IS COMPLETE. lib/recordSearch.ts runs eight engagement-scoped ILIKE queries on the caller's session (charter, decisions, notes, outcomes, homework, deliverables, workstream notes, messages), transcript columns untouched and gate-checked, every query's engagement scoping asserted by the gate. The /ask page became "Ask or find" (plain search above the AI ask, clearly labeled); the engagement page's Ask the record section gained the same find box with practice-side hrefs. Pure helpers (cleanTerm, likePattern, snippetAround) unit-tested. No migration, no model, no new walls; 156 gate assertions green.
 - 2026-07-10: main fast-forwarded to 2E (c0f532d) and deployed. The engagement-search spec landed, the Phase 2 closer: plain ILIKE keyword search on the caller's own session (the 2E pattern, so the search scope IS the caller's visibility and no index copies anything), snippets grouped by kind, messages in scope and transcripts out, and the /ask page becoming "Ask or find" rather than a sixth nav page. No migration. Three CONFIRM gates open.

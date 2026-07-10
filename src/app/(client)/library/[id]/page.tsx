@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
 import { RoomShell } from '@/components/RoomShell'
+import { MarkdownLite } from '@/components/MarkdownLite'
 
 /**
  * One resource (Ring 4). Pure RLS: the row comes back only for members
@@ -44,9 +45,7 @@ export default async function ResourcePage({
       maxWidth="max-w-3xl"
     >
       {resource.body_md ? (
-        <div className="whitespace-pre-line text-sm leading-relaxed text-ink">
-          {resource.body_md}
-        </div>
+        <MarkdownLite text={resource.body_md} />
       ) : (
         <p className="text-sm text-ink-dim">This resource has no body yet.</p>
       )}

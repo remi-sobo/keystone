@@ -13,6 +13,7 @@ import {
   Users,
   Briefcase,
   Settings,
+  LogOut,
   PanelLeftClose,
   PanelLeftOpen,
   type LucideIcon,
@@ -139,6 +140,18 @@ export default function Sidebar({
               <div className="truncate text-xs text-ink-dim">{personEmail}</div>
             </>
           )}
+          <form action="/auth/signout" method="post" className={collapsed ? '' : 'mt-2'}>
+            <button
+              type="submit"
+              aria-label="Sign out"
+              className={`flex items-center gap-2 text-xs text-ink-dim transition-colors duration-200 hover:text-ink ${
+                collapsed ? 'mx-auto' : ''
+              }`}
+            >
+              <LogOut size={16} strokeWidth={1.75} aria-hidden />
+              {collapsed ? null : <span>Sign out</span>}
+            </button>
+          </form>
           <button
             type="button"
             onClick={toggle}

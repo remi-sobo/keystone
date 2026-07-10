@@ -22,6 +22,9 @@ export function clientNav(): NavItem[] {
     { href: '/deliverables', label: 'Deliverables', icon: 'deliverables', mobile: true },
     { href: '/library', label: 'Library', icon: 'library' },
     { href: '/messages', label: 'Messages', icon: 'messages', mobile: true },
+    // Desktop rail only: the mobile bar holds its five; phones reach
+    // Account through the quiet line at the bottom of Home.
+    { href: '/account', label: 'Account', icon: 'settings' },
   ]
 }
 

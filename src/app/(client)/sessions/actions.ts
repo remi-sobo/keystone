@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
 import { checkRateLimits, LIMITS } from '@/lib/rateLimit'
-import { assembleSlots } from './slots'
+import { assembleSlots } from '@/lib/slotAssembly'
 import { isOfferedSlot } from '@/lib/scheduling'
 
 /**
@@ -130,4 +130,62 @@ export async function cancelSession(formData: FormData): Promise<void> {
   revalidatePath('/sessions')
   revalidatePath('/home')
   redirect('/sessions?state=canceled')
+}
+
+// ── The date poll (V2 3H): mark and unmark, pure RLS ─────────────────
+// The one client write on polls. The insert policy demands your own
+// membership, your own client's open poll, and scope columns matching
+// the parent option; the delete policy admits only your own mark while
+// the poll is open. Toggling is honest here: this is coordination, not
+// a record.
+
+const MarkShape = z.object({ optionId: z.string().uuid() })
+
+export async function togglePollMark(formData: FormData): Promise<void> {
+  const viewer = await guard()
+  const parsed = MarkShape.safeParse({ optionId: formData.get('optionId') })
+  if (!parsed.success) redirect('/sessions')
+  const { optionId } = parsed.data
+  const client = viewer.client!
+
+  const supabase = await createServerSupabase()
+  const [{ data: option }, { data: me }] = await Promise.all([
+    supabase
+      .from('session_poll_options')
+      .select('id, poll_id, engagement_id, practice_id, client_id')
+      .eq('id', optionId)
+      .eq('client_id', client.clientId)
+      .maybeSingle(),
+    supabase
+      .from('client_members')
+      .select('id')
+      .eq('user_id', viewer.user!.id)
+      .eq('client_id', client.clientId)
+      .maybeSingle(),
+  ])
+  if (!option || !me) redirect('/sessions')
+
+  const { data: existing } = await supabase
+    .from('session_poll_marks')
+    .select('id')
+    .eq('option_id', option.id)
+    .eq('client_member_id', me.id)
+    .maybeSingle()
+
+  const { error } = existing
+    ? await supabase.from('session_poll_marks').delete().eq('id', existing.id)
+    : await supabase.from('session_poll_marks').insert({
+        option_id: option.id,
+        poll_id: option.poll_id,
+        engagement_id: option.engagement_id,
+        practice_id: option.practice_id,
+        client_id: option.client_id,
+        client_member_id: me.id,
+      })
+  if (error) {
+    console.error('[polls] mark toggle failed:', error.code)
+    redirect('/sessions?state=error')
+  }
+  revalidatePath('/sessions')
+  redirect('/sessions')
 }

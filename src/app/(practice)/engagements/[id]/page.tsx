@@ -9,9 +9,13 @@ import { MarkdownLite } from '@/components/MarkdownLite'
 import AskRecordForm from '@/components/AskRecordForm'
 import FindRecordForm from '@/components/FindRecordForm'
 import { loopStatesByItem, LOOP_LABEL } from '@/lib/homework'
+import { assembleSlots } from '@/lib/slotAssembly'
 import {
   addDecision,
   addHomework,
+  closeSessionPoll,
+  confirmPollOption,
+  createSessionPoll,
   askEngagementQuestion,
   attachEvidence,
   findInEngagement,
@@ -50,6 +54,12 @@ const STATES: Record<string, string> = {
   slow: 'Too many messages at once. Wait a minute.',
   hw_added: 'Homework added. The assignee sees it now.',
   hw_error: 'That did not save. Check the fields and try again.',
+  poll_opened: 'Poll opened. The team sees it on their sessions page now.',
+  poll_exists: 'There is already an open poll for this engagement. Close it first.',
+  poll_slot_gone: 'One of those times is no longer free. Refresh and pick again.',
+  poll_booked: 'Booked. The poll is settled and the session is on the calendar.',
+  poll_closed: 'Poll closed without booking.',
+  poll_error: 'That did not save. Try again.',
 }
 
 function fmt(dt: string, tz: string): string {
@@ -178,6 +188,33 @@ export default async function EngagementDetailPage({
       .order('email'),
   ])
 
+  // Group scheduling (V2 3H): the open poll with its tally, or the
+  // offered slots to open one from (the practice's own availability).
+  const { data: openPoll } = await supabase
+    .from('session_polls')
+    .select('id, purpose, status, created_at')
+    .eq('engagement_id', id)
+    .eq('status', 'open')
+    .maybeSingle()
+  const [{ data: pollOptions }, { data: pollMarks }, offeredSlots] = openPoll
+    ? await Promise.all([
+        supabase
+          .from('session_poll_options')
+          .select('id, starts_at, ends_at, tz, sort')
+          .eq('poll_id', openPoll.id)
+          .order('sort'),
+        supabase
+          .from('session_poll_marks')
+          .select('option_id, client_member_id, client_members:client_member_id(email)')
+          .eq('poll_id', openPoll.id),
+        Promise.resolve(null),
+      ])
+    : [
+        { data: null },
+        { data: null },
+        await assembleSlots(supabase, { practiceId: engagement.practice_id }, new Date()),
+      ]
+
   const { data: publishedCharter } = await supabase
     .from('engagement_charters')
     .select('id, version, body_md')
@@ -288,6 +325,102 @@ export default async function EngagementDetailPage({
                 </li>
               ))}
             </ul>
+          )}
+        </section>
+
+        <section id="scheduling">
+          <h2 className="font-display text-2xl font-medium text-ink">Pick a date together</h2>
+          {openPoll ? (
+            <div className="mt-3 flex flex-col gap-3">
+              {openPoll.purpose ? (
+                <p className="text-sm text-ink-dim">{openPoll.purpose}</p>
+              ) : null}
+              <ul className="flex flex-col gap-2">
+                {(pollOptions ?? []).map((o) => {
+                  const marks = (pollMarks ?? []).filter((m) => m.option_id === o.id)
+                  /* eslint-disable @typescript-eslint/no-explicit-any */
+                  const names = marks
+                    .map((m) => (((m.client_members as any)?.email as string) ?? '').split('@')[0])
+                    .filter(Boolean)
+                  /* eslint-enable @typescript-eslint/no-explicit-any */
+                  return (
+                    <li
+                      key={o.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius)] border border-ink/10 bg-paper-raised px-4 py-3"
+                    >
+                      <span className="text-sm text-ink">
+                        {fmt(o.starts_at, o.tz)}
+                        <span className="text-ink-dim">
+                          {' '}
+                          ({names.length} of {(clientRoster ?? []).length}
+                          {names.length > 0 ? `: ${names.join(', ')}` : ''})
+                        </span>
+                      </span>
+                      <form action={confirmPollOption}>
+                        <input type="hidden" name="pollId" value={openPoll.id} />
+                        <input type="hidden" name="engagementId" value={id} />
+                        <input type="hidden" name="optionId" value={o.id} />
+                        <button
+                          type="submit"
+                          className="rounded-lg bg-forest px-3 py-1.5 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98]"
+                        >
+                          Confirm this one
+                        </button>
+                      </form>
+                    </li>
+                  )
+                })}
+              </ul>
+              <form action={closeSessionPoll}>
+                <input type="hidden" name="pollId" value={openPoll.id} />
+                <input type="hidden" name="engagementId" value={id} />
+                <button type="submit" className="text-sm text-ink-dim underline">
+                  Close without booking
+                </button>
+              </form>
+            </div>
+          ) : (
+            <details className="mt-3">
+              <summary className="cursor-pointer text-sm font-medium text-forest">
+                Open a date poll
+              </summary>
+              <p className="mt-2 text-sm text-ink-dim">
+                Pick a few times from your own availability. The team marks what works, you
+                confirm the winner, and the booking runs on the same rails as always.
+              </p>
+              <form action={createSessionPoll} className="mt-3 flex flex-col gap-3">
+                <input type="hidden" name="engagementId" value={id} />
+                <input
+                  name="purpose"
+                  maxLength={200}
+                  placeholder="What this session is for (optional)"
+                  className="rounded-lg border border-ink/15 bg-paper-raised p-2 text-sm text-ink"
+                />
+                {(offeredSlots ?? []).length === 0 ? (
+                  <p className="text-sm text-ink-dim">
+                    No offered slots right now. Check your availability windows in Settings.
+                  </p>
+                ) : (
+                  <div className="grid gap-1 sm:grid-cols-2">
+                    {(offeredSlots ?? []).slice(0, 20).map((s) => (
+                      <label
+                        key={s.startsAt.toISOString()}
+                        className="flex items-center gap-2 text-sm text-ink"
+                      >
+                        <input type="checkbox" name="starts" value={s.startsAt.toISOString()} />
+                        {fmt(s.startsAt.toISOString(), s.tz)}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  className="self-start rounded-lg bg-forest px-4 py-2 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98]"
+                >
+                  Open the poll
+                </button>
+              </form>
+            </details>
           )}
         </section>
 

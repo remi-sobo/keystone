@@ -1,18 +1,19 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { computeSlots, type Slot } from '@/lib/scheduling'
-import type { ClientMembership } from '@/lib/membership'
 
 /**
- * Slot assembly for the client booking surface. PURE RLS: reads go
- * through the session client. Windows are readable practice-wide by
- * design; the busy set comes from keystone_busy_intervals, the
- * minimal-disclosure SECURITY DEFINER function (bare intervals, no
- * identity), because a client member cannot and must not read other
- * clients' session rows.
+ * Slot assembly for the booking surfaces. PURE RLS: reads go through
+ * the session client. Windows are readable practice-wide by design;
+ * the busy set comes from keystone_busy_intervals, the minimal-
+ * disclosure SECURITY DEFINER function (bare intervals, no identity),
+ * because a client member cannot and must not read other clients'
+ * session rows. The practice side (the 3H poll) calls this too: the
+ * RPC is membership-checked for both sides, so one assembly serves
+ * both without a second code path.
  */
 export async function assembleSlots(
   supabase: SupabaseClient,
-  client: ClientMembership,
+  client: { practiceId: string },
   from: Date
 ): Promise<Slot[]> {
   const [windowsRes, busyRes] = await Promise.all([

@@ -1536,4 +1536,160 @@ end $$;
 
 reset role;
 
+-- ── V2 3H: session polls (group scheduling) ──────────────────────────
+-- Polls and options are practice-written and read by both sides; marks
+-- are the one client write: self-authored, on your own client's OPEN
+-- poll only, retractable while open, never someone else's. The tally
+-- is visible with names by design (gate 3H-2), so a teammate's mark
+-- being READABLE is asserted as much as a forged mark being denied.
+
+insert into session_polls (id, engagement_id, practice_id, client_id, purpose) values
+  ('a1000000-0000-0000-0000-0000000000f1', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   'leak-test poll');
+insert into session_poll_options (id, poll_id, engagement_id, practice_id, client_id,
+                                  starts_at, ends_at, tz, sort) values
+  ('a1000000-0000-0000-0000-0000000000f2', 'a1000000-0000-0000-0000-0000000000f1',
+   '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+   '20000000-0000-0000-0000-0000000000a1',
+   now() + interval '20 days', now() + interval '20 days 1 hour', 'America/Los_Angeles', 0),
+  ('a1000000-0000-0000-0000-0000000000f3', 'a1000000-0000-0000-0000-0000000000f1',
+   '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+   '20000000-0000-0000-0000-0000000000a1',
+   now() + interval '21 days', now() + interval '21 days 1 hour', 'America/Los_Angeles', 1);
+insert into session_poll_marks (poll_id, option_id, engagement_id, practice_id, client_id,
+                                client_member_id)
+  select 'a1000000-0000-0000-0000-0000000000f1', 'a1000000-0000-0000-0000-0000000000f2',
+         '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+         '20000000-0000-0000-0000-0000000000a1', id
+  from client_members where email = 'member_a1c@client-a.test';
+
+set role authenticated;
+
+-- The coachee: reads the poll and the teammate's mark (the tally),
+-- marks as themselves, and every dishonest write is denied.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from session_polls) <> 1 then
+    raise exception 'member_a1 must read their open poll';
+  end if;
+  if (select count(*) from session_poll_options) <> 2 then
+    raise exception 'member_a1 must read the poll options';
+  end if;
+  if (select count(*) from session_poll_marks) <> 1 then
+    raise exception 'member_a1 must read the teammate''s mark (the tally has names)';
+  end if;
+  insert into session_poll_marks (poll_id, option_id, engagement_id, practice_id, client_id,
+                                  client_member_id)
+    select 'a1000000-0000-0000-0000-0000000000f1', 'a1000000-0000-0000-0000-0000000000f2',
+           '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+           '20000000-0000-0000-0000-0000000000a1', id
+    from client_members where email = 'member_a1@client-a.test';
+end $$;
+do $$ begin
+  insert into session_poll_marks (poll_id, option_id, engagement_id, practice_id, client_id,
+                                  client_member_id)
+    select 'a1000000-0000-0000-0000-0000000000f1', 'a1000000-0000-0000-0000-0000000000f3',
+           '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+           '20000000-0000-0000-0000-0000000000a1', id
+    from client_members where email = 'member_a1c@client-a.test';
+  raise exception 'LEAK: a member forged a teammate''s poll mark';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+do $$
+declare n int;
+begin
+  -- A teammate's mark is not yours to remove.
+  delete from session_poll_marks
+    where client_member_id = (select id from client_members where email = 'member_a1c@client-a.test');
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'LEAK: a member deleted a teammate''s poll mark'; end if;
+  -- Your own is (changed my mind, while the poll is open).
+  delete from session_poll_marks
+    where client_member_id = (select id from client_members where email = 'member_a1@client-a.test');
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'a member must be able to retract their own mark'; end if;
+  insert into session_poll_marks (poll_id, option_id, engagement_id, practice_id, client_id,
+                                  client_member_id)
+    select 'a1000000-0000-0000-0000-0000000000f1', 'a1000000-0000-0000-0000-0000000000f2',
+           '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+           '20000000-0000-0000-0000-0000000000a1', id
+    from client_members where email = 'member_a1@client-a.test';
+end $$;
+-- A client member never creates polls or options (gate 3H-5).
+do $$ begin
+  insert into session_polls (engagement_id, practice_id, client_id, purpose)
+    values ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1', 'client-made poll');
+  raise exception 'LEAK: a client member created a poll';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+do $$ begin
+  insert into session_poll_options (poll_id, engagement_id, practice_id, client_id,
+                                    starts_at, ends_at, tz)
+    values ('a1000000-0000-0000-0000-0000000000f1', '30000000-0000-0000-0000-0000000000a1',
+            '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+            now() + interval '22 days', now() + interval '22 days 1 hour', 'America/Los_Angeles');
+  raise exception 'LEAK: a client member added a poll option';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+-- Cross-client and cross-practice: zero rows on all three tables.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$ begin
+  if (select count(*) from session_polls) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 polls';
+  end if;
+  if (select count(*) from session_poll_options) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 poll options';
+  end if;
+  if (select count(*) from session_poll_marks) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 poll marks';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from session_polls) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a polls';
+  end if;
+  if (select count(*) from session_poll_marks) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a poll marks';
+  end if;
+end $$;
+
+-- The practice closes the poll through its session; a closed poll
+-- accepts no new marks and releases none.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  update session_polls set status = 'closed', closed_at = now()
+    where id = 'a1000000-0000-0000-0000-0000000000f1';
+  if not found then raise exception 'the practice must be able to close its poll'; end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  insert into session_poll_marks (poll_id, option_id, engagement_id, practice_id, client_id,
+                                  client_member_id)
+    select 'a1000000-0000-0000-0000-0000000000f1', 'a1000000-0000-0000-0000-0000000000f3',
+           '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+           '20000000-0000-0000-0000-0000000000a1', id
+    from client_members where email = 'member_a1@client-a.test';
+  raise exception 'HOLE: a mark landed on a closed poll';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+do $$
+declare n int;
+begin
+  delete from session_poll_marks
+    where client_member_id = (select id from client_members where email = 'member_a1@client-a.test');
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a mark was retracted from a closed poll'; end if;
+end $$;
+
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

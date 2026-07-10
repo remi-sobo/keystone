@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
 import { RoomShell } from '@/components/RoomShell'
-import { assembleSlots } from './slots'
-import { bookSession, cancelSession, rescheduleSession } from './actions'
+import { assembleSlots } from '@/lib/slotAssembly'
+import { bookSession, cancelSession, rescheduleSession, togglePollMark } from './actions'
 import type { Slot } from '@/lib/scheduling'
 
 /**
@@ -89,6 +89,34 @@ export default async function SessionsPage({
     }
   }
 
+  // The date poll (V2 3H): if the consultant opened one, it sits above
+  // everything, because agreeing on the next date is the next move.
+  const { data: openPoll } = await supabase
+    .from('session_polls')
+    .select('id, purpose')
+    .eq('client_id', viewer.client.clientId)
+    .eq('status', 'open')
+    .maybeSingle()
+  const [{ data: pollOptions }, { data: pollMarks }, { data: myMembership }] = openPoll
+    ? await Promise.all([
+        supabase
+          .from('session_poll_options')
+          .select('id, starts_at, tz, sort')
+          .eq('poll_id', openPoll.id)
+          .order('sort'),
+        supabase
+          .from('session_poll_marks')
+          .select('option_id, client_member_id, client_members:client_member_id(email)')
+          .eq('poll_id', openPoll.id),
+        supabase
+          .from('client_members')
+          .select('id')
+          .eq('user_id', viewer.user!.id)
+          .eq('client_id', viewer.client.clientId)
+          .maybeSingle(),
+      ])
+    : [{ data: null }, { data: null }, { data: null }]
+
   const slots = await assembleSlots(supabase, viewer.client, new Date())
   const byDay = new Map<string, Slot[]>()
   for (const s of slots) {
@@ -103,6 +131,54 @@ export default async function SessionsPage({
         <p role="status" className="mb-6 text-sm text-forest">
           {STATES[state]}
         </p>
+      ) : null}
+
+      {openPoll ? (
+        <section className="mb-10 rounded-[var(--radius)] border border-brass/50 bg-paper-raised p-5">
+          <p className="eyebrow">Pick the next date together</p>
+          {openPoll.purpose ? <p className="mt-1 text-sm text-ink">{openPoll.purpose}</p> : null}
+          <p className="mt-1 text-sm text-ink-dim">
+            Tap every time that works for you. Tap again to take one back. Your consultant books
+            the one that works for the team.
+          </p>
+          <ul className="mt-3 flex flex-col gap-2">
+            {(pollOptions ?? []).map((o) => {
+              const marks = (pollMarks ?? []).filter((m) => m.option_id === o.id)
+              const minePicked = marks.some((m) => m.client_member_id === myMembership?.id)
+              /* eslint-disable @typescript-eslint/no-explicit-any */
+              const names = marks
+                .map((m) => (((m.client_members as any)?.email as string) ?? '').split('@')[0])
+                .filter(Boolean)
+              /* eslint-enable @typescript-eslint/no-explicit-any */
+              return (
+                <li
+                  key={o.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-ink/10 bg-paper px-4 py-3"
+                >
+                  <span className="min-w-0 text-sm text-ink">
+                    {fmt(o.starts_at, o.tz)}
+                    {names.length > 0 ? (
+                      <span className="text-ink-dim"> ({names.join(', ')})</span>
+                    ) : null}
+                  </span>
+                  <form action={togglePollMark}>
+                    <input type="hidden" name="optionId" value={o.id} />
+                    <button
+                      type="submit"
+                      className={`rounded-lg px-3 py-1.5 text-sm transition-colors duration-200 active:scale-[0.98] ${
+                        minePicked
+                          ? 'bg-forest text-paper hover:bg-forest-deep'
+                          : 'border border-sage text-forest hover:bg-sage hover:text-paper'
+                      }`}
+                    >
+                      {minePicked ? 'Works for me ✓' : 'Works for me'}
+                    </button>
+                  </form>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
       ) : null}
 
       <section>

@@ -2,7 +2,7 @@
 
 **Parent:** pilot harvest item 1 of 2026-07-10 (`CURRENT.md`), slotted into Phase 3 beside 3B run of show. Remi's words: "I control what we have available, and then they pick times that work for each of them, and then we see what works. Like a click on what's available."
 **Grounded against:** Ring 2 as built. The practice already controls availability (`availability_windows`), the pure slot engine already computes offered slots (`computeSlots` in `src/lib/scheduling.ts`), booking already re-validates against `isOfferedSlot` and the DB exclusion constraint already makes double-booking impossible. What is missing is coordination: today one person books for everyone; a team of coachees has no way to converge on a date inside the app.
-**Status:** draft for Remi. CONFIRM gates in section 7.
+**Status:** BUILT 2026-07-10, same day as the spec. All five gates approved as recommended (Remi, "recommendations approved"). Migration 0018 applied live; 3A's schema slides to 0019.
 **Date:** 2026-07-10
 
 ---

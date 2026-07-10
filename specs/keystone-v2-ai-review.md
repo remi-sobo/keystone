@@ -14,7 +14,7 @@ The review workspace between "what the AI said" and "what you publish." On the s
 1. **The original is never lost.** The AI's payload is immutable from the moment it lands; every edit is a separate copy. "What the AI said" versus "what you published" is recoverable forever, which is the honesty that makes propose-then-accept mean something.
 2. **Publishing stays the ONE human path into the record**, now with finer hands. Nothing here adds an autonomous write; it adds precision to the existing accept.
 
-## 2. Schema (migration 0018 once 3C lands first, two small deltas)
+## 2. Schema (the next free migration number at build time; 0019 after 3C and 3H landed)
 
 ```sql
 alter table ai_proposals

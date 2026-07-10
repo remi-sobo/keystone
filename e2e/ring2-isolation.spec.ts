@@ -103,7 +103,9 @@ test.describe('the calendar routes are practice-surface and safe', () => {
   test('the client booking surface never touches the service role', () => {
     for (const f of [
       'src/app/(client)/sessions/actions.ts',
-      'src/app/(client)/sessions/slots.ts',
+      // Slot assembly moved to lib in V2 3H (both surfaces use it); it
+      // stays under this guard because the client surface imports it.
+      'src/lib/slotAssembly.ts',
       'src/app/(client)/sessions/page.tsx',
     ]) {
       const src = stripJsComments(read(f))

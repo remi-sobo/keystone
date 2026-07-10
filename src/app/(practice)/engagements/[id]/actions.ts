@@ -20,6 +20,8 @@ import { recordQaExchange } from '@/lib/qaExchange'
 import type { AskResult } from '@/components/AskRecordForm'
 import type { FindResult } from '@/components/FindRecordForm'
 import { searchRecord } from '@/lib/recordSearch'
+import { assembleSlots } from '@/lib/slotAssembly'
+import { isOfferedSlot } from '@/lib/scheduling'
 
 /**
  * Engagement-detail actions: the readiness panel (Ring 3) and
@@ -1437,4 +1439,203 @@ export async function editHomework(formData: FormData): Promise<void> {
   revalidatePath('/homework')
   revalidatePath('/home')
   redirect(`/engagements/${engagementId}/homework/${itemId}?state=hw_saved`)
+}
+
+// ── Group scheduling: the date poll (V2 3H) ───────────────────────────
+// Candidates come from the practice's own offered slots (the Ring 2
+// engine, reused); confirming re-validates against a fresh computation
+// and books through the existing session path, so the exclusion
+// constraint stays the last word. Poll rows ride the session client
+// under engagement.write.
+
+const PollCreateShape = z.object({
+  engagementId: z.string().uuid(),
+  purpose: z.string().trim().max(200).optional(),
+  starts: z.array(z.string().datetime({ offset: true })).min(1).max(8),
+})
+
+export async function createSessionPoll(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = PollCreateShape.safeParse({
+    engagementId: formData.get('engagementId'),
+    purpose: String(formData.get('purpose') ?? '').trim() || undefined,
+    starts: formData.getAll('starts').map(String),
+  })
+  if (!parsed.success) redirect('/engagements')
+  const d = parsed.data
+
+  const supabase = await createServerSupabase()
+  const { data: engagement } = await supabase
+    .from('engagements')
+    .select('id, practice_id, client_id')
+    .eq('id', d.engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!engagement) redirect('/engagements')
+  const back = (state: string) =>
+    redirect(`/engagements/${engagement.id}?state=${state}#scheduling`)
+
+  // Every candidate must be an offered slot RIGHT NOW; a hand-crafted
+  // POST cannot put a time on the poll the calendar cannot honor.
+  const offered = await assembleSlots(supabase, { practiceId: engagement.practice_id }, new Date())
+  const candidates = d.starts.map((s) => isOfferedSlot(offered, new Date(s)))
+  if (candidates.some((c) => c === null)) back('poll_slot_gone')
+
+  const { data: poll, error } = await supabase
+    .from('session_polls')
+    .insert({
+      engagement_id: engagement.id,
+      practice_id: engagement.practice_id,
+      client_id: engagement.client_id,
+      purpose: d.purpose ? sweepHomework(engagement.practice_id, d.purpose) : null,
+      created_by: viewer.user!.id,
+    })
+    .select('id')
+    .single()
+  if (error || !poll) {
+    // 23505: the one-open-poll index; there is already a live poll.
+    console.error('[polls] create failed:', error?.code)
+    back(error?.code === '23505' ? 'poll_exists' : 'poll_error')
+  }
+
+  const rows = (candidates as NonNullable<(typeof candidates)[number]>[]).map((slot, i) => ({
+    poll_id: poll!.id,
+    engagement_id: engagement.id,
+    practice_id: engagement.practice_id,
+    client_id: engagement.client_id,
+    starts_at: slot.startsAt.toISOString(),
+    ends_at: slot.endsAt.toISOString(),
+    tz: slot.tz,
+    sort: i,
+  }))
+  const { error: optError } = await supabase.from('session_poll_options').insert(rows)
+  if (optError) {
+    console.error('[polls] options failed:', optError.message)
+    // Leave nothing half-open: close the empty poll honestly.
+    await supabase
+      .from('session_polls')
+      .update({ status: 'closed', closed_at: new Date().toISOString() })
+      .eq('id', poll!.id)
+    back('poll_error')
+  }
+
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    action: 'poll.opened',
+    target: engagement.id,
+    detail: { options: rows.length },
+  })
+  revalidatePath(`/engagements/${engagement.id}`)
+  revalidatePath('/sessions')
+  revalidatePath('/home')
+  back('poll_opened')
+}
+
+const PollMoveShape = z.object({
+  pollId: z.string().uuid(),
+  engagementId: z.string().uuid(),
+  optionId: z.string().uuid().optional(),
+})
+
+export async function confirmPollOption(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = PollMoveShape.safeParse({
+    pollId: formData.get('pollId'),
+    engagementId: formData.get('engagementId'),
+    optionId: formData.get('optionId'),
+  })
+  if (!parsed.success || !parsed.data.optionId) redirect('/engagements')
+  const { pollId, engagementId, optionId } = parsed.data
+
+  const supabase = await createServerSupabase()
+  const { data: poll } = await supabase
+    .from('session_polls')
+    .select('id, engagement_id, practice_id, client_id, status')
+    .eq('id', pollId)
+    .eq('engagement_id', engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  const { data: option } = await supabase
+    .from('session_poll_options')
+    .select('id, starts_at, ends_at, tz')
+    .eq('id', optionId)
+    .eq('poll_id', pollId)
+    .maybeSingle()
+  const back = (state: string) => redirect(`/engagements/${engagementId}?state=${state}#scheduling`)
+  if (!poll || poll.status !== 'open' || !option) back('poll_error')
+
+  // The candidate must still be offered at CONFIRM time; a stale one
+  // refuses honestly and stays on the poll.
+  const offered = await assembleSlots(supabase, { practiceId: poll!.practice_id }, new Date())
+  const slot = isOfferedSlot(offered, new Date(option!.starts_at))
+  if (!slot) back('poll_slot_gone')
+
+  const { data: session, error } = await supabase
+    .from('sessions')
+    .insert({
+      engagement_id: poll!.engagement_id,
+      practice_id: poll!.practice_id,
+      client_id: poll!.client_id,
+      starts_at: slot!.startsAt.toISOString(),
+      ends_at: slot!.endsAt.toISOString(),
+      tz: slot!.tz,
+      kind: 'working',
+      status: 'booked',
+      created_by: viewer.user!.id,
+    })
+    .select('id')
+    .single()
+  if (error || !session) {
+    const gone = error?.code === '23P01'
+    console.error('[polls] confirm booking failed:', error?.code)
+    back(gone ? 'poll_slot_gone' : 'poll_error')
+  }
+
+  const { error: closeError } = await supabase
+    .from('session_polls')
+    .update({ status: 'booked', session_id: session!.id, closed_at: new Date().toISOString() })
+    .eq('id', poll!.id)
+  if (closeError) console.error('[polls] close after booking failed:', closeError.message)
+
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    action: 'poll.booked',
+    target: poll!.id,
+    detail: { session: session!.id },
+  })
+  revalidatePath(`/engagements/${engagementId}`)
+  revalidatePath('/sessions')
+  revalidatePath('/home')
+  revalidatePath('/today')
+  back('poll_booked')
+}
+
+export async function closeSessionPoll(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = PollMoveShape.safeParse({
+    pollId: formData.get('pollId'),
+    engagementId: formData.get('engagementId'),
+  })
+  if (!parsed.success) redirect('/engagements')
+  const { pollId, engagementId } = parsed.data
+
+  const supabase = await createServerSupabase()
+  const { error } = await supabase
+    .from('session_polls')
+    .update({ status: 'closed', closed_at: new Date().toISOString() })
+    .eq('id', pollId)
+    .eq('engagement_id', engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .eq('status', 'open')
+  if (error) console.error('[polls] close failed:', error.message)
+
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    action: 'poll.closed',
+    target: pollId,
+  })
+  revalidatePath(`/engagements/${engagementId}`)
+  revalidatePath('/sessions')
+  revalidatePath('/home')
+  redirect(`/engagements/${engagementId}?state=poll_closed#scheduling`)
 }

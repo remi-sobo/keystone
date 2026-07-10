@@ -1175,4 +1175,65 @@ end $$;
 
 reset role;
 
+-- ── Decision log (V2 2B): immutable rows, both walls ────────────────
+
+insert into decisions (id, engagement_id, practice_id, client_id, decided_on, title, decided_by_label) values
+  ('d0000000-0000-0000-0000-0000000000e1', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   '2026-07-07', 'Fundraising first', 'Susan and Remi');
+
+set role authenticated;
+
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$
+declare n int;
+begin
+  if (select count(*) from decisions) <> 1 then raise exception 'owner_a decision visibility wrong'; end if;
+  -- Logged means logged: even the practice cannot rewrite or remove.
+  update decisions set title = 'rewritten' where id = 'd0000000-0000-0000-0000-0000000000e1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a session rewrote a logged decision'; end if;
+  delete from decisions where id = 'd0000000-0000-0000-0000-0000000000e1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a session deleted a logged decision'; end if;
+end $$;
+
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$
+declare n int;
+begin
+  if (select count(*) from decisions) <> 1 then
+    raise exception 'member_a1 must read their engagement decisions';
+  end if;
+  update decisions set title = 'rewritten' where id = 'd0000000-0000-0000-0000-0000000000e1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a client member rewrote a decision'; end if;
+end $$;
+do $$ begin
+  insert into decisions (engagement_id, practice_id, client_id, decided_on, title)
+    values ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1', '2026-07-08', 'forged decision');
+  raise exception 'HOLE: a client member logged a decision';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$ begin
+  if (select count(*) from decisions) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 decisions';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from decisions) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a decisions';
+  end if;
+end $$;
+
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

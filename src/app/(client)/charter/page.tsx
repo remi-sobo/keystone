@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
@@ -59,7 +60,11 @@ export default async function ClientCharterPage({
     <RoomShell eyebrow={viewer.client.clientName} title="The charter" maxWidth="max-w-3xl">
       <p className="text-sm text-ink-dim">
         The shared agreement that governs this engagement: what we are building together, how
-        we will work, and what sits outside the walls.
+        we will work, and what sits outside the walls. Decisions made along the way live in{' '}
+        <Link href="/decisions" className="underline hover:text-ink">
+          the decision log
+        </Link>
+        .
       </p>
       {state && STATES[state] ? (
         <p role="status" className="mt-3 text-sm text-ink">

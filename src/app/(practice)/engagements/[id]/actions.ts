@@ -10,6 +10,8 @@ import { getViewer } from '@/lib/membership'
 import { checkRateLimits, LIMITS } from '@/lib/rateLimit'
 import { appBaseUrl, sendEmail } from '@/lib/email'
 import { logAuditAction } from '@/lib/audit'
+import { validateVoice } from '@/lib/voice'
+import { logVoiceViolation } from '@/lib/voiceViolations'
 
 /**
  * Engagement-detail actions: the readiness panel (Ring 3) and
@@ -556,4 +558,98 @@ export async function removeEngagementDocument(formData: FormData): Promise<void
   }
   revalidatePath(`/engagements/${parsed.data.engagementId}`)
   revalidatePath('/home')
+}
+
+// ── Decision log (V2 2B) ──────────────────────────────────────────────
+
+const DecisionShape = z.object({
+  engagementId: z.string().uuid(),
+  title: z.string().trim().min(1).max(300),
+  decidedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  who: z.string().trim().max(120).optional(),
+  context: z.string().trim().max(2000).optional(),
+  workstreamId: z.string().uuid().optional(),
+  sessionId: z.string().uuid().optional(),
+  revisitOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  supersedes: z.string().uuid().optional(),
+})
+
+/**
+ * Log a decision. Insert-only by design: the table carries no update
+ * or delete policy, so what this writes is what history keeps. The
+ * insert rides the session client under the engagement.write policy.
+ */
+export async function addDecision(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const clean = (name: string) => {
+    const v = String(formData.get(name) ?? '').trim()
+    return v || undefined
+  }
+  const parsed = DecisionShape.safeParse({
+    engagementId: formData.get('engagementId'),
+    title: formData.get('title'),
+    decidedOn: formData.get('decidedOn'),
+    who: clean('who'),
+    context: clean('context'),
+    workstreamId: clean('workstreamId'),
+    sessionId: clean('sessionId'),
+    revisitOn: clean('revisitOn'),
+    supersedes: clean('supersedes'),
+  })
+  if (!parsed.success) redirect('/engagements')
+  const d = parsed.data
+
+  const supabase = await createServerSupabase()
+  const { data: engagement } = await supabase
+    .from('engagements')
+    .select('id, practice_id, client_id')
+    .eq('id', d.engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!engagement) redirect('/engagements')
+
+  // Client-facing prose rides the voice gate like every shipped string.
+  const sweep = (text: string): string => {
+    const check = validateVoice(text)
+    if (check.ok) return text
+    void logVoiceViolation({
+      practiceId: engagement.practice_id,
+      source: 'decision_log',
+      violations: check.violations,
+      rawExcerpt: text.slice(0, 400),
+      cleanedExcerpt: check.cleaned.slice(0, 400),
+    })
+    return check.cleaned
+  }
+
+  const { error } = await supabase.from('decisions').insert({
+    engagement_id: engagement.id,
+    practice_id: engagement.practice_id,
+    client_id: engagement.client_id,
+    workstream_id: d.workstreamId ?? null,
+    session_id: d.sessionId ?? null,
+    decided_on: d.decidedOn,
+    title: sweep(d.title),
+    context_md: d.context ? sweep(d.context) : null,
+    decided_by_label: d.who ?? null,
+    revisit_on: d.revisitOn ?? null,
+    supersedes: d.supersedes ?? null,
+    source: 'manual',
+    created_by: viewer.user!.id,
+  })
+  if (error) {
+    console.error('[decisions] insert failed:', error.message)
+    redirect(`/engagements/${engagement.id}?state=decision_error#decisions`)
+  }
+
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    action: 'decisions.logged',
+    target: engagement.id,
+    detail: { workstream: d.workstreamId ?? null, supersedes: d.supersedes ?? null },
+  })
+  revalidatePath(`/engagements/${engagement.id}`)
+  revalidatePath('/decisions')
+  revalidatePath('/home')
+  redirect(`/engagements/${engagement.id}?state=decision_logged#decisions`)
 }

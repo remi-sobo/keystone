@@ -6,6 +6,7 @@ import { RoomShell } from '@/components/RoomShell'
 import AddDeliverableForm from './AddDeliverableForm'
 import UploadAgreementForm from './UploadAgreementForm'
 import {
+  addDecision,
   removeDeliverable,
   removeEngagementDocument,
   replyMessage,
@@ -24,6 +25,8 @@ const DEFAULT_STAGES = ['diagnose', 'design', 'build', 'train', 'stabilize']
 const PILLARS = ['philosophy', 'system', 'execution'] as const
 
 const STATES: Record<string, string> = {
+  decision_logged: 'Logged. The record keeps it as written.',
+  decision_error: 'That did not save. Try again.',
   msg_sent: 'Reply sent. The client gets an email.',
   msg_sent_no_email: 'Your reply is saved and visible, but the email notification did not go out.',
   msg_error: 'That did not send. Try again.',
@@ -112,6 +115,13 @@ export default async function EngagementDetailPage({
     .from('engagement_documents')
     .select('id, title, status, file_name, visible_to_client, created_at')
     .eq('engagement_id', id)
+    .order('created_at', { ascending: false })
+
+  const { data: decisions } = await supabase
+    .from('decisions')
+    .select('id, title, decided_on, decided_by_label, context_md, revisit_on, supersedes, workstreams(title)')
+    .eq('engagement_id', id)
+    .order('decided_on', { ascending: false })
     .order('created_at', { ascending: false })
 
   const { data: publishedCharter } = await supabase
@@ -234,6 +244,115 @@ export default async function EngagementDetailPage({
           )}
         </section>
       </div>
+
+      <section id="decisions" className="mt-12">
+        <h2 className="font-display text-2xl font-medium text-ink">Decision log</h2>
+        <p className="mt-1 text-sm text-ink-dim">
+          Logged means logged: a course change is a new decision that supersedes the old one,
+          and the client reads this record.
+        </p>
+        {(decisions ?? []).length === 0 ? (
+          <p className="mt-3 text-sm text-ink-dim">Nothing logged yet.</p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-2">
+            {(decisions ?? []).map((d) => {
+              const supersededBy = (decisions ?? []).find((x) => x.supersedes === d.id)
+              return (
+                <li
+                  key={d.id}
+                  className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised px-4 py-2.5"
+                >
+                  <p className={`text-sm ${supersededBy ? 'text-ink-dim line-through' : 'text-ink'}`}>
+                    {d.title}
+                  </p>
+                  <p className="text-xs text-ink-dim">
+                    {d.decided_on}
+                    {d.decided_by_label ? `, ${d.decided_by_label}` : ''}
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {((d.workstreams as any)?.title as string) ? `, ${(d.workstreams as any).title}` : ''}
+                    {d.revisit_on ? `, revisit ${d.revisit_on}` : ''}
+                    {supersededBy ? `, superseded by "${supersededBy.title}"` : ''}
+                  </p>
+                  {d.context_md ? (
+                    <p className="mt-1 text-xs text-ink-dim">{d.context_md}</p>
+                  ) : null}
+                </li>
+              )
+            })}
+          </ul>
+        )}
+        <form action={addDecision} className="mt-4 flex flex-col gap-3">
+          <input type="hidden" name="engagementId" value={engagement.id} />
+          <div className="flex flex-wrap gap-3">
+            <input
+              name="title"
+              required
+              maxLength={300}
+              placeholder="What was decided, one plain sentence"
+              className="min-w-[240px] flex-[2] rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink"
+            />
+            <input
+              name="decidedOn"
+              type="date"
+              required
+              defaultValue={new Date().toISOString().slice(0, 10)}
+              className="rounded-lg border border-ink/15 bg-paper px-2 py-1 text-sm"
+            />
+            <input
+              name="who"
+              maxLength={120}
+              placeholder="Who (as prose)"
+              className="min-w-[140px] flex-1 rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink"
+            />
+          </div>
+          <input
+            name="context"
+            maxLength={2000}
+            placeholder="Context, and where it came from (optional)"
+            className="rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink"
+          />
+          <div className="flex flex-wrap items-end gap-3">
+            <select
+              name="workstreamId"
+              defaultValue=""
+              className="rounded-lg border border-ink/15 bg-paper px-2 py-1 text-sm"
+            >
+              <option value="">No workstream</option>
+              {(ws.data ?? []).map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.title}
+                </option>
+              ))}
+            </select>
+            <label className="flex items-center gap-2 text-sm text-ink-dim">
+              Revisit
+              <input
+                name="revisitOn"
+                type="date"
+                className="rounded-lg border border-ink/15 bg-paper px-2 py-1 text-sm"
+              />
+            </label>
+            <select
+              name="supersedes"
+              defaultValue=""
+              className="max-w-[280px] rounded-lg border border-ink/15 bg-paper px-2 py-1 text-sm"
+            >
+              <option value="">Supersedes nothing</option>
+              {(decisions ?? []).map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.title.slice(0, 60)}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="rounded-lg bg-forest px-4 py-2 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98]"
+            >
+              Log it
+            </button>
+          </div>
+        </form>
+      </section>
 
       <section className="mt-12">
         <h2 className="font-display text-2xl font-medium text-ink">Deliverables</h2>

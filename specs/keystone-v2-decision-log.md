@@ -2,7 +2,7 @@
 
 **Parent:** `specs/keystone-v2.md` Phase 2 epic 2B: the highest-value consulting artifact and the corpus that will make Q&A (2E) good.
 **Grounded against:** the live codebase after 5D/2A (migrations 0001 to 0012). V1 keeps decisions inside `session_notes.decisions_md`, unstructured; the SafeSpace record already holds thirteen real decisions from the July 7 call in exactly that field, which is this build's seed.
-**Status:** draft for Remi. CONFIRM gates in section 6.
+**Status:** approved by Remi 2026-07-10 (section 6 gates decided as recommended) and built the same day: migration 0013, both surfaces, and the thirteen July 7 decisions graduated to rows on the live project.
 **Date:** 2026-07-10
 
 ---

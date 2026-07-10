@@ -79,6 +79,11 @@ export default async function ClientHomePage() {
       .maybeSingle(),
   ])
 
+  const { count: decisionCount } = await supabase
+    .from('decisions')
+    .select('id', { count: 'exact', head: true })
+    .eq('client_id', viewer.client.clientId)
+
   const { data: charterSignoff } = charter
     ? await supabase
         .from('approvals')
@@ -175,6 +180,14 @@ export default async function ClientHomePage() {
                 The shared agreement lands here once it is published.
               </p>
             )}
+            {(decisionCount ?? 0) > 0 ? (
+              <p className="mt-3 border-t border-ink/10 pt-3 text-sm text-ink-dim">
+                {decisionCount} decision{decisionCount === 1 ? '' : 's'} on the record.{' '}
+                <Link href="/decisions" className="text-forest underline">
+                  Read the log
+                </Link>
+              </p>
+            ) : null}
           </KeystoneCard>
           <KeystoneCard>
             <p className="eyebrow">Your agreement</p>

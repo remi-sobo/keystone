@@ -8,8 +8,10 @@ import UploadAgreementForm from './UploadAgreementForm'
 import { MarkdownLite } from '@/components/MarkdownLite'
 import AskRecordForm from '@/components/AskRecordForm'
 import FindRecordForm from '@/components/FindRecordForm'
+import { loopStatesByItem, LOOP_LABEL } from '@/lib/homework'
 import {
   addDecision,
+  addHomework,
   askEngagementQuestion,
   attachEvidence,
   findInEngagement,
@@ -46,6 +48,8 @@ const STATES: Record<string, string> = {
   msg_sent_no_email: 'Your reply is saved and visible, but the email notification did not go out.',
   msg_error: 'That did not send. Try again.',
   slow: 'Too many messages at once. Wait a minute.',
+  hw_added: 'Homework added. The assignee sees it now.',
+  hw_error: 'That did not save. Check the fields and try again.',
 }
 
 function fmt(dt: string, tz: string): string {
@@ -81,7 +85,7 @@ export default async function EngagementDetailPage({
 
   const { data: engagement } = await supabase
     .from('engagements')
-    .select('id, title, status, practice_id, clients(name)')
+    .select('id, title, status, practice_id, client_id, clients(name)')
     .eq('id', id)
     .maybeSingle()
   if (!engagement) redirect('/engagements')
@@ -105,7 +109,9 @@ export default async function EngagementDetailPage({
       .limit(20),
     supabase
       .from('action_items')
-      .select('id, title, status, due_on, done_at, client_members:assigned_client_member_id(email)')
+      .select(
+        'id, title, status, due_on, done_at, review_requested, audience, client_members:assigned_client_member_id(email), practice_members:assigned_practice_member_id(email)'
+      )
       .eq('engagement_id', id)
       .order('due_on', { ascending: true }),
     supabase
@@ -151,6 +157,27 @@ export default async function EngagementDetailPage({
       .eq('engagement_id', id),
   ])
 
+  // The homework loop state (V2 3C): derived from the trail, which the
+  // practice reads in full. Rosters feed the add-homework form.
+  const [{ data: hwTrail }, { data: clientRoster }, { data: practiceRoster }] = await Promise.all([
+    supabase
+      .from('homework_activity')
+      .select('action_item_id, kind, created_at')
+      .eq('engagement_id', id),
+    supabase
+      .from('client_members')
+      .select('id, email')
+      .eq('client_id', engagement.client_id)
+      .is('revoked_at', null)
+      .order('email'),
+    supabase
+      .from('practice_members')
+      .select('id, email')
+      .eq('practice_id', engagement.practice_id)
+      .is('revoked_at', null)
+      .order('email'),
+  ])
+
   const { data: publishedCharter } = await supabase
     .from('engagement_charters')
     .select('id, version, body_md')
@@ -173,8 +200,14 @@ export default async function EngagementDetailPage({
       ? (practice.data.stage_config as string[])
       : DEFAULT_STAGES
   const open = (items.data ?? []).filter((i) => i.status === 'open')
-  const reviewQueue = (items.data ?? []).filter(
+  const recentlyDone = (items.data ?? []).filter(
     (i) => i.status === 'done' && i.done_at && i.done_at >= twoWeeksAgo
+  )
+  const loopStates = loopStatesByItem(hwTrail ?? [])
+  const hwChip = (it: { id: string; review_requested: boolean }) =>
+    it.review_requested ? LOOP_LABEL[loopStates.get(it.id) ?? 'assigned'] : null
+  const awaitingReview = open.filter(
+    (i) => i.review_requested && loopStates.get(i.id) === 'submitted'
   )
   const readinessByPillar = new Map((readiness.data ?? []).map((r) => [r.pillar, r]))
   /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -258,36 +291,158 @@ export default async function EngagementDetailPage({
           )}
         </section>
 
-        <section>
-          <h2 className="font-display text-2xl font-medium text-ink">Homework ledger</h2>
+        <section id="homework">
+          <h2 className="font-display text-2xl font-medium text-ink">Homework</h2>
+
+          {awaitingReview.length > 0 ? (
+            <>
+              <h3 className="font-display mt-3 text-xl font-medium text-ink">
+                Awaiting your review
+              </h3>
+              <ul className="mt-2 flex flex-col gap-1">
+                {awaitingReview.map((it) => (
+                  <li key={it.id} className="text-sm text-ink">
+                    <Link
+                      href={`/engagements/${id}/homework/${it.id}`}
+                      className="text-forest underline"
+                    >
+                      {it.title}
+                    </Link>{' '}
+                    <span className="text-ink-dim">({assignee(it)})</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+
+          <h3 className="font-display mt-6 text-xl font-medium text-ink">Open</h3>
           {open.length === 0 ? (
-            <p className="mt-3 text-sm text-ink-dim">Nothing open.</p>
+            <p className="mt-2 text-sm text-ink-dim">Nothing open.</p>
           ) : (
-            <ul className="mt-3 flex flex-col gap-1">
+            <ul className="mt-2 flex flex-col gap-1">
               {open.map((it) => (
                 <li key={it.id} className="text-sm text-ink">
-                  {it.title}{' '}
+                  <Link
+                    href={`/engagements/${id}/homework/${it.id}`}
+                    className="text-forest underline"
+                  >
+                    {it.title}
+                  </Link>{' '}
                   <span className="text-ink-dim">
                     ({assignee(it)}
                     {it.due_on ? `, due ${it.due_on}` : ''})
                   </span>
+                  {it.audience === 'practice' ? <span className="eyebrow ml-2">internal</span> : null}
+                  {hwChip(it) ? <span className="eyebrow ml-2">{hwChip(it)}</span> : null}
                 </li>
               ))}
             </ul>
           )}
 
-          <h3 className="font-display mt-6 text-xl font-medium text-ink">Recently checked off</h3>
-          {reviewQueue.length === 0 ? (
+          <h3 className="font-display mt-6 text-xl font-medium text-ink">Recently done</h3>
+          {recentlyDone.length === 0 ? (
             <p className="mt-2 text-sm text-ink-dim">Nothing in the last two weeks.</p>
           ) : (
             <ul className="mt-2 flex flex-col gap-1">
-              {reviewQueue.map((it) => (
+              {recentlyDone.map((it) => (
                 <li key={it.id} className="text-sm text-ink-dim">
-                  {it.title} ({assignee(it)})
+                  <Link
+                    href={`/engagements/${id}/homework/${it.id}`}
+                    className="underline"
+                  >
+                    {it.title}
+                  </Link>{' '}
+                  ({assignee(it)})
                 </li>
               ))}
             </ul>
           )}
+
+          <details className="mt-6">
+            <summary className="cursor-pointer text-sm font-medium text-forest">
+              Add homework
+            </summary>
+            <form action={addHomework} className="mt-3 flex flex-col gap-3">
+              <input type="hidden" name="engagementId" value={id} />
+              <input
+                name="title"
+                required
+                maxLength={300}
+                placeholder="What to do, in one line"
+                className="rounded-lg border border-ink/15 bg-paper-raised p-2 text-sm text-ink"
+              />
+              <textarea
+                name="body"
+                rows={3}
+                maxLength={4000}
+                placeholder="The what and the why (optional, the assignee reads this)"
+                className="rounded-lg border border-ink/15 bg-paper-raised p-2 text-sm text-ink"
+              />
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="flex flex-col gap-1 text-sm text-ink">
+                  Assign to
+                  <select
+                    name="assignee"
+                    className="rounded-lg border border-ink/15 bg-paper-raised p-2 text-sm text-ink"
+                  >
+                    <option value="">Unassigned</option>
+                    {(clientRoster ?? []).map((m) => (
+                      <option key={m.id} value={`client:${m.id}`}>
+                        {m.email} (client)
+                      </option>
+                    ))}
+                    {(practiceRoster ?? []).map((m) => (
+                      <option key={m.id} value={`practice:${m.id}`}>
+                        {m.email} (practice)
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 text-sm text-ink">
+                  Audience
+                  <select
+                    name="audience"
+                    className="rounded-lg border border-ink/15 bg-paper-raised p-2 text-sm text-ink"
+                  >
+                    <option value="client">Client homework</option>
+                    <option value="practice">Internal task (invisible to the client)</option>
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 text-sm text-ink">
+                  Due
+                  <input
+                    type="date"
+                    name="dueOn"
+                    className="rounded-lg border border-ink/15 bg-paper-raised p-2 text-sm text-ink"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-sm text-ink">
+                  Workstream
+                  <select
+                    name="workstreamId"
+                    className="rounded-lg border border-ink/15 bg-paper-raised p-2 text-sm text-ink"
+                  >
+                    <option value="">None</option>
+                    {(ws.data ?? []).map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <label className="flex items-center gap-2 text-sm text-ink">
+                <input type="checkbox" name="review" />
+                Needs review before done (the submit, feedback, accept loop; client assignee only)
+              </label>
+              <button
+                type="submit"
+                className="self-start rounded-lg bg-forest px-4 py-2 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98]"
+              >
+                Add homework
+              </button>
+            </form>
+          </details>
         </section>
       </div>
 

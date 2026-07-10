@@ -7,6 +7,7 @@ import { ArchEmptyState } from '@/components/ArchEmptyState'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
 import { stageMeaning } from '@/lib/stageMeanings'
+import { loopStatesByItem, LOOP_LABEL } from '@/lib/homework'
 
 /**
  * Client Home, the progress view: the screen the fee lives on
@@ -131,12 +132,26 @@ export default async function ClientHomePage() {
   const { data: myOpenItems } = myMembership
     ? await supabase
         .from('action_items')
-        .select('id, title, due_on')
+        .select('id, title, due_on, review_requested')
         .eq('assigned_client_member_id', myMembership.id)
         .eq('status', 'open')
         .order('due_on', { ascending: true, nullsFirst: false })
         .limit(3)
     : { data: [] }
+
+  // Loop state for my review items only (V2 3C): a submitted item says
+  // "with the consultant" instead of nagging its due date. The trail is
+  // readable only by the assignee, so this stays inside the wall.
+  const myReviewIds = (myOpenItems ?? []).filter((i) => i.review_requested).map((i) => i.id)
+  const { data: myTrail } = myReviewIds.length
+    ? await supabase
+        .from('homework_activity')
+        .select('action_item_id, kind, created_at')
+        .in('action_item_id', myReviewIds)
+    : { data: [] }
+  const myLoopStates = loopStatesByItem(myTrail ?? [])
+  const itemChip = (it: { id: string; review_requested: boolean }) =>
+    it.review_requested ? LOOP_LABEL[myLoopStates.get(it.id) ?? 'assigned'] : null
 
   const decisionsByWs = new Map<string, Array<{ id: string; title: string; decided_on: string }>>()
   const openByWs = new Map<string, { count: number; nearestDue: string | null }>()
@@ -239,8 +254,12 @@ export default async function ClientHomePage() {
                 {(myOpenItems ?? []).map((it) => (
                   <li key={it.id} className="text-sm text-ink">
                     Homework: {it.title}
-                    {it.due_on ? <span className="text-ink-dim"> (due {it.due_on})</span> : null}{' '}
-                    <Link href="/homework" className="text-forest underline">
+                    {itemChip(it) ? (
+                      <span className="text-ink-dim"> ({itemChip(it)?.toLowerCase()})</span>
+                    ) : it.due_on ? (
+                      <span className="text-ink-dim"> (due {it.due_on})</span>
+                    ) : null}{' '}
+                    <Link href={`/homework/${it.id}`} className="text-forest underline">
                       Open
                     </Link>
                   </li>
@@ -476,12 +495,16 @@ export default async function ClientHomePage() {
                 {(myOpenItems ?? []).map((it) => (
                   <li key={it.id} className="text-sm text-ink">
                     {it.title}
-                    {it.due_on ? <span className="text-ink-dim"> (due {it.due_on})</span> : null}
+                    {itemChip(it) ? (
+                      <span className="text-ink-dim"> ({itemChip(it)?.toLowerCase()})</span>
+                    ) : it.due_on ? (
+                      <span className="text-ink-dim"> (due {it.due_on})</span>
+                    ) : null}
                   </li>
                 ))}
                 <li>
                   <Link href="/homework" className="text-sm text-forest underline">
-                    Check off
+                    Open homework
                   </Link>
                 </li>
               </ul>

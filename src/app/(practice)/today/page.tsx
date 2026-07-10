@@ -3,6 +3,7 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import { RoomShell } from '@/components/RoomShell'
 import { KeystoneCard } from '@/components/KeystoneCard'
 import { decideDigest } from './actions'
+import { loopStatesByItem } from '@/lib/homework'
 
 /**
  * Practice Home, the Monday screen (Ring 3.5, spec 5.2): one view
@@ -92,6 +93,19 @@ export default async function PracticeHomePage({
         .limit(200),
     ])
 
+  // V2 3C: real review work is a SUBMISSION, derived from the trail
+  // (the practice reads it in full under RLS across every client).
+  const [{ data: openReviewItems }, { data: reviewTrail }] = await Promise.all([
+    supabase
+      .from('action_items')
+      .select('id, title, engagement_id, clients(name), client_members:assigned_client_member_id(email)')
+      .eq('status', 'open')
+      .eq('review_requested', true),
+    supabase.from('homework_activity').select('action_item_id, kind, created_at'),
+  ])
+  const loopStates = loopStatesByItem(reviewTrail ?? [])
+  const submitted = (openReviewItems ?? []).filter((i) => loopStates.get(i.id) === 'submitted')
+
   const { data: digestQueue } = await supabase
     .from('ai_proposals')
     .select('id, payload, model_used, created_at, clients(name)')
@@ -160,17 +174,34 @@ export default async function PracticeHomePage({
         </KeystoneCard>
 
         <KeystoneCard>
-          <p className="eyebrow">Homework awaiting review</p>
-          {(reviewItems.data ?? []).length === 0 ? (
-            <p className="mt-3 text-sm text-ink-dim">Nothing checked off in the last two weeks.</p>
+          <p className="eyebrow">Homework awaiting your review</p>
+          {submitted.length === 0 ? (
+            <p className="mt-3 text-sm text-ink-dim">No submissions waiting.</p>
           ) : (
             <ul className="mt-3 flex flex-col gap-2">
-              {(reviewItems.data ?? []).map((it) => (
+              {submitted.map((it) => (
                 <li key={it.id} className="text-sm text-ink">
-                  {it.title}{' '}
+                  <Link
+                    href={`/engagements/${it.engagement_id}/homework/${it.id}`}
+                    className="text-forest underline"
+                  >
+                    {it.title}
+                  </Link>{' '}
                   <span className="text-ink-dim">
                     ({clientOf(it)}, {emailOf(it)})
                   </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="eyebrow mt-4">Recently done</p>
+          {(reviewItems.data ?? []).length === 0 ? (
+            <p className="mt-2 text-sm text-ink-dim">Nothing in the last two weeks.</p>
+          ) : (
+            <ul className="mt-2 flex flex-col gap-1">
+              {(reviewItems.data ?? []).slice(0, 6).map((it) => (
+                <li key={it.id} className="text-sm text-ink-dim">
+                  {it.title} ({clientOf(it)}, {emailOf(it)})
                 </li>
               ))}
             </ul>

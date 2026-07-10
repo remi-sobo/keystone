@@ -1,14 +1,19 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
 import { RoomShell } from '@/components/RoomShell'
+import { loopStatesByItem, LOOP_LABEL } from '@/lib/homework'
 import { setHomeworkStatus } from './actions'
 
 /**
- * The client homework page (Ring 3). Everything in the engagement is
- * visible to all four members (that visibility IS the product); the
- * check-off writes only your own items. History renders as history:
- * no streaks, no percentages, no leaderboard.
+ * The client homework page (Ring 3, upgraded by V2 3C). Item existence
+ * and open/done are visible to the whole team (that visibility IS the
+ * product); the working of an item, the loop, lives on the item's own
+ * page and only for its assignee. Two speeds: check-off items keep the
+ * Done button here; review items carry a state chip and run their loop
+ * on the detail page. History renders as history: no streaks, no
+ * percentages, no leaderboard.
  */
 
 function fmtDue(due: string | null): string {
@@ -29,7 +34,7 @@ export default async function HomeworkPage() {
     supabase
       .from('action_items')
       .select(
-        'id, title, status, due_on, timing, done_at, assigned_client_member_id, client_members:assigned_client_member_id(email)'
+        'id, title, body_md, status, due_on, timing, done_at, review_requested, assigned_client_member_id, client_members:assigned_client_member_id(email)'
       )
       .eq('client_id', viewer.client.clientId)
       .order('due_on', { ascending: true, nullsFirst: false }),
@@ -50,6 +55,17 @@ export default async function HomeworkPage() {
     .sort((a, b) => (b.done_at ?? '').localeCompare(a.done_at ?? ''))
     .slice(0, 15)
 
+  // The loop state for MY items only; the trail is readable only by the
+  // assignee and the practice, so a teammate's rows never come back.
+  const myLoopIds = mine.filter((i) => i.review_requested).map((i) => i.id)
+  const { data: trail } = myLoopIds.length
+    ? await supabase
+        .from('homework_activity')
+        .select('action_item_id, kind, created_at')
+        .in('action_item_id', myLoopIds)
+    : { data: [] }
+  const states = loopStatesByItem(trail ?? [])
+
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const who = (it: any) => ((it.client_members as any)?.email as string)?.split('@')[0] ?? 'unassigned'
   /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -62,27 +78,37 @@ export default async function HomeworkPage() {
           <p className="mt-3 text-sm text-ink-dim">Nothing due. See you at the next session.</p>
         ) : (
           <ul className="mt-3 flex flex-col gap-2">
-            {mine.map((it) => (
-              <li
-                key={it.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius)] border border-ink/10 bg-paper-raised px-4 py-3"
-              >
-                <span className="text-sm text-ink">
-                  {it.title}
-                  {it.due_on ? <span className="text-ink-dim"> (due {fmtDue(it.due_on)})</span> : null}
-                </span>
-                <form action={setHomeworkStatus}>
-                  <input type="hidden" name="id" value={it.id} />
-                  <input type="hidden" name="to" value="done" />
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-sage px-3 py-1.5 text-sm text-forest transition-colors duration-200 hover:bg-sage hover:text-paper active:scale-[0.98]"
-                  >
-                    Done
-                  </button>
-                </form>
-              </li>
-            ))}
+            {mine.map((it) => {
+              const chip = it.review_requested
+                ? LOOP_LABEL[states.get(it.id) ?? 'assigned']
+                : null
+              return (
+                <li
+                  key={it.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius)] border border-ink/10 bg-paper-raised px-4 py-3"
+                >
+                  <span className="min-w-0 text-sm text-ink">
+                    <Link href={`/homework/${it.id}`} className="font-medium text-forest underline">
+                      {it.title}
+                    </Link>
+                    {it.due_on ? <span className="text-ink-dim"> (due {fmtDue(it.due_on)})</span> : null}
+                    {chip ? <span className="eyebrow ml-2">{chip}</span> : null}
+                  </span>
+                  {!it.review_requested ? (
+                    <form action={setHomeworkStatus}>
+                      <input type="hidden" name="id" value={it.id} />
+                      <input type="hidden" name="to" value="done" />
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-sage px-3 py-1.5 text-sm text-forest transition-colors duration-200 hover:bg-sage hover:text-paper active:scale-[0.98]"
+                      >
+                        Done
+                      </button>
+                    </form>
+                  ) : null}
+                </li>
+              )
+            })}
           </ul>
         )}
       </section>
@@ -116,7 +142,7 @@ export default async function HomeworkPage() {
               <li key={it.id} className="flex flex-wrap items-center gap-2 text-sm text-ink-dim">
                 <span className="line-through decoration-sage decoration-2">{it.title}</span>
                 <span>({who(it)})</span>
-                {it.assigned_client_member_id === myId ? (
+                {it.assigned_client_member_id === myId && !it.review_requested ? (
                   <form action={setHomeworkStatus}>
                     <input type="hidden" name="id" value={it.id} />
                     <input type="hidden" name="to" value="open" />

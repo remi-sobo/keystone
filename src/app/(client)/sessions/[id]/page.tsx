@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
@@ -121,9 +122,9 @@ export default async function ClientSessionPage({
             ))}
           </ul>
           <p className="mt-2 text-sm">
-            <a href="/homework" className="text-forest underline">
+            <Link href="/homework" className="text-forest underline">
               Check yours off on the homework page
-            </a>
+            </Link>
           </p>
         </section>
       ) : null}

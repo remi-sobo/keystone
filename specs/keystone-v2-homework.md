@@ -2,7 +2,7 @@
 
 **Parent:** `specs/keystone-v2.md` Phase 3 epic 3C, pulled ahead of 3A on Remi's call (2026-07-10): the homework surface is the one the coachees touch most, and it needs the major upgrade first.
 **Grounded against:** the live codebase after Phase 2. Today an action item is a title, a due date, and an open/done checkbox: no body, no conversation, no evidence, no send-back. The only paths that create one are the AI proposal accept and the seed; no manual add form exists anywhere (a real gap, fixed here). `action_items_read` shows every item to every client member; the check-off policy admits only your own rows. **V2-4 is already decided** (Remi, 2026-07-09, firmly): founders see completion only, never a coachee's per-item revision history, and the wall lives in the read policy, not the UI.
-**Status:** draft for Remi. CONFIRM gates in section 7.
+**Status:** BUILT 2026-07-10. All five gates approved as recommended (Remi, "recommendation approved"). Migration 0017 applied live; 3A's schema slides to 0018 with gate 3A-1 closed as transferred.
 **Date:** 2026-07-10
 
 ---

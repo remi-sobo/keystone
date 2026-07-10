@@ -18,6 +18,10 @@
 --   owner_a@practice-a.test        owner of practice_a
 --   consultant_a@practice-a.test   consultant of practice_a
 --   member_a1@client-a.test        client_member of client_a1 (practice_a)
+--   member_a1c@client-a.test       SECOND client_member of client_a1 (the
+--                                  teammate/buyer persona for the V2-4
+--                                  homework wall: same client, not the
+--                                  assignee, reads zero loop rows)
 --   member_a2@client-a2.test       client_member of client_a2 (practice_a)
 --   member_b@client-b.test         client_member of client_b (practice_b)
 --   stranger@example.test          valid session, NO membership
@@ -28,6 +32,7 @@ insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-00000000000a', 'owner_a@practice-a.test'),
   ('00000000-0000-0000-0000-00000000000b', 'consultant_a@practice-a.test'),
   ('00000000-0000-0000-0000-0000000000a1', 'member_a1@client-a.test'),
+  ('00000000-0000-0000-0000-0000000000a3', 'member_a1c@client-a.test'),
   ('00000000-0000-0000-0000-0000000000a2', 'member_a2@client-a2.test'),
   ('00000000-0000-0000-0000-0000000000b1', 'member_b@client-b.test'),
   ('00000000-0000-0000-0000-0000000000ee', 'stranger@example.test')
@@ -49,6 +54,7 @@ insert into practice_members (practice_id, email, role) values
   ('10000000-0000-0000-0000-00000000000a', 'consultant_a@practice-a.test', 'consultant');
 insert into client_members (client_id, practice_id, email) values
   ('20000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a', 'member_a1@client-a.test'),
+  ('20000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a', 'member_a1c@client-a.test'),
   ('20000000-0000-0000-0000-0000000000a2', '10000000-0000-0000-0000-00000000000a', 'member_a2@client-a2.test'),
   ('20000000-0000-0000-0000-0000000000b1', '10000000-0000-0000-0000-00000000000b', 'member_b@client-b.test');
 
@@ -124,10 +130,35 @@ insert into action_items (id, engagement_id, practice_id, client_id, title,
   ('60000000-0000-0000-0000-0000000000a2', '30000000-0000-0000-0000-0000000000a1',
    '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
    'unassigned item', null, 'open'),
+  ('60000000-0000-0000-0000-0000000000a3', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   'member_a1 review homework (V2 3C)',
+   (select id from client_members where email = 'member_a1@client-a.test'), 'open'),
   ('60000000-0000-0000-0000-0000000000b1', '30000000-0000-0000-0000-0000000000b1',
    '10000000-0000-0000-0000-00000000000b', '20000000-0000-0000-0000-0000000000b1',
    'client_b homework',
    (select id from client_members where email = 'member_b@client-b.test'), 'open');
+
+-- V2 3C: the a3 item runs the review loop; a4 is an internal practice
+-- task that must never reach a client session (the audience wall).
+update action_items set review_requested = true, body_md = 'review-mode body'
+  where id = '60000000-0000-0000-0000-0000000000a3';
+insert into action_items (id, engagement_id, practice_id, client_id, title,
+                          audience, assigned_practice_member_id, status) values
+  ('60000000-0000-0000-0000-0000000000a4', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   'internal practice task (V2 3C wall)', 'practice',
+   (select id from practice_members where email = 'owner_a@practice-a.test'), 'open');
+
+-- One trail row seeded up front, so every wall check downstream (the
+-- teammate, the other client, the other practice, the REVOKED coachee)
+-- has a real row to leak.
+insert into homework_activity (action_item_id, engagement_id, practice_id, client_id,
+                               author_client_member_id, kind, body_md)
+  select '60000000-0000-0000-0000-0000000000a3', '30000000-0000-0000-0000-0000000000a1',
+         '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+         id, 'comment', 'leak-test trail row'
+  from client_members where email = 'member_a1@client-a.test';
 
 insert into ai_proposals (engagement_id, practice_id, client_id, session_id, kind, payload) values
   ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
@@ -159,6 +190,9 @@ select set_config('request.jwt.claims',
   '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
 select keystone_claim_membership();
 select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a3","email":"member_a1c@client-a.test"}', false);
+select keystone_claim_membership();
+select set_config('request.jwt.claims',
   '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
 select keystone_claim_membership();
 select set_config('request.jwt.claims',
@@ -177,8 +211,8 @@ do $$ begin
   if (select count(*) from practice_members where user_id is not null) <> 3 then
     raise exception 'claim did not link exactly the three practice members';
   end if;
-  if (select count(*) from client_members where user_id is not null) <> 3 then
-    raise exception 'claim did not link exactly the three client members';
+  if (select count(*) from client_members where user_id is not null) <> 4 then
+    raise exception 'claim did not link exactly the four client members';
   end if;
 end $$;
 set role authenticated;
@@ -203,7 +237,7 @@ do $$ begin
   if (select count(*) from session_notes) <> 1 then raise exception 'owner_a note visibility wrong'; end if;
   if (select count(*) from ai_proposals) <> 1 then raise exception 'owner_a proposal visibility wrong'; end if;
   if (select count(*) from readiness_markers) <> 1 then raise exception 'owner_a readiness visibility wrong'; end if;
-  if (select count(*) from action_items) <> 2 then raise exception 'owner_a item visibility wrong'; end if;
+  if (select count(*) from action_items) <> 4 then raise exception 'owner_a item visibility wrong'; end if;
   -- Service-role-only tables: even the owner sees nothing.
   if (select count(*) from google_connections) <> 0 then raise exception 'LEAK: session reads google_connections (token store)'; end if;
   if (select count(*) from ai_spend_ledger) <> 0 then raise exception 'LEAK: session reads ai_spend_ledger'; end if;
@@ -302,11 +336,15 @@ do $$ begin
   if (select count(*) from readiness_markers) <> 0 then
     raise exception 'LEAK: client member reads readiness_markers (consultant-only lens)';
   end if;
-  if (select count(*) from action_items) <> 2 then
-    raise exception 'member_a1 must see both of their client''s items';
+  if (select count(*) from action_items) <> 3 then
+    raise exception 'member_a1 must see their client''s three client-audience items';
   end if;
   if (select count(*) from action_items where client_id <> '20000000-0000-0000-0000-0000000000a1') <> 0 then
     raise exception 'LEAK cross-client: member_a1 reads another client''s items';
+  end if;
+  -- V2 3C audience wall: the internal practice task never renders.
+  if (select count(*) from action_items where audience = 'practice') <> 0 then
+    raise exception 'LEAK: client member reads an internal practice task';
   end if;
 end $$;
 
@@ -822,6 +860,7 @@ do $$ begin
   if (select count(*) from engagements) <> 0 then raise exception 'LEAK: revoked client member reads engagements'; end if;
   if (select count(*) from workstreams) <> 0 then raise exception 'LEAK: revoked client member reads workstreams'; end if;
   if (select count(*) from action_items) <> 0 then raise exception 'LEAK: revoked client member reads action items'; end if;
+  if (select count(*) from homework_activity) <> 0 then raise exception 'LEAK: revoked client member reads their homework trail'; end if;
   if (select count(*) from session_notes) <> 0 then raise exception 'LEAK: revoked client member reads notes'; end if;
   if (select count(*) from deliverables) <> 0 then raise exception 'LEAK: revoked client member reads deliverables'; end if;
   if (select count(*) from messages) <> 0 then raise exception 'LEAK: revoked client member reads messages'; end if;
@@ -1360,6 +1399,139 @@ do $$ begin
             '20000000-0000-0000-0000-0000000000a1', 'client', 'forged');
   raise exception 'HOLE: a session wrote a qa exchange';
 exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+reset role;
+
+-- ── V2 3C: the homework loop and the V2-4 wall ───────────────────────
+-- The loop state lives in homework_activity, and its read policy admits
+-- the practice and the ASSIGNED coachee only. member_a1c (same client,
+-- not the assignee: the teammate/buyer persona) reads zero rows, which
+-- is the wall Remi decided firmly in V2-4. The trail is append-only for
+-- every session, and a review item is never self-completed.
+
+set role authenticated;
+
+-- The coachee submits on their own review item (pure RLS insert).
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  insert into homework_activity (action_item_id, engagement_id, practice_id, client_id,
+                                 author_client_member_id, kind, body_md)
+    values ('60000000-0000-0000-0000-0000000000a3', '30000000-0000-0000-0000-0000000000a1',
+            '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+            (select id from client_members where email = 'member_a1@client-a.test'),
+            'submission', 'here is the draft');
+  if (select count(*) from homework_activity) <> 2 then
+    raise exception 'the coachee must read their own trail';
+  end if;
+end $$;
+
+-- The coachee cannot self-complete a review item (check-off tightened).
+do $$ begin
+  update action_items set status = 'done', done_at = now()
+    where id = '60000000-0000-0000-0000-0000000000a3';
+  if found then raise exception 'HOLE: a coachee self-completed a review item'; end if;
+end $$;
+
+-- The coachee cannot write the trail of an item not assigned to them.
+do $$ begin
+  insert into homework_activity (action_item_id, engagement_id, practice_id, client_id,
+                                 author_client_member_id, kind, body_md)
+    values ('60000000-0000-0000-0000-0000000000a2', '30000000-0000-0000-0000-0000000000a1',
+            '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+            (select id from client_members where email = 'member_a1@client-a.test'),
+            'comment', 'not mine');
+  raise exception 'LEAK: a coachee wrote on an item not assigned to them';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+-- Forged authorship: writing as the teammate is denied.
+do $$ begin
+  insert into homework_activity (action_item_id, engagement_id, practice_id, client_id,
+                                 author_client_member_id, kind, body_md)
+    values ('60000000-0000-0000-0000-0000000000a3', '30000000-0000-0000-0000-0000000000a1',
+            '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+            (select id from client_members where email = 'member_a1c@client-a.test'),
+            'comment', 'forged author');
+  raise exception 'LEAK: a coachee forged trail authorship';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+-- Append-only, coachee side: no edit, no delete, even of your own row.
+do $$ begin
+  update homework_activity set body_md = 'rewritten history';
+  if found then raise exception 'HOLE: a coachee rewrote the trail'; end if;
+  delete from homework_activity;
+  if found then raise exception 'HOLE: a coachee deleted the trail'; end if;
+end $$;
+
+-- The practice answers with a send-back through the mirror policy, and
+-- the trail stays append-only for the practice session too.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from homework_activity) <> 2 then
+    raise exception 'the practice must read the whole trail';
+  end if;
+  insert into homework_activity (action_item_id, engagement_id, practice_id, client_id,
+                                 author_practice_member_id, kind, body_md)
+    values ('60000000-0000-0000-0000-0000000000a3', '30000000-0000-0000-0000-0000000000a1',
+            '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+            (select id from practice_members where email = 'owner_a@practice-a.test'),
+            'send_back', 'tighten the second section');
+  update homework_activity set body_md = 'rewritten by the practice';
+  if found then raise exception 'HOLE: a practice session rewrote the trail'; end if;
+  delete from homework_activity;
+  if found then raise exception 'HOLE: a practice session deleted the trail'; end if;
+end $$;
+
+-- The coachee reads the feedback (the loop is a conversation).
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from homework_activity) <> 3 then
+    raise exception 'the coachee must read the consultant''s feedback';
+  end if;
+end $$;
+
+-- THE WALL (V2-4): the teammate of the SAME client sees the item row
+-- but zero trail rows, and cannot write into the loop.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a3","email":"member_a1c@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from action_items where id = '60000000-0000-0000-0000-0000000000a3') <> 1 then
+    raise exception 'the teammate must still see the item row (open/done is shared)';
+  end if;
+  if (select count(*) from homework_activity) <> 0 then
+    raise exception 'LEAK V2-4: a teammate reads a coachee''s homework trail';
+  end if;
+end $$;
+do $$ begin
+  insert into homework_activity (action_item_id, engagement_id, practice_id, client_id,
+                                 author_client_member_id, kind, body_md)
+    values ('60000000-0000-0000-0000-0000000000a3', '30000000-0000-0000-0000-0000000000a1',
+            '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+            (select id from client_members where email = 'member_a1c@client-a.test'),
+            'comment', 'butting in');
+  raise exception 'LEAK V2-4: a teammate wrote into a coachee''s loop';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+-- Cross-client and cross-practice: zero trail rows.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$ begin
+  if (select count(*) from homework_activity) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 homework trail';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from homework_activity) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a homework trail';
+  end if;
 end $$;
 
 reset role;

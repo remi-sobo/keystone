@@ -1083,3 +1083,358 @@ export async function findInEngagement(
     return { ok: false, error: 'failed' }
   }
 }
+
+// ── Homework loop (V2 3C) ─────────────────────────────────────────────
+// Row writes ride the SESSION client: action_items under the existing
+// write/update policies, homework_activity under its practice mirror
+// policy (self-authored, feedback kinds only). The trail is append-only
+// for this surface too; acceptance is the one move that also flips the
+// item to done.
+
+async function myPracticeMemberId(
+  supabase: Awaited<ReturnType<typeof createServerSupabase>>,
+  userId: string,
+  practiceId: string
+): Promise<string | null> {
+  const { data } = await supabase
+    .from('practice_members')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('practice_id', practiceId)
+    .is('revoked_at', null)
+    .limit(1)
+    .maybeSingle()
+  return data?.id ?? null
+}
+
+function sweepHomework(practiceId: string, text: string): string {
+  const check = validateVoice(text)
+  if (check.ok) return text
+  void logVoiceViolation({
+    practiceId,
+    source: 'homework',
+    violations: check.violations,
+    rawExcerpt: text.slice(0, 400),
+    cleanedExcerpt: check.cleaned.slice(0, 400),
+  })
+  return check.cleaned
+}
+
+const HomeworkShape = z.object({
+  engagementId: z.string().uuid(),
+  title: z.string().trim().min(1).max(300),
+  body: z.string().trim().max(4000).optional(),
+  assignee: z
+    .string()
+    .regex(/^(client|practice):[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+    .optional(),
+  dueOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  workstreamId: z.string().uuid().optional(),
+  audience: z.enum(['client', 'practice']),
+  review: z.literal('on').optional(),
+})
+
+export async function addHomework(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const clean = (name: string) => {
+    const v = String(formData.get(name) ?? '').trim()
+    return v || undefined
+  }
+  const parsed = HomeworkShape.safeParse({
+    engagementId: formData.get('engagementId'),
+    title: clean('title'),
+    body: clean('body'),
+    assignee: clean('assignee'),
+    dueOn: clean('dueOn'),
+    workstreamId: clean('workstreamId'),
+    audience: formData.get('audience') ?? 'client',
+    review: clean('review'),
+  })
+  if (!parsed.success) redirect('/engagements')
+  const d = parsed.data
+
+  const supabase = await createServerSupabase()
+  const { data: engagement } = await supabase
+    .from('engagements')
+    .select('id, practice_id, client_id')
+    .eq('id', d.engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!engagement) redirect('/engagements')
+  const back = (state: string) => redirect(`/engagements/${engagement.id}?state=${state}#homework`)
+
+  // The assignee sits on the side the audience says (spec section 3).
+  const [side, memberId] = d.assignee ? (d.assignee.split(':') as [string, string]) : [null, null]
+  if (side && side !== d.audience) back('hw_error')
+  let assignedClient: string | null = null
+  let assignedPractice: string | null = null
+  if (side === 'client' && memberId) {
+    const { data: cm } = await supabase
+      .from('client_members')
+      .select('id')
+      .eq('id', memberId)
+      .eq('client_id', engagement.client_id)
+      .is('revoked_at', null)
+      .maybeSingle()
+    if (!cm) back('hw_error')
+    assignedClient = memberId
+  }
+  if (side === 'practice' && memberId) {
+    const { data: pm } = await supabase
+      .from('practice_members')
+      .select('id')
+      .eq('id', memberId)
+      .eq('practice_id', engagement.practice_id)
+      .is('revoked_at', null)
+      .maybeSingle()
+    if (!pm) back('hw_error')
+    assignedPractice = memberId
+  }
+  if (d.workstreamId) {
+    const { data: wsRow } = await supabase
+      .from('workstreams')
+      .select('id')
+      .eq('id', d.workstreamId)
+      .eq('engagement_id', engagement.id)
+      .maybeSingle()
+    if (!wsRow) back('hw_error')
+  }
+
+  const { error } = await supabase.from('action_items').insert({
+    engagement_id: engagement.id,
+    practice_id: engagement.practice_id,
+    client_id: engagement.client_id,
+    workstream_id: d.workstreamId ?? null,
+    title: sweepHomework(engagement.practice_id, d.title),
+    body_md: d.body ? sweepHomework(engagement.practice_id, d.body) : null,
+    assigned_client_member_id: assignedClient,
+    assigned_practice_member_id: assignedPractice,
+    due_on: d.dueOn ?? null,
+    audience: d.audience,
+    // The loop needs a coachee to run it; review stays off otherwise.
+    review_requested: d.review === 'on' && d.audience === 'client' && assignedClient != null,
+    source: 'manual',
+  })
+  if (error) {
+    console.error('[homework] add failed:', error.message)
+    back('hw_error')
+  }
+
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    action: 'homework.added',
+    target: engagement.id,
+    detail: { audience: d.audience, review: d.review === 'on' },
+  })
+  revalidatePath(`/engagements/${engagement.id}`)
+  revalidatePath('/homework')
+  revalidatePath('/home')
+  revalidatePath('/today')
+  back('hw_added')
+}
+
+const HomeworkMoveShape = z.object({
+  itemId: z.string().uuid(),
+  engagementId: z.string().uuid(),
+  note: z.string().trim().max(4000).optional(),
+})
+
+async function loadPracticeItem(itemId: string, engagementId: string, practiceId: string) {
+  const supabase = await createServerSupabase()
+  const { data: item } = await supabase
+    .from('action_items')
+    .select(
+      'id, engagement_id, practice_id, client_id, status, review_requested, assigned_client_member_id'
+    )
+    .eq('id', itemId)
+    .eq('engagement_id', engagementId)
+    .eq('practice_id', practiceId)
+    .maybeSingle()
+  return { supabase, item }
+}
+
+export async function acceptHomework(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = HomeworkMoveShape.safeParse({
+    itemId: formData.get('itemId'),
+    engagementId: formData.get('engagementId'),
+    note: String(formData.get('note') ?? '').trim() || undefined,
+  })
+  if (!parsed.success) redirect('/engagements')
+  const { itemId, engagementId, note } = parsed.data
+
+  const { supabase, item } = await loadPracticeItem(itemId, engagementId, viewer.practice!.practiceId)
+  if (!item || !item.review_requested || item.status !== 'open') {
+    redirect(`/engagements/${engagementId}?state=hw_error#homework`)
+  }
+  const me = await myPracticeMemberId(supabase, viewer.user!.id, item.practice_id)
+  if (!me) redirect('/engagements')
+
+  const { error: trailError } = await supabase.from('homework_activity').insert({
+    action_item_id: item.id,
+    engagement_id: item.engagement_id,
+    practice_id: item.practice_id,
+    client_id: item.client_id,
+    author_practice_member_id: me,
+    kind: 'acceptance',
+    body_md: note ? sweepHomework(item.practice_id, note) : null,
+  })
+  if (trailError) {
+    console.error('[homework] acceptance failed:', trailError.message)
+    redirect(`/engagements/${engagementId}/homework/${itemId}?state=hw_error`)
+  }
+  const { error: flipError } = await supabase
+    .from('action_items')
+    .update({ status: 'done', done_at: new Date().toISOString() })
+    .eq('id', item.id)
+  if (flipError) console.error('[homework] accept flip failed:', flipError.message)
+
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    action: 'homework.accepted',
+    target: item.id,
+  })
+  revalidatePath(`/engagements/${engagementId}`)
+  revalidatePath(`/engagements/${engagementId}/homework/${itemId}`)
+  revalidatePath('/homework')
+  revalidatePath('/home')
+  revalidatePath('/today')
+  redirect(`/engagements/${engagementId}/homework/${itemId}?state=hw_accepted`)
+}
+
+export async function sendBackHomework(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = HomeworkMoveShape.safeParse({
+    itemId: formData.get('itemId'),
+    engagementId: formData.get('engagementId'),
+    note: String(formData.get('note') ?? '').trim() || undefined,
+  })
+  if (!parsed.success) redirect('/engagements')
+  const { itemId, engagementId, note } = parsed.data
+  // A send-back without words is a shrug; the note is required.
+  if (!note) redirect(`/engagements/${engagementId}/homework/${itemId}?state=hw_note_needed`)
+
+  const { supabase, item } = await loadPracticeItem(itemId, engagementId, viewer.practice!.practiceId)
+  if (!item || !item.review_requested || item.status !== 'open') {
+    redirect(`/engagements/${engagementId}?state=hw_error#homework`)
+  }
+  const me = await myPracticeMemberId(supabase, viewer.user!.id, item.practice_id)
+  if (!me) redirect('/engagements')
+
+  const { error } = await supabase.from('homework_activity').insert({
+    action_item_id: item.id,
+    engagement_id: item.engagement_id,
+    practice_id: item.practice_id,
+    client_id: item.client_id,
+    author_practice_member_id: me,
+    kind: 'send_back',
+    body_md: sweepHomework(item.practice_id, note),
+  })
+  if (error) {
+    console.error('[homework] send-back failed:', error.message)
+    redirect(`/engagements/${engagementId}/homework/${itemId}?state=hw_error`)
+  }
+
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    action: 'homework.sent_back',
+    target: item.id,
+  })
+  revalidatePath(`/engagements/${engagementId}`)
+  revalidatePath(`/engagements/${engagementId}/homework/${itemId}`)
+  revalidatePath('/homework')
+  revalidatePath('/home')
+  revalidatePath('/today')
+  redirect(`/engagements/${engagementId}/homework/${itemId}?state=hw_sent_back`)
+}
+
+export async function practiceHomeworkComment(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = HomeworkMoveShape.safeParse({
+    itemId: formData.get('itemId'),
+    engagementId: formData.get('engagementId'),
+    note: String(formData.get('note') ?? '').trim() || undefined,
+  })
+  if (!parsed.success) redirect('/engagements')
+  const { itemId, engagementId, note } = parsed.data
+  if (!note) redirect(`/engagements/${engagementId}/homework/${itemId}?state=hw_note_needed`)
+
+  const { supabase, item } = await loadPracticeItem(itemId, engagementId, viewer.practice!.practiceId)
+  if (!item) redirect(`/engagements/${engagementId}?state=hw_error#homework`)
+  const me = await myPracticeMemberId(supabase, viewer.user!.id, item.practice_id)
+  if (!me) redirect('/engagements')
+
+  const { error } = await supabase.from('homework_activity').insert({
+    action_item_id: item.id,
+    engagement_id: item.engagement_id,
+    practice_id: item.practice_id,
+    client_id: item.client_id,
+    author_practice_member_id: me,
+    kind: 'comment',
+    body_md: sweepHomework(item.practice_id, note),
+  })
+  if (error) {
+    console.error('[homework] comment failed:', error.message)
+    redirect(`/engagements/${engagementId}/homework/${itemId}?state=hw_error`)
+  }
+  revalidatePath(`/engagements/${engagementId}/homework/${itemId}`)
+  revalidatePath('/homework')
+  redirect(`/engagements/${engagementId}/homework/${itemId}?state=hw_saved`)
+}
+
+const HomeworkEditShape = z.object({
+  itemId: z.string().uuid(),
+  engagementId: z.string().uuid(),
+  dueOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  review: z.literal('on').optional(),
+})
+
+export async function editHomework(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const clean = (name: string) => {
+    const v = String(formData.get(name) ?? '').trim()
+    return v || undefined
+  }
+  const parsed = HomeworkEditShape.safeParse({
+    itemId: formData.get('itemId'),
+    engagementId: formData.get('engagementId'),
+    dueOn: clean('dueOn'),
+    review: clean('review'),
+  })
+  if (!parsed.success) redirect('/engagements')
+  const { itemId, engagementId, dueOn, review } = parsed.data
+
+  const { supabase, item } = await loadPracticeItem(itemId, engagementId, viewer.practice!.practiceId)
+  if (!item) redirect(`/engagements/${engagementId}?state=hw_error#homework`)
+  const wantReview = review === 'on'
+
+  // The review toggle stays editable until the first submission lands
+  // (gate 3C-1); after that the loop is the record.
+  if (wantReview !== item.review_requested) {
+    const { count } = await supabase
+      .from('homework_activity')
+      .select('id', { count: 'exact', head: true })
+      .eq('action_item_id', item.id)
+      .eq('kind', 'submission')
+    if ((count ?? 0) > 0) {
+      redirect(`/engagements/${engagementId}/homework/${itemId}?state=hw_locked`)
+    }
+  }
+
+  const { error } = await supabase
+    .from('action_items')
+    .update({
+      due_on: dueOn ?? null,
+      review_requested: item.assigned_client_member_id ? wantReview : false,
+    })
+    .eq('id', item.id)
+  if (error) {
+    console.error('[homework] edit failed:', error.message)
+    redirect(`/engagements/${engagementId}/homework/${itemId}?state=hw_error`)
+  }
+  revalidatePath(`/engagements/${engagementId}`)
+  revalidatePath(`/engagements/${engagementId}/homework/${itemId}`)
+  revalidatePath('/homework')
+  revalidatePath('/home')
+  redirect(`/engagements/${engagementId}/homework/${itemId}?state=hw_saved`)
+}

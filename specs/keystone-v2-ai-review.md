@@ -44,7 +44,7 @@ A pending extraction renders as an editable form instead of the current read-onl
 
 Publishing writes, in order: the session note (existing path), the toggled decision rows (`source = 'accepted_proposal'`, `proposal_id`, `session_id` set, the 0013 columns finally earning their keep), and the items with their audiences. Voice gate on every published string; audit one entry with counts, never content.
 
-## 4. What this unlocks nothing else has to build
+## 4. What this hands the later epics for free
 
 2B's log gains its intended inflow (no double entry between note and log). 4B arrives to find internal tasks already walled and born in the right place. 2E's Q&A corpus picks up logged decisions automatically since it already reads the table. The parking-lot disposition from the V2 spec's sketch is DEFERRED (CONFIRM 3A-2): there is no parking-lot surface to see such a note yet, and a disposition without a home is a data graveyard.
 

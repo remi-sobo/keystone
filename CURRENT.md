@@ -2,7 +2,11 @@
 
 The live operational doc. If it is happening and it is not here, it is not happening. Weekly ritual per SOBO_PLAYBOOK.md section 8.
 
-Last updated: 2026-07-09 (V1 ring queue built and live; the V2 program landed and Phase 0 seed entered).
+Last updated: 2026-07-10 (Phases 0 through 2 built and deployed; BUILD PAUSED for Remi's hands-on test pass before Phase 3).
+
+## Paused: Remi tests everything
+
+The build stops here until Remi has walked the app. The three keys that wake the dormant features (all in `docs/setup-checklist.md`): the Supabase auth redirect allow-list (unblocks every sign-in), RESEND_API_KEY (invite, message, digest email), ANTHROPIC_API_KEY (extraction, digest drafting, Q&A). Everything else is live. On resume: Phase 3 opens with 3A (editable AI proposal review), then 4F notifications infra pulled forward; the pilot's harvest list steers depth.
 
 ## State
 

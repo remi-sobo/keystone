@@ -114,6 +114,23 @@ export default async function EngagementDetailPage({
     .eq('engagement_id', id)
     .order('created_at', { ascending: false })
 
+  const { data: publishedCharter } = await supabase
+    .from('engagement_charters')
+    .select('id, version')
+    .eq('engagement_id', id)
+    .eq('status', 'published')
+    .maybeSingle()
+  const { data: charterSignoff } = publishedCharter
+    ? await supabase
+        .from('approvals')
+        .select('status, decided_by_email')
+        .eq('subject_type', 'charter')
+        .eq('subject_id', publishedCharter.id)
+        .order('requested_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null }
+
   const stages =
     Array.isArray(practice.data?.stage_config) && practice.data.stage_config.length > 0
       ? (practice.data.stage_config as string[])
@@ -139,6 +156,23 @@ export default async function EngagementDetailPage({
           {STATES[state]}
         </p>
       ) : null}
+
+      <p className="mb-6 text-sm text-ink-dim">
+        {publishedCharter
+          ? `Charter: version ${publishedCharter.version} published, ${
+              charterSignoff?.status === 'approved'
+                ? `approved by ${charterSignoff.decided_by_email ?? 'the client'}`
+                : charterSignoff?.status === 'pending'
+                  ? 'awaiting sign-off'
+                  : charterSignoff?.status === 'not_yet'
+                    ? 'the client said not yet'
+                    : 'no sign-off requested'
+            }. `
+          : 'No charter published yet. '}
+        <Link href={`/engagements/${engagement.id}/charter`} className="underline hover:text-ink">
+          {publishedCharter ? 'Open the charter' : 'Draft the charter'}
+        </Link>
+      </p>
 
       <section className="flex flex-col gap-6">
         {(ws.data ?? []).map((w) => (

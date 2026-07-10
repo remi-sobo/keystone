@@ -220,6 +220,12 @@ from p
 where not exists (
   select 1 from resources r, p
   where r.practice_id = p.id and r.title like 'Engagement charter, draft%'
+)
+-- Once the charter graduated to engagement_charters (2A,
+-- seed-charter-v1.sql), the placeholder never comes back.
+and not exists (
+  select 1 from engagement_charters c
+  where c.client_id = (select id from clients where name = 'SafeSpace')
 );
 
 with p as (select id from practices where slug = 'sobo')

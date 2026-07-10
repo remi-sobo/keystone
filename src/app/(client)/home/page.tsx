@@ -35,7 +35,7 @@ export default async function ClientHomePage() {
   let stages = DEFAULT_STAGES
   const freshByWorkstream = new Map<string, string[]>()
 
-  const [{ data: nextSession }, { data: myMembership }, { data: latestDeliverable }, { data: agreement }] = await Promise.all([
+  const [{ data: nextSession }, { data: myMembership }, { data: latestDeliverable }, { data: agreement }, { data: charter }] = await Promise.all([
     supabase
       .from('sessions')
       .select('starts_at, tz')
@@ -69,7 +69,26 @@ export default async function ClientHomePage() {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
+    // Drafts are invisible by policy; this is the live constitution.
+    supabase
+      .from('engagement_charters')
+      .select('id, version, published_at')
+      .eq('client_id', viewer.client.clientId)
+      .eq('status', 'published')
+      .limit(1)
+      .maybeSingle(),
   ])
+
+  const { data: charterSignoff } = charter
+    ? await supabase
+        .from('approvals')
+        .select('status')
+        .eq('subject_type', 'charter')
+        .eq('subject_id', charter.id)
+        .order('requested_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null }
 
   const { data: myOpenItems } = myMembership
     ? await supabase
@@ -136,6 +155,27 @@ export default async function ClientHomePage() {
         </section>
 
         <aside className="flex flex-col gap-4">
+          <KeystoneCard>
+            <p className="eyebrow">The charter</p>
+            {charter ? (
+              <p className="mt-2 text-sm text-ink">
+                Version {charter.version}
+                {charterSignoff?.status === 'pending' ? (
+                  <span className="text-ink-dim">, awaiting your sign-off</span>
+                ) : charterSignoff?.status === 'approved' ? (
+                  <span className="text-ink-dim">, signed</span>
+                ) : null}
+                <br />
+                <Link href="/charter" className="text-forest underline">
+                  {charterSignoff?.status === 'pending' ? 'Read and sign' : 'Read the charter'}
+                </Link>
+              </p>
+            ) : (
+              <p className="mt-2 text-sm text-ink-dim">
+                The shared agreement lands here once it is published.
+              </p>
+            )}
+          </KeystoneCard>
           <KeystoneCard>
             <p className="eyebrow">Your agreement</p>
             {agreement ? (

@@ -2,7 +2,7 @@
 
 **Parent:** `specs/keystone-v2.md` Phase 5 epic 5D, pulled forward per the recommended build order because 2A (charter sign-off), 3D (deliverable acceptance), 5A (closeout), and 5C (case study consent) all consume it. Build the primitive once, early, so no epic invents its own.
 **Grounded against:** the live codebase after 1A/1B and the agreement store (migrations 0001 to 0011).
-**Status:** draft for Remi. CONFIRM gates in section 6.
+**Status:** approved by Remi 2026-07-10 (section 6 gates decided as recommended) and built the same day with 2A: migration 0012, the decide and withdraw paths, the charter as first consumer.
 **Date:** 2026-07-10
 
 ---

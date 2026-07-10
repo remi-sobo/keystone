@@ -2,7 +2,7 @@
 
 **Parent:** `specs/keystone-v2.md` Phase 2 epic 2A, the spine most of V2's client value hangs off: outcomes (2C) derive from its success section, the decision log and Q&A read against it, closeout (5A) closes against it.
 **Grounded against:** the live codebase after 1A/1B, the agreement store (0011), and the seeded SafeSpace content. The full charter prose already lives in the live library as the pinned resource "Engagement charter, draft" (seeded in Phase 0 from `docs/seed/keystone-safespace-seed.md` section 3, fee line included per gate 9), so this build starts from real content, not lorem ipsum.
-**Status:** draft for Remi. CONFIRM gates in section 7.
+**Status:** approved by Remi 2026-07-10 (section 7 gates decided as recommended) and built the same day: migration 0012, the editor, the client page, the Home card, and the SafeSpace graduation (charter v1 published, sign-off pending).
 **Date:** 2026-07-10
 
 ---

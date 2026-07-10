@@ -1040,4 +1040,139 @@ end $$;
 
 reset role;
 
+-- ── Charter and approvals (V2 2A + 5D) ──────────────────────────────
+-- A published charter v1, a draft v2, and a pending sign-off request
+-- in engagement A1. The client sees the published version and decides
+-- the approval through pure RLS with identity stamped by trigger; the
+-- draft stays invisible; decided rows are immutable; nothing deletes.
+
+insert into engagement_charters (id, engagement_id, practice_id, client_id, version, body_md, status, published_at) values
+  ('b0000000-0000-0000-0000-0000000000c1', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   1, 'charter v1 body', 'published', now()),
+  ('b0000000-0000-0000-0000-0000000000c2', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   2, 'charter v2 draft, practice eyes only', 'draft', null);
+insert into approvals (id, practice_id, client_id, engagement_id, subject_type, subject_id, subject_label) values
+  ('c0000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+   '20000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
+   'charter', 'b0000000-0000-0000-0000-0000000000c1', 'the engagement charter, version 1');
+
+set role authenticated;
+
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from engagement_charters) <> 2 then
+    raise exception 'owner_a must see the draft and the published charter';
+  end if;
+  if (select count(*) from approvals) <> 1 then
+    raise exception 'owner_a approval visibility wrong';
+  end if;
+end $$;
+-- A session can never flip a draft to published: the transition is the
+-- publish action's, service-role after the check.
+do $$ begin
+  update engagement_charters set status = 'published'
+    where id = 'b0000000-0000-0000-0000-0000000000c2';
+  raise exception 'HOLE: a session flipped a charter draft to published';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+-- The client member: published visible, draft invisible.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from engagement_charters) <> 1 then
+    raise exception 'member_a1 must see exactly the published charter';
+  end if;
+  if (select count(*) from engagement_charters where status = 'draft') <> 0 then
+    raise exception 'LEAK: a client member reads a charter draft';
+  end if;
+  if (select count(*) from approvals where status = 'pending') <> 1 then
+    raise exception 'member_a1 must see their pending sign-off request';
+  end if;
+end $$;
+-- The client cannot smuggle a decision into any other status.
+do $$ begin
+  update approvals set status = 'withdrawn'
+    where id = 'c0000000-0000-0000-0000-0000000000a1';
+  raise exception 'HOLE: a client member withdrew an approval';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+-- The real decide: status only; identity stamped by trigger from the
+-- verified JWT, never from the payload.
+update approvals set status = 'approved', note_md = 'looks right'
+  where id = 'c0000000-0000-0000-0000-0000000000a1';
+
+reset role;
+do $$ begin
+  if (select count(*) from approvals
+      where id = 'c0000000-0000-0000-0000-0000000000a1'
+        and status = 'approved'
+        and decided_by = '00000000-0000-0000-0000-0000000000a1'
+        and decided_by_email = 'member_a1@client-a.test'
+        and decided_at is not null) <> 1 then
+    raise exception 'the decide did not stamp the decider from the session';
+  end if;
+end $$;
+set role authenticated;
+
+-- Decided rows are immutable to both sides: zero rows match the
+-- pending-only update policies.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$
+declare n int;
+begin
+  update approvals set status = 'not_yet' where id = 'c0000000-0000-0000-0000-0000000000a1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a decided approval was re-decided'; end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$
+declare n int;
+begin
+  update approvals set status = 'withdrawn' where id = 'c0000000-0000-0000-0000-0000000000a1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: the practice rewrote a decided approval'; end if;
+  delete from approvals where id = 'c0000000-0000-0000-0000-0000000000a1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a session deleted an approval'; end if;
+  delete from engagement_charters where id = 'b0000000-0000-0000-0000-0000000000c1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a session deleted a charter version'; end if;
+end $$;
+
+-- Cross-client and cross-practice: zero on both tables.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$
+declare n int;
+begin
+  if (select count(*) from engagement_charters) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 charters';
+  end if;
+  if (select count(*) from approvals) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 approvals';
+  end if;
+  -- And cannot decide a sibling client's approval even blind.
+  update approvals set status = 'approved' where subject_type = 'charter';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: member_a2 decided a sibling approval'; end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from engagement_charters) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a charters';
+  end if;
+  if (select count(*) from approvals) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a approvals';
+  end if;
+end $$;
+
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

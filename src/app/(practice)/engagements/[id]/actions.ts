@@ -18,6 +18,8 @@ import { buildQaRequest, parseAnswer, QUESTION_CHAR_CAP } from '@/lib/qa'
 import { buildQaCorpus } from '@/lib/qaCorpus'
 import { recordQaExchange } from '@/lib/qaExchange'
 import type { AskResult } from '@/components/AskRecordForm'
+import type { FindResult } from '@/components/FindRecordForm'
+import { searchRecord } from '@/lib/recordSearch'
 
 /**
  * Engagement-detail actions: the readiness panel (Ring 3) and
@@ -1039,5 +1041,45 @@ export async function askEngagementQuestion(
       .map((s) => byId.get(s))
       .filter((c): c is NonNullable<typeof c> => !!c)
       .map((c) => ({ label: c.label, href: c.href })),
+  }
+}
+
+/**
+ * Plain keyword search over one engagement's record, practice side
+ * (V2 engagement search). Same session-scoped mechanics as /ask.
+ */
+export async function findInEngagement(
+  engagementId: string,
+  term: string
+): Promise<FindResult> {
+  const viewer = await guardPractice()
+  const idCheck = z.string().uuid().safeParse(engagementId)
+  if (!idCheck.success) return { ok: false, error: 'failed' }
+
+  const supabase = await createServerSupabase()
+  const { data: engagement } = await supabase
+    .from('engagements')
+    .select('id')
+    .eq('id', idCheck.data)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!engagement) return { ok: false, error: 'failed' }
+
+  const hrefs: Record<string, string> = {
+    charter: `/engagements/${engagement.id}/charter`,
+    decision: `/engagements/${engagement.id}#decisions`,
+    note: `/engagements/${engagement.id}`,
+    outcome: `/engagements/${engagement.id}#outcomes`,
+    homework: `/engagements/${engagement.id}`,
+    deliverable: `/engagements/${engagement.id}`,
+    workstream: `/engagements/${engagement.id}`,
+    message: `/engagements/${engagement.id}#messages`,
+  }
+  try {
+    const hits = await searchRecord(supabase, engagement.id, term)
+    return { ok: true, hits: hits.map((h) => ({ ...h, href: hrefs[h.kind] })) }
+  } catch (e) {
+    console.error('[search] practice search failed:', e instanceof Error ? e.message : 'unknown')
+    return { ok: false, error: 'failed' }
   }
 }

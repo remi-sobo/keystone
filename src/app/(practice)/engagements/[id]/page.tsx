@@ -7,10 +7,12 @@ import AddDeliverableForm from './AddDeliverableForm'
 import UploadAgreementForm from './UploadAgreementForm'
 import { MarkdownLite } from '@/components/MarkdownLite'
 import AskRecordForm from '@/components/AskRecordForm'
+import FindRecordForm from '@/components/FindRecordForm'
 import {
   addDecision,
   askEngagementQuestion,
   attachEvidence,
+  findInEngagement,
   removeDeliverable,
   removeEvidence,
   saveOutcome,
@@ -406,6 +408,9 @@ export default async function EngagementDetailPage({
         </p>
         <div className="mt-4">
           <AskRecordForm ask={askEngagementQuestion.bind(null, engagement.id)} />
+        </div>
+        <div className="mt-6">
+          <FindRecordForm find={findInEngagement.bind(null, engagement.id)} />
         </div>
       </section>
 

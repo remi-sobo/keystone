@@ -2,7 +2,7 @@
 
 **Parent:** `specs/keystone-v2.md`, additions list item 4: plain keyword search across the record, distinct from AI Q&A. Sometimes you just want to find the thing. Small, high-use.
 **Grounded against:** the live codebase after 2E (migrations 0001 to 0016). Everything searchable already sits behind proven walls, and 2E just established the pattern this reuses: reads on the caller's own session, so the search scope IS the caller's visibility.
-**Status:** draft for Remi. CONFIRM gates in section 4.
+**Status:** approved by Remi 2026-07-10 (section 4 gates decided as recommended) and built the same day: lib/recordSearch.ts, the find box on /ask ("Ask or find") and on the engagement page. Phase 2 closed.
 **Date:** 2026-07-10
 
 ---

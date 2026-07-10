@@ -4,7 +4,14 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import WorkstreamArc from '@/components/WorkstreamArc'
 import { RoomShell } from '@/components/RoomShell'
 import AddDeliverableForm from './AddDeliverableForm'
-import { removeDeliverable, replyMessage, saveReadiness } from './actions'
+import UploadAgreementForm from './UploadAgreementForm'
+import {
+  removeDeliverable,
+  removeEngagementDocument,
+  replyMessage,
+  saveReadiness,
+  setDocumentVisibility,
+} from './actions'
 
 /**
  * Engagement detail (Ring 3): the early mission control. Workstreams,
@@ -100,6 +107,12 @@ export default async function EngagementDetailPage({
     .eq('engagement_id', id)
     .order('created_at', { ascending: true })
     .limit(200)
+
+  const { data: documents } = await supabase
+    .from('engagement_documents')
+    .select('id, title, status, file_name, visible_to_client, created_at')
+    .eq('engagement_id', id)
+    .order('created_at', { ascending: false })
 
   const stages =
     Array.isArray(practice.data?.stage_config) && practice.data.stage_config.length > 0
@@ -230,6 +243,73 @@ export default async function EngagementDetailPage({
           engagementId={engagement.id}
           workstreams={(ws.data ?? []).map((w) => ({ id: w.id, title: w.title }))}
         />
+      </section>
+
+      <section className="mt-12">
+        <h2 className="font-display text-2xl font-medium text-ink">Agreement</h2>
+        <p className="mt-1 text-sm text-ink-dim">
+          Upload the executed PDF, then share it when it is ready. Nothing reaches the client
+          until you do.
+        </p>
+        {(documents ?? []).length === 0 ? (
+          <p className="mt-3 text-sm text-ink-dim">Nothing uploaded yet.</p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-2">
+            {(documents ?? []).map((d) => (
+              <li
+                key={d.id}
+                className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[var(--radius)] border border-ink/10 bg-paper-raised px-4 py-2.5"
+              >
+                <span className="min-w-0 flex-1 basis-48">
+                  <span className="block truncate text-sm text-ink">
+                    {d.title}{' '}
+                    <span className="eyebrow ml-1">{d.status === 'signed' ? 'signed' : 'uploaded'}</span>
+                  </span>
+                  <span className="block text-xs text-ink-dim">
+                    {d.file_name}, {new Date(d.created_at).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                    {d.visible_to_client ? ', shared with the client' : ', not shared'}
+                  </span>
+                </span>
+                <span className="flex items-center gap-3">
+                  <a
+                    href={`/engagements/${engagement.id}/documents/${d.id}/file?view=1`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm text-ink-dim underline hover:text-ink"
+                  >
+                    View
+                  </a>
+                  <a
+                    href={`/engagements/${engagement.id}/documents/${d.id}/file`}
+                    className="text-sm text-ink-dim underline hover:text-ink"
+                  >
+                    Download
+                  </a>
+                  <form action={setDocumentVisibility}>
+                    <input type="hidden" name="documentId" value={d.id} />
+                    <input type="hidden" name="engagementId" value={engagement.id} />
+                    <input type="hidden" name="to" value={d.visible_to_client ? 'hidden' : 'shared'} />
+                    <button type="submit" className="text-sm text-ink-dim underline hover:text-ink">
+                      {d.visible_to_client ? 'Stop sharing' : 'Share with client'}
+                    </button>
+                  </form>
+                  <form action={removeEngagementDocument}>
+                    <input type="hidden" name="documentId" value={d.id} />
+                    <input type="hidden" name="engagementId" value={engagement.id} />
+                    <button type="submit" className="text-sm text-ink-dim underline hover:text-ink">
+                      Remove
+                    </button>
+                  </form>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <UploadAgreementForm engagementId={engagement.id} />
       </section>
 
       <section id="messages" className="mt-12">

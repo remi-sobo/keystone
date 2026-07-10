@@ -8,6 +8,7 @@ import UploadAgreementForm from './UploadAgreementForm'
 import {
   addDecision,
   removeDeliverable,
+  saveWorkstreamNote,
   removeEngagementDocument,
   replyMessage,
   saveReadiness,
@@ -27,6 +28,8 @@ const PILLARS = ['philosophy', 'system', 'execution'] as const
 const STATES: Record<string, string> = {
   decision_logged: 'Logged. The record keeps it as written.',
   decision_error: 'That did not save. Try again.',
+  note_saved: 'Note saved. The client sees it now.',
+  note_error: 'That note did not save. Try again.',
   msg_sent: 'Reply sent. The client gets an email.',
   msg_sent_no_email: 'Your reply is saved and visible, but the email notification did not go out.',
   msg_error: 'That did not send. Try again.',
@@ -78,7 +81,7 @@ export default async function EngagementDetailPage({
   const [ws, practice, sessions, items, readiness, deliverables] = await Promise.all([
     supabase
       .from('workstreams')
-      .select('id, title, stage, sort')
+      .select('id, title, stage, sort, note_md, note_updated_at')
       .eq('engagement_id', id)
       .order('sort'),
     supabase.from('practices').select('stage_config').eq('id', engagement.practice_id).maybeSingle(),
@@ -186,7 +189,26 @@ export default async function EngagementDetailPage({
 
       <section className="flex flex-col gap-6">
         {(ws.data ?? []).map((w) => (
-          <WorkstreamArc key={w.id} title={w.title} stage={w.stage} stages={stages} freshStages={[]} />
+          <div key={w.id}>
+            <WorkstreamArc title={w.title} stage={w.stage} stages={stages} freshStages={[]} />
+            <form
+              action={saveWorkstreamNote}
+              className="mt-2 flex flex-wrap items-center gap-2"
+            >
+              <input type="hidden" name="engagementId" value={engagement.id} />
+              <input type="hidden" name="workstreamId" value={w.id} />
+              <input
+                name="note"
+                maxLength={600}
+                defaultValue={w.note_md ?? ''}
+                placeholder="Why we are here, one line the client reads"
+                className="min-w-[240px] flex-1 rounded-lg border border-ink/15 bg-paper px-3 py-1.5 text-sm text-ink"
+              />
+              <button type="submit" className="text-sm text-ink-dim underline hover:text-ink">
+                Save note
+              </button>
+            </form>
+          </div>
         ))}
       </section>
 

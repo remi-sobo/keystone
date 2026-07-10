@@ -2,7 +2,7 @@
 
 **Parent:** `specs/keystone-v2.md` Phase 2 epic 2F: the difference between a dashboard and understanding.
 **Grounded against:** the live codebase after 2B (migrations 0001 to 0013). `WorkstreamArc.tsx` shows the stage; `workstreams` has no explanatory field; decisions, action_items, and deliverables all already carry `workstream_id`, so the panel below is mostly composition.
-**Status:** draft for Remi. CONFIRM gates in section 6.
+**Status:** approved by Remi 2026-07-10 (section 6 gates decided as recommended) and built the same day: migration 0014, the note form on the engagement page, and the Home fold.
 **Date:** 2026-07-10
 
 ---

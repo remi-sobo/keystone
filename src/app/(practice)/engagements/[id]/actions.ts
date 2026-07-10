@@ -653,3 +653,73 @@ export async function addDecision(formData: FormData): Promise<void> {
   revalidatePath('/home')
   redirect(`/engagements/${engagement.id}?state=decision_logged#decisions`)
 }
+
+// ── Workstream note (V2 2F): the "why we're here" field ───────────────
+
+const NoteShape = z.object({
+  engagementId: z.string().uuid(),
+  workstreamId: z.string().uuid(),
+  note: z.string().trim().max(600),
+})
+
+/**
+ * Save a workstream's why-we're-here note. Session client under the
+ * engagement.write policy; client-visible on save by design, so the
+ * prose rides the voice gate.
+ */
+export async function saveWorkstreamNote(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = NoteShape.safeParse({
+    engagementId: formData.get('engagementId'),
+    workstreamId: formData.get('workstreamId'),
+    note: formData.get('note') ?? '',
+  })
+  if (!parsed.success) redirect('/engagements')
+
+  const supabase = await createServerSupabase()
+  const { data: engagement } = await supabase
+    .from('engagements')
+    .select('id, practice_id')
+    .eq('id', parsed.data.engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!engagement) redirect('/engagements')
+
+  let note: string | null = parsed.data.note || null
+  if (note) {
+    const check = validateVoice(note)
+    if (!check.ok) {
+      void logVoiceViolation({
+        practiceId: engagement.practice_id,
+        source: 'workstream_note',
+        violations: check.violations,
+        rawExcerpt: note.slice(0, 400),
+        cleanedExcerpt: check.cleaned.slice(0, 400),
+      })
+      note = check.cleaned
+    }
+  }
+
+  const { error } = await supabase
+    .from('workstreams')
+    .update({
+      note_md: note,
+      note_updated_at: note ? new Date().toISOString() : null,
+    })
+    .eq('id', parsed.data.workstreamId)
+    .eq('engagement_id', engagement.id)
+  if (error) {
+    console.error('[workstreams] note save failed:', error.message)
+    redirect(`/engagements/${engagement.id}?state=note_error`)
+  }
+
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    action: 'workstreams.note_saved',
+    target: parsed.data.workstreamId,
+    detail: { cleared: note === null },
+  })
+  revalidatePath(`/engagements/${engagement.id}`)
+  revalidatePath('/home')
+  redirect(`/engagements/${engagement.id}?state=note_saved`)
+}

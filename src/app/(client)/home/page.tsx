@@ -6,6 +6,7 @@ import { KeystoneCard } from '@/components/KeystoneCard'
 import { ArchEmptyState } from '@/components/ArchEmptyState'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
+import { stageMeaning } from '@/lib/stageMeanings'
 
 /**
  * Client Home, the progress view: the screen the fee lives on
@@ -31,7 +32,13 @@ export default async function ClientHomePage() {
     .limit(1)
     .maybeSingle()
 
-  let workstreams: Array<{ id: string; title: string; stage: string }> = []
+  let workstreams: Array<{
+    id: string
+    title: string
+    stage: string
+    note_md: string | null
+    note_updated_at: string | null
+  }> = []
   let stages = DEFAULT_STAGES
   const freshByWorkstream = new Map<string, string[]>()
 
@@ -105,11 +112,15 @@ export default async function ClientHomePage() {
         .limit(3)
     : { data: [] }
 
+  const decisionsByWs = new Map<string, Array<{ id: string; title: string; decided_on: string }>>()
+  const openByWs = new Map<string, { count: number; nearestDue: string | null }>()
+  const latestShipByWs = new Map<string, { title: string; delivered_on: string }>()
+
   if (engagement) {
-    const [ws, practice, events] = await Promise.all([
+    const [ws, practice, events, wsDecisions, wsOpenItems, wsShips] = await Promise.all([
       supabase
         .from('workstreams')
-        .select('id, title, stage, sort')
+        .select('id, title, stage, sort, note_md, note_updated_at')
         .eq('engagement_id', engagement.id)
         .order('sort', { ascending: true }),
       supabase.from('practices').select('stage_config').eq('id', engagement.practice_id).maybeSingle(),
@@ -121,6 +132,26 @@ export default async function ClientHomePage() {
         // stages completed within the last 7 days of THIS render.
         // eslint-disable-next-line react-hooks/purity
         .gte('at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+      supabase
+        .from('decisions')
+        .select('id, title, decided_on, workstream_id')
+        .eq('engagement_id', engagement.id)
+        .not('workstream_id', 'is', null)
+        .order('decided_on', { ascending: false })
+        .limit(60),
+      supabase
+        .from('action_items')
+        .select('id, due_on, workstream_id')
+        .eq('engagement_id', engagement.id)
+        .eq('status', 'open')
+        .not('workstream_id', 'is', null),
+      supabase
+        .from('deliverables')
+        .select('id, title, delivered_on, workstream_id')
+        .eq('engagement_id', engagement.id)
+        .not('workstream_id', 'is', null)
+        .order('delivered_on', { ascending: false })
+        .limit(60),
     ])
     workstreams = ws.data ?? []
     if (Array.isArray(practice.data?.stage_config) && practice.data.stage_config.length > 0) {
@@ -131,6 +162,25 @@ export default async function ClientHomePage() {
       const list = freshByWorkstream.get(e.workstream_id) ?? []
       list.push(e.from_stage)
       freshByWorkstream.set(e.workstream_id, list)
+    }
+    for (const d of wsDecisions.data ?? []) {
+      const list = decisionsByWs.get(d.workstream_id as string) ?? []
+      if (list.length < 3) list.push({ id: d.id, title: d.title, decided_on: d.decided_on })
+      decisionsByWs.set(d.workstream_id as string, list)
+    }
+    for (const it of wsOpenItems.data ?? []) {
+      const cur = openByWs.get(it.workstream_id as string) ?? { count: 0, nearestDue: null }
+      cur.count += 1
+      if (it.due_on && (!cur.nearestDue || it.due_on < cur.nearestDue)) cur.nearestDue = it.due_on
+      openByWs.set(it.workstream_id as string, cur)
+    }
+    for (const dl of wsShips.data ?? []) {
+      if (!latestShipByWs.has(dl.workstream_id as string)) {
+        latestShipByWs.set(dl.workstream_id as string, {
+          title: dl.title,
+          delivered_on: dl.delivered_on,
+        })
+      }
     }
   }
 
@@ -147,15 +197,79 @@ export default async function ClientHomePage() {
               body="Once the first session is held, each workstream shows up here at its own stage, so you can see where the engagement stands in a glance."
             />
           ) : (
-            workstreams.map((w) => (
-              <WorkstreamArc
-                key={w.id}
-                title={w.title}
-                stage={w.stage}
-                stages={stages}
-                freshStages={freshByWorkstream.get(w.id) ?? []}
-              />
-            ))
+            workstreams.map((w) => {
+              const meaning = stageMeaning(w.stage)
+              const wsDecisionList = decisionsByWs.get(w.id) ?? []
+              const openItems = openByWs.get(w.id)
+              const latestShip = latestShipByWs.get(w.id)
+              return (
+                <div key={w.id}>
+                  <WorkstreamArc
+                    title={w.title}
+                    stage={w.stage}
+                    stages={stages}
+                    freshStages={freshByWorkstream.get(w.id) ?? []}
+                  />
+                  <details className="mt-1">
+                    <summary className="cursor-pointer py-1 text-sm text-ink-dim hover:text-ink">
+                      Why we are here
+                    </summary>
+                    <div className="mt-1 flex flex-col gap-2 border-l-2 border-ink/10 pl-4">
+                      {meaning ? <p className="text-sm text-ink-dim">{meaning}</p> : null}
+                      {w.note_md ? (
+                        <p className="text-sm text-ink">
+                          {w.note_md}
+                          {w.note_updated_at ? (
+                            <span className="text-ink-dim">
+                              {' '}
+                              (from your consultant,{' '}
+                              {new Date(w.note_updated_at).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                              })}
+                              )
+                            </span>
+                          ) : null}
+                        </p>
+                      ) : null}
+                      {wsDecisionList.length > 0 ? (
+                        <div className="text-sm">
+                          <p className="text-ink-dim">Recent decisions:</p>
+                          <ul className="ml-4 list-disc text-ink">
+                            {wsDecisionList.map((d) => (
+                              <li key={d.id}>{d.title}</li>
+                            ))}
+                          </ul>
+                          <Link href="/decisions" className="text-forest underline">
+                            The full log
+                          </Link>
+                        </div>
+                      ) : null}
+                      {openItems && openItems.count > 0 ? (
+                        <p className="text-sm text-ink-dim">
+                          {openItems.count} open homework item{openItems.count === 1 ? '' : 's'}
+                          {openItems.nearestDue ? `, nearest due ${openItems.nearestDue}` : ''}.{' '}
+                          <Link href="/homework" className="text-forest underline">
+                            See homework
+                          </Link>
+                        </p>
+                      ) : null}
+                      {latestShip ? (
+                        <p className="text-sm text-ink-dim">
+                          Latest deliverable: {latestShip.title} ({latestShip.delivered_on}).{' '}
+                          <Link href="/deliverables" className="text-forest underline">
+                            The timeline
+                          </Link>
+                        </p>
+                      ) : null}
+                      {!meaning && !w.note_md && wsDecisionList.length === 0 && !openItems && !latestShip ? (
+                        <p className="text-sm text-ink-dim">Nothing to show here yet.</p>
+                      ) : null}
+                    </div>
+                  </details>
+                </div>
+              )
+            })
           )}
         </section>
 

@@ -1236,4 +1236,26 @@ end $$;
 
 reset role;
 
+-- ── Workstream note (V2 2F): client-readable, practice-writable ─────
+
+update workstreams set note_md = 'why we are here, said plainly', note_updated_at = now()
+  where id = '40000000-0000-0000-0000-0000000000a1';
+
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$
+declare n int;
+begin
+  if (select count(*) from workstreams where note_md is not null) <> 1 then
+    raise exception 'member_a1 must read their workstream note';
+  end if;
+  update workstreams set note_md = 'forged note'
+    where id = '40000000-0000-0000-0000-0000000000a1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a client member wrote a workstream note'; end if;
+end $$;
+
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

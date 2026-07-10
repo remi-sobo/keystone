@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { RoomShell } from '@/components/RoomShell'
+import MarkdownEditor from '@/components/MarkdownEditor'
 import { createResource } from './actions'
 
 /**
@@ -91,11 +92,10 @@ export default async function AuthoringPage({
             placeholder="Tags, comma separated (session prep, fundraising)"
             className="rounded-lg border border-ink/15 bg-paper-raised p-2 text-sm text-ink"
           />
-          <textarea
+          <MarkdownEditor
             name="body"
             rows={10}
-            placeholder="The resource itself, in Markdown."
-            className="w-full rounded-lg border border-ink/15 bg-paper-raised p-3 text-sm text-ink"
+            placeholder="The resource itself. Use the toolbar for headings, lists, bold, and links."
           />
           <div>
             <button

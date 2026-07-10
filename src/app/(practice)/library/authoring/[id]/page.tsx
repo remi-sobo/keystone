@@ -2,7 +2,9 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { RoomShell } from '@/components/RoomShell'
-import { deleteResource, updateResource } from '../actions'
+import MarkdownEditor from '@/components/MarkdownEditor'
+import AttachDocForm from './AttachDocForm'
+import { deleteResource, removeResourceFile, updateResource } from '../actions'
 
 /**
  * Edit one resource (Ring 4). Reads and writes ride the session client;
@@ -13,6 +15,7 @@ const STATES: Record<string, string> = {
   saved: 'Saved.',
   invalid: 'That did not validate.',
   save_failed: 'That did not save. Try again.',
+  doc_removed: 'Document removed from the resource.',
 }
 
 export default async function EditResourcePage({
@@ -28,7 +31,7 @@ export default async function EditResourcePage({
 
   const { data: resource } = await supabase
     .from('resources')
-    .select('id, title, kind, tags, body_md')
+    .select('id, title, kind, tags, body_md, storage_path')
     .eq('id', id)
     .maybeSingle()
   if (!resource) redirect('/library/authoring')
@@ -76,12 +79,7 @@ export default async function EditResourcePage({
           placeholder="Tags, comma separated"
           className="rounded-lg border border-ink/15 bg-paper-raised p-2 text-sm text-ink"
         />
-        <textarea
-          name="body"
-          rows={14}
-          defaultValue={resource.body_md ?? ''}
-          className="w-full rounded-lg border border-ink/15 bg-paper-raised p-3 text-sm text-ink"
-        />
+        <MarkdownEditor name="body" rows={16} defaultValue={resource.body_md ?? ''} />
         <div className="flex gap-3">
           <button
             type="submit"
@@ -92,12 +90,58 @@ export default async function EditResourcePage({
         </div>
       </form>
 
-      <form action={deleteResource} className="mt-6">
+      <section className="mt-10">
+        <h2 className="font-display text-2xl font-medium text-ink">Document</h2>
+        <p className="mt-1 text-sm text-ink-dim">
+          A PDF or Word file that ships with this resource. Clients view and download it from
+          the library.
+        </p>
+        {resource.storage_path ? (
+          <p className="mt-3 flex flex-wrap items-center gap-3 text-sm text-ink">
+            {resource.storage_path.split('/').pop()}
+            <a
+              href={`/library/authoring/${resource.id}/file?view=1`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-ink-dim underline hover:text-ink"
+            >
+              View
+            </a>
+            <a
+              href={`/library/authoring/${resource.id}/file`}
+              className="text-ink-dim underline hover:text-ink"
+            >
+              Download
+            </a>
+            <span className="inline-flex">
+              <RemoveDocButton resourceId={resource.id} />
+            </span>
+          </p>
+        ) : (
+          <p className="mt-3 text-sm text-ink-dim">Nothing attached.</p>
+        )}
+        <div className="mt-3">
+          <AttachDocForm resourceId={resource.id} />
+        </div>
+      </section>
+
+      <form action={deleteResource} className="mt-10">
         <input type="hidden" name="resourceId" value={resource.id} />
         <button type="submit" className="text-sm text-ink-dim underline hover:text-ink">
           Remove from the library
         </button>
       </form>
     </RoomShell>
+  )
+}
+
+function RemoveDocButton({ resourceId }: { resourceId: string }) {
+  return (
+    <form action={removeResourceFile}>
+      <input type="hidden" name="resourceId" value={resourceId} />
+      <button type="submit" className="text-sm text-ink-dim underline hover:text-ink">
+        Remove
+      </button>
+    </form>
   )
 }

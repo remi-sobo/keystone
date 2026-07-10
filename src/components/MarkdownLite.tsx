@@ -1,13 +1,16 @@
+import React from 'react'
+
 /**
  * A deliberately small renderer for Keystone's own markdown bodies
- * (the charter, and whatever inherits it). Headings, lists, and
- * paragraphs; nothing else, no HTML passthrough, no dependency. The
- * source is trusted practice-authored text that already passed the
- * voice gate; this only shapes it.
+ * (the charter, the library guides, and whatever inherits it).
+ * Headings, bullet and numbered lists, bold, italic, and http(s)
+ * links; nothing else, no HTML passthrough, no dependency. The source
+ * is trusted practice-authored text that already passed the voice
+ * gate; this only shapes it.
  */
 
 interface Block {
-  kind: 'h2' | 'h3' | 'ul' | 'p'
+  kind: 'h2' | 'h3' | 'ul' | 'ol' | 'p'
   lines: string[]
 }
 
@@ -37,12 +40,57 @@ function toBlocks(text: string): Block[] {
         flush()
         blocks.push({ kind: 'ul', lines: [line.slice(2)] })
       }
+    } else if (/^\d+[.)] /.test(line)) {
+      const item = line.replace(/^\d+[.)] /, '')
+      const prev = blocks[blocks.length - 1]
+      if (para.length === 0 && prev?.kind === 'ol') prev.lines.push(item)
+      else {
+        flush()
+        blocks.push({ kind: 'ol', lines: [item] })
+      }
     } else {
       para.push(line)
     }
   }
   flush()
   return blocks
+}
+
+/** Inline marks: [text](https://...), **bold**, *italic*. Pure; a
+ *  link that is not http(s) renders as plain text, never as a href. */
+export function renderInline(text: string): React.ReactNode {
+  const out: React.ReactNode[] = []
+  const re = /\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*]+)\*\*|\*([^*\s][^*]*)\*/g
+  let last = 0
+  let m: RegExpExecArray | null
+  let k = 0
+  while ((m = re.exec(text))) {
+    if (m.index > last) out.push(text.slice(last, m.index))
+    if (m[1] !== undefined && m[2] !== undefined) {
+      if (/^https?:\/\//i.test(m[2])) {
+        out.push(
+          <a
+            key={k++}
+            href={m[2]}
+            target="_blank"
+            rel="noreferrer"
+            className="text-forest underline"
+          >
+            {m[1]}
+          </a>
+        )
+      } else {
+        out.push(m[1])
+      }
+    } else if (m[3] !== undefined) {
+      out.push(<strong key={k++}>{m[3]}</strong>)
+    } else if (m[4] !== undefined) {
+      out.push(<em key={k++}>{m[4]}</em>)
+    }
+    last = m.index + m[0].length
+  }
+  if (last < text.length) out.push(text.slice(last))
+  return out
 }
 
 export function MarkdownLite({ text }: { text: string }) {
@@ -65,13 +113,26 @@ export function MarkdownLite({ text }: { text: string }) {
           return (
             <ul key={i} className="ml-5 list-disc text-sm leading-relaxed text-ink">
               {b.lines.map((li, j) => (
-                <li key={j}>{li}</li>
+                <li key={j}>{renderInline(li)}</li>
               ))}
             </ul>
           )
+        if (b.kind === 'ol')
+          return (
+            <ol key={i} className="ml-5 list-decimal text-sm leading-relaxed text-ink">
+              {b.lines.map((li, j) => (
+                <li key={j}>{renderInline(li)}</li>
+              ))}
+            </ol>
+          )
         return (
           <p key={i} className="whitespace-pre-line text-sm leading-relaxed text-ink">
-            {b.lines.join('\n')}
+            {b.lines.map((line, j) => (
+              <React.Fragment key={j}>
+                {j > 0 ? '\n' : ''}
+                {renderInline(line)}
+              </React.Fragment>
+            ))}
           </p>
         )
       })}

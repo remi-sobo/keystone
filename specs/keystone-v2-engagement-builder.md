@@ -2,7 +2,7 @@
 
 **Parent:** `specs/keystone-v2.md` Phase 1, epic 1B. Second standalone V2 spec.
 **Grounded against:** the live codebase after 1A (migrations 0001 to 0009, the seed files, the client surface reads). Every V1 claim below was read from the code.
-**Status:** draft for Remi. The CONFIRM gates sit in section 9.
+**Status:** approved by Remi 2026-07-09 (the four section 9 gates decided as recommended) and built the same day: migration 0010, the drafts list on `/engagements`, `/engagements/drafts/[id]`, and publish.
 **Date:** 2026-07-09
 
 ---

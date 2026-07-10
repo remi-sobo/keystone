@@ -5,10 +5,8 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { getViewer, type Viewer } from '@/lib/membership'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import { sendEmail } from '@/lib/email'
-import { buildInviteEmail } from '@/lib/inviteEmail'
+import { sendMembershipInvite } from '@/lib/inviteSend'
 import { logAuditAction } from '@/lib/audit'
-import { checkRateLimits, LIMITS } from '@/lib/rateLimit'
 
 /**
  * Members and access actions (V2 1A, specs/keystone-v2-admin-ui.md).
@@ -59,7 +57,7 @@ async function activeOwnerCount(practiceId: string): Promise<number> {
   return count ?? 0
 }
 
-/** Send the invite email for a pending row and stamp last_invite_sent_at. */
+/** The 1A wrapper over the shared rate-limited send (lib/inviteSend.ts). */
 async function sendInvite(opts: {
   ctx: Owner
   side: 'practice' | 'client'
@@ -67,41 +65,15 @@ async function sendInvite(opts: {
   email: string
   clientName?: string
 }): Promise<'sent' | 'slow' | 'failed'> {
-  const limited = await checkRateLimits([
-    { config: LIMITS.INVITE_SEND_PER_TARGET, key: opts.rowId },
-    { config: LIMITS.INVITE_SEND_PER_HOUR, key: opts.ctx.practiceId },
-  ])
-  if (!limited.ok) return 'slow'
-
-  const mail = buildInviteEmail({
+  return sendMembershipInvite({
     side: opts.side,
+    rowId: opts.rowId,
     email: opts.email,
+    practiceId: opts.ctx.practiceId,
     practiceName: opts.ctx.viewer.practice?.practiceName ?? 'your practice',
     clientName: opts.clientName,
-  })
-  // Reply-to the inviter (CONFIRM 1A-3): a confused invitee lands with
-  // a person, never a noreply void.
-  const result = await sendEmail({
-    to: opts.email,
-    subject: mail.subject,
-    html: mail.html,
-    replyTo: opts.ctx.email || undefined,
-  })
-  if (!result.ok) return 'failed'
-
-  const table = opts.side === 'practice' ? 'practice_members' : 'client_members'
-  await supabaseAdmin
-    .from(table)
-    .update({ last_invite_sent_at: new Date().toISOString() })
-    .eq('id', opts.rowId)
-    .eq('practice_id', opts.ctx.practiceId)
-  await logAuditAction({
     actorEmail: opts.ctx.email,
-    action: 'members.invite_sent',
-    target: opts.email,
-    detail: { side: opts.side, row: opts.rowId },
   })
-  return 'sent'
 }
 
 export async function addPracticeMember(formData: FormData): Promise<void> {

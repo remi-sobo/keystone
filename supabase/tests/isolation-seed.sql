@@ -865,4 +865,80 @@ end $$;
 
 reset role;
 
+-- ── V2 1B: engagement_drafts are invisible to every client member ───
+-- The builder's whole design rests on this: a draft for client_a1
+-- must read zero even to a member of client_a1.
+
+insert into engagement_drafts (id, practice_id, client_id, title, shape) values
+  ('90000000-0000-0000-0000-0000000000d1', '10000000-0000-0000-0000-00000000000a',
+   '20000000-0000-0000-0000-0000000000a1', 'Draft for A1',
+   '{"notes_md":"leak-test private scoping notes"}');
+
+set role authenticated;
+
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from engagement_drafts) <> 1 then
+    raise exception 'owner_a draft visibility wrong';
+  end if;
+end $$;
+
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000b","email":"consultant_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from engagement_drafts) <> 1 then
+    raise exception 'consultant_a draft visibility wrong';
+  end if;
+  -- engagement.write covers drafting.
+  insert into engagement_drafts (practice_id, title)
+    values ('10000000-0000-0000-0000-00000000000a', 'Consultant draft');
+end $$;
+
+-- The point of the design: the SAME client's member reads zero drafts.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from engagement_drafts) <> 0 then
+    raise exception 'LEAK: a client member reads a draft about their own client';
+  end if;
+end $$;
+do $$ begin
+  insert into engagement_drafts (practice_id, client_id, title)
+    values ('10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1', 'forged');
+  raise exception 'HOLE: a client member wrote an engagement draft';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000b1","email":"member_b@client-b.test"}', false);
+do $$ begin
+  if (select count(*) from engagement_drafts) <> 0 then raise exception 'LEAK: member_b reads drafts'; end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from engagement_drafts) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a drafts';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000ee","email":"stranger@example.test"}', false);
+do $$ begin
+  if (select count(*) from engagement_drafts) <> 0 then raise exception 'LEAK: stranger reads drafts'; end if;
+end $$;
+
+-- No delete path for any session: discard is a status, never a delete.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$
+declare n int;
+begin
+  delete from engagement_drafts where id = '90000000-0000-0000-0000-0000000000d1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a session deleted an engagement draft'; end if;
+end $$;
+
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

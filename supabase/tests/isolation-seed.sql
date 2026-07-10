@@ -941,4 +941,103 @@ end $$;
 
 reset role;
 
+-- ── Engagement documents: the visibility wall and both scope walls ──
+-- Two documents in engagement A1: one shared, one not. The practice
+-- sees both; member_a1 sees ONLY the shared one; everyone else zero.
+-- Storage: the shared object readable by member_a1 through its row,
+-- the unshared object unreadable even with the exact path.
+
+insert into engagement_documents
+  (id, engagement_id, practice_id, client_id, title, status, storage_path, file_name, visible_to_client) values
+  ('a0000000-0000-0000-0000-0000000000d1', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   'Consulting services agreement', 'signed',
+   '10000000-0000-0000-0000-00000000000a/20000000-0000-0000-0000-0000000000a1/30000000-0000-0000-0000-0000000000a1/u1/agreement.pdf',
+   'agreement.pdf', true),
+  ('a0000000-0000-0000-0000-0000000000d2', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   'Unshared draft', 'uploaded',
+   '10000000-0000-0000-0000-00000000000a/20000000-0000-0000-0000-0000000000a1/30000000-0000-0000-0000-0000000000a1/u2/draft.pdf',
+   'draft.pdf', false);
+insert into storage.objects (bucket_id, name) values
+  ('engagement-documents', '10000000-0000-0000-0000-00000000000a/20000000-0000-0000-0000-0000000000a1/30000000-0000-0000-0000-0000000000a1/u1/agreement.pdf'),
+  ('engagement-documents', '10000000-0000-0000-0000-00000000000a/20000000-0000-0000-0000-0000000000a1/30000000-0000-0000-0000-0000000000a1/u2/draft.pdf');
+
+set role authenticated;
+
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from engagement_documents) <> 2 then
+    raise exception 'owner_a must see both documents, shared and not';
+  end if;
+  if (select count(*) from storage.objects where bucket_id = 'engagement-documents') <> 2 then
+    raise exception 'owner_a must read both document objects';
+  end if;
+end $$;
+
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from engagement_documents) <> 1 then
+    raise exception 'member_a1 must see exactly the shared document';
+  end if;
+  if (select count(*) from engagement_documents where visible_to_client = false) <> 0 then
+    raise exception 'LEAK: a client member reads an unshared document';
+  end if;
+  if (select count(*) from storage.objects
+      where bucket_id = 'engagement-documents' and name like '%u1/agreement.pdf') <> 1 then
+    raise exception 'member_a1 must read the shared document object';
+  end if;
+  if (select count(*) from storage.objects
+      where bucket_id = 'engagement-documents' and name like '%u2/draft.pdf') <> 0 then
+    raise exception 'LEAK: a client member reads an UNSHARED document object by path';
+  end if;
+end $$;
+do $$ begin
+  insert into engagement_documents (engagement_id, practice_id, client_id, title, storage_path, file_name)
+    values ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1', 'forged', 'x/y', 'forged.pdf');
+  raise exception 'HOLE: a client member wrote a document row';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+do $$
+declare n int;
+begin
+  update engagement_documents set visible_to_client = true;
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a client member flipped document visibility'; end if;
+end $$;
+
+-- Cross-client (same practice) and cross-practice: zero.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$ begin
+  if (select count(*) from engagement_documents) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 documents';
+  end if;
+  if (select count(*) from storage.objects where bucket_id = 'engagement-documents') <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 document objects';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from engagement_documents) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a documents';
+  end if;
+  if (select count(*) from storage.objects where bucket_id = 'engagement-documents') <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a document objects';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000ee","email":"stranger@example.test"}', false);
+do $$ begin
+  if (select count(*) from engagement_documents) <> 0 then
+    raise exception 'LEAK: stranger reads documents';
+  end if;
+end $$;
+
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

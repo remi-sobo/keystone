@@ -2,7 +2,7 @@
 
 **Parent:** `specs/keystone-v2.md` Phase 2 epic 2C: progress as value, not just stage.
 **Grounded against:** the live codebase after 2D (migrations 0001 to 0014), the published SafeSpace charter (its "Where this ends" and "How we will know it worked" sections), and the seed doc's section 4 table (eight outcomes with baselines and evidence-when-done), which the seed doc marks "feeds V2 2C".
-**Status:** draft for Remi. CONFIRM gates in section 6.
+**Status:** approved by Remi 2026-07-10 (section 6 gates decided as recommended) and built the same day: migration 0015, both surfaces, and the eight SafeSpace outcomes graduated on the live project.
 **Date:** 2026-07-10
 
 ---

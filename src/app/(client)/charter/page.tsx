@@ -64,6 +64,10 @@ export default async function ClientCharterPage({
         <Link href="/decisions" className="underline hover:text-ink">
           the decision log
         </Link>
+        ; where this ends is tracked in{' '}
+        <Link href="/outcomes" className="underline hover:text-ink">
+          the outcomes
+        </Link>
         .
       </p>
       {state && STATES[state] ? (

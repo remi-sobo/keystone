@@ -393,6 +393,11 @@ export default async function ClientHomePage() {
                 <Link href="/decisions" className="text-forest underline">
                   Read the log
                 </Link>
+                <br />
+                Where this ends:{' '}
+                <Link href="/outcomes" className="text-forest underline">
+                  the outcomes
+                </Link>
               </p>
             ) : null}
           </KeystoneCard>

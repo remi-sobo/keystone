@@ -723,3 +723,222 @@ export async function saveWorkstreamNote(formData: FormData): Promise<void> {
   revalidatePath('/home')
   redirect(`/engagements/${engagement.id}?state=note_saved`)
 }
+
+// ── Outcomes and evidence (V2 2C) ─────────────────────────────────────
+
+const OutcomeShape = z.object({
+  engagementId: z.string().uuid(),
+  outcomeId: z.string().uuid().optional(),
+  title: z.string().trim().min(1).max(300),
+  baseline: z.string().trim().max(1000).optional(),
+  target: z.string().trim().max(1000).optional(),
+  standing: z.string().trim().max(2000).optional(),
+  reachedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  workstreamId: z.string().uuid().optional(),
+})
+
+function sweepOutcomeProse(practiceId: string, text: string): string {
+  const check = validateVoice(text)
+  if (check.ok) return text
+  void logVoiceViolation({
+    practiceId,
+    source: 'outcomes',
+    violations: check.violations,
+    rawExcerpt: text.slice(0, 400),
+    cleanedExcerpt: check.cleaned.slice(0, 400),
+  })
+  return check.cleaned
+}
+
+/** Create or update an outcome. The standing note stamps its date. */
+export async function saveOutcome(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const clean = (name: string) => {
+    const v = String(formData.get(name) ?? '').trim()
+    return v || undefined
+  }
+  const parsed = OutcomeShape.safeParse({
+    engagementId: formData.get('engagementId'),
+    outcomeId: clean('outcomeId'),
+    title: formData.get('title'),
+    baseline: clean('baseline'),
+    target: clean('target'),
+    standing: clean('standing'),
+    reachedOn: clean('reachedOn'),
+    workstreamId: clean('workstreamId'),
+  })
+  if (!parsed.success) redirect('/engagements')
+  const o = parsed.data
+
+  const supabase = await createServerSupabase()
+  const { data: engagement } = await supabase
+    .from('engagements')
+    .select('id, practice_id, client_id')
+    .eq('id', o.engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!engagement) redirect('/engagements')
+  const back = `/engagements/${engagement.id}?state=outcome_saved#outcomes`
+
+  const sweep = (t?: string) => (t ? sweepOutcomeProse(engagement.practice_id, t) : null)
+  const fields = {
+    title: sweepOutcomeProse(engagement.practice_id, o.title),
+    baseline_md: sweep(o.baseline),
+    target_md: sweep(o.target),
+    standing_md: sweep(o.standing),
+    reached_on: o.reachedOn ?? null,
+    workstream_id: o.workstreamId ?? null,
+  }
+
+  if (o.outcomeId) {
+    const { data: existing } = await supabase
+      .from('outcomes')
+      .select('id, standing_md')
+      .eq('id', o.outcomeId)
+      .eq('engagement_id', engagement.id)
+      .maybeSingle()
+    if (!existing) redirect('/engagements')
+    const { error } = await supabase
+      .from('outcomes')
+      .update({
+        ...fields,
+        standing_updated_at:
+          (fields.standing_md ?? null) !== (existing.standing_md ?? null)
+            ? fields.standing_md
+              ? new Date().toISOString()
+              : null
+            : undefined,
+      })
+      .eq('id', existing.id)
+    if (error) redirect(`/engagements/${engagement.id}?state=outcome_error#outcomes`)
+  } else {
+    const { data: last } = await supabase
+      .from('outcomes')
+      .select('sort')
+      .eq('engagement_id', engagement.id)
+      .order('sort', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    const { error } = await supabase.from('outcomes').insert({
+      engagement_id: engagement.id,
+      practice_id: engagement.practice_id,
+      client_id: engagement.client_id,
+      ...fields,
+      standing_updated_at: fields.standing_md ? new Date().toISOString() : null,
+      sort: (last?.sort ?? -1) + 1,
+      created_by: viewer.user!.id,
+    })
+    if (error) redirect(`/engagements/${engagement.id}?state=outcome_error#outcomes`)
+  }
+
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    action: o.outcomeId ? 'outcomes.updated' : 'outcomes.created',
+    target: engagement.id,
+  })
+  revalidatePath(`/engagements/${engagement.id}`)
+  revalidatePath('/outcomes')
+  redirect(back)
+}
+
+const EvidenceShape = z.object({
+  engagementId: z.string().uuid(),
+  outcomeId: z.string().uuid(),
+  // "kind:uuid" from the single grouped picker.
+  ref: z.string().regex(/^(deliverable|session|action_item|decision):[0-9a-f-]{36}$/),
+  note: z.string().trim().max(300).optional(),
+})
+
+const EVIDENCE_TABLES = {
+  deliverable: 'deliverables',
+  session: 'sessions',
+  action_item: 'action_items',
+  decision: 'decisions',
+} as const
+
+export async function attachEvidence(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = EvidenceShape.safeParse({
+    engagementId: formData.get('engagementId'),
+    outcomeId: formData.get('outcomeId'),
+    ref: formData.get('ref'),
+    note: String(formData.get('note') ?? '').trim() || undefined,
+  })
+  if (!parsed.success) redirect('/engagements')
+  const [kind, refId] = parsed.data.ref.split(':') as [keyof typeof EVIDENCE_TABLES, string]
+
+  const supabase = await createServerSupabase()
+  const { data: engagement } = await supabase
+    .from('engagements')
+    .select('id, practice_id, client_id')
+    .eq('id', parsed.data.engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!engagement) redirect('/engagements')
+  const back = `/engagements/${engagement.id}?state=evidence_saved#outcomes`
+
+  // Never trust a pointer: the outcome and the artifact must both live
+  // in THIS engagement.
+  const [{ data: outcome }, { data: artifact }] = await Promise.all([
+    supabase
+      .from('outcomes')
+      .select('id')
+      .eq('id', parsed.data.outcomeId)
+      .eq('engagement_id', engagement.id)
+      .maybeSingle(),
+    supabase
+      .from(EVIDENCE_TABLES[kind])
+      .select('id')
+      .eq('id', refId)
+      .eq('engagement_id', engagement.id)
+      .maybeSingle(),
+  ])
+  if (!outcome || !artifact) redirect(`/engagements/${engagement.id}?state=outcome_error#outcomes`)
+
+  const { error } = await supabase.from('outcome_evidence').insert({
+    outcome_id: outcome.id,
+    engagement_id: engagement.id,
+    practice_id: engagement.practice_id,
+    client_id: engagement.client_id,
+    kind,
+    ref_id: refId,
+    note: parsed.data.note ?? null,
+    added_by: viewer.user!.id,
+  })
+  if (error) redirect(`/engagements/${engagement.id}?state=outcome_error#outcomes`)
+
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    action: 'outcomes.evidence_attached',
+    target: outcome.id,
+    detail: { kind },
+  })
+  revalidatePath(`/engagements/${engagement.id}`)
+  revalidatePath('/outcomes')
+  redirect(back)
+}
+
+export async function removeEvidence(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const id = z.string().uuid().safeParse(formData.get('evidenceId'))
+  const engagementId = z.string().uuid().safeParse(formData.get('engagementId'))
+  if (!id.success || !engagementId.success) redirect('/engagements')
+
+  const supabase = await createServerSupabase()
+  const { error } = await supabase
+    .from('outcome_evidence')
+    .delete()
+    .eq('id', id.data)
+    .eq('practice_id', viewer.practice!.practiceId)
+  if (error) console.error('[outcomes] evidence removal failed:', error.message)
+  else {
+    await logAuditAction({
+      actorEmail: viewer.user!.email ?? '',
+      action: 'outcomes.evidence_removed',
+      target: id.data,
+    })
+  }
+  revalidatePath(`/engagements/${engagementId.data}`)
+  revalidatePath('/outcomes')
+  redirect(`/engagements/${engagementId.data}?state=evidence_removed#outcomes`)
+}

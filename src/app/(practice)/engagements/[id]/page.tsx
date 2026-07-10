@@ -5,9 +5,13 @@ import WorkstreamArc from '@/components/WorkstreamArc'
 import { RoomShell } from '@/components/RoomShell'
 import AddDeliverableForm from './AddDeliverableForm'
 import UploadAgreementForm from './UploadAgreementForm'
+import { MarkdownLite } from '@/components/MarkdownLite'
 import {
   addDecision,
+  attachEvidence,
   removeDeliverable,
+  removeEvidence,
+  saveOutcome,
   saveWorkstreamNote,
   removeEngagementDocument,
   replyMessage,
@@ -30,6 +34,10 @@ const STATES: Record<string, string> = {
   decision_error: 'That did not save. Try again.',
   note_saved: 'Note saved. The client sees it now.',
   note_error: 'That note did not save. Try again.',
+  outcome_saved: 'Outcome saved.',
+  outcome_error: 'That did not save. Check the values and try again.',
+  evidence_saved: 'Evidence linked.',
+  evidence_removed: 'Evidence link removed. The artifact is untouched.',
   msg_sent: 'Reply sent. The client gets an email.',
   msg_sent_no_email: 'Your reply is saved and visible, but the email notification did not go out.',
   msg_error: 'That did not send. Try again.',
@@ -127,9 +135,21 @@ export default async function EngagementDetailPage({
     .order('decided_on', { ascending: false })
     .order('created_at', { ascending: false })
 
+  const [{ data: outcomes }, { data: evidence }] = await Promise.all([
+    supabase
+      .from('outcomes')
+      .select('id, title, baseline_md, target_md, standing_md, standing_updated_at, reached_on, sort, workstream_id')
+      .eq('engagement_id', id)
+      .order('sort'),
+    supabase
+      .from('outcome_evidence')
+      .select('id, outcome_id, kind, ref_id, note')
+      .eq('engagement_id', id),
+  ])
+
   const { data: publishedCharter } = await supabase
     .from('engagement_charters')
-    .select('id, version')
+    .select('id, version, body_md')
     .eq('engagement_id', id)
     .eq('status', 'published')
     .maybeSingle()
@@ -373,6 +393,161 @@ export default async function EngagementDetailPage({
               Log it
             </button>
           </div>
+        </form>
+      </section>
+
+      <section id="outcomes" className="mt-12">
+        <h2 className="font-display text-2xl font-medium text-ink">Outcomes</h2>
+        <p className="mt-1 text-sm text-ink-dim">
+          The engagement&apos;s own success measures, derived from the charter. Evidence is real
+          artifacts, standing is dated prose, and nothing here is a score. The client reads
+          this at /outcomes.
+        </p>
+        {publishedCharter?.body_md ? (
+          <details className="mt-3">
+            <summary className="cursor-pointer text-sm text-ink-dim hover:text-ink">
+              The charter, for reference (outcomes derive from its success section)
+            </summary>
+            <div className="mt-3 rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-4">
+              <MarkdownLite text={publishedCharter.body_md} />
+            </div>
+          </details>
+        ) : null}
+        {(outcomes ?? []).length === 0 ? (
+          <p className="mt-3 text-sm text-ink-dim">None yet. Add the first below.</p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-2">
+            {(outcomes ?? []).map((o) => {
+              const links = (evidence ?? []).filter((ev) => ev.outcome_id === o.id)
+              return (
+                <li
+                  key={o.id}
+                  className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised px-4 py-3"
+                >
+                  <p className="text-sm text-ink">
+                    {o.title}
+                    {o.reached_on ? (
+                      <span className="text-ink-dim"> (reached {o.reached_on})</span>
+                    ) : null}
+                  </p>
+                  <p className="mt-0.5 text-xs text-ink-dim">
+                    From: {o.baseline_md ?? 'not recorded'}. To: {o.target_md ?? 'not recorded'}.
+                  </p>
+                  {o.standing_md ? (
+                    <p className="mt-1 text-xs text-ink">
+                      Where it stands: {o.standing_md}
+                      {o.standing_updated_at ? (
+                        <span className="text-ink-dim">
+                          {' '}
+                          ({new Date(o.standing_updated_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                          })})
+                        </span>
+                      ) : null}
+                    </p>
+                  ) : null}
+                  {links.length > 0 ? (
+                    <ul className="mt-1 flex flex-col gap-0.5">
+                      {links.map((ev) => (
+                        <li key={ev.id} className="flex flex-wrap items-center gap-2 text-xs text-ink-dim">
+                          <span>
+                            Evidence: {ev.kind.replace('_', ' ')}
+                            {ev.note ? `, ${ev.note}` : ''}
+                          </span>
+                          <form action={removeEvidence}>
+                            <input type="hidden" name="evidenceId" value={ev.id} />
+                            <input type="hidden" name="engagementId" value={engagement.id} />
+                            <button type="submit" className="underline hover:text-ink">
+                              Remove link
+                            </button>
+                          </form>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs text-ink-dim hover:text-ink">
+                      Edit, or link evidence
+                    </summary>
+                    <form action={saveOutcome} className="mt-2 flex flex-col gap-2">
+                      <input type="hidden" name="engagementId" value={engagement.id} />
+                      <input type="hidden" name="outcomeId" value={o.id} />
+                      <input name="title" defaultValue={o.title} maxLength={300}
+                        className="rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink" />
+                      <div className="flex flex-wrap gap-2">
+                        <input name="baseline" defaultValue={o.baseline_md ?? ''} maxLength={1000}
+                          placeholder="Baseline"
+                          className="min-w-[180px] flex-1 rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink" />
+                        <input name="target" defaultValue={o.target_md ?? ''} maxLength={1000}
+                          placeholder="What done looks like"
+                          className="min-w-[180px] flex-1 rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink" />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input name="standing" defaultValue={o.standing_md ?? ''} maxLength={2000}
+                          placeholder="Where it stands, in prose"
+                          className="min-w-[220px] flex-1 rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink" />
+                        <label className="flex items-center gap-1 text-xs text-ink-dim">
+                          Reached
+                          <input name="reachedOn" type="date" defaultValue={o.reached_on ?? ''}
+                            className="rounded-lg border border-ink/15 bg-paper px-2 py-1 text-sm" />
+                        </label>
+                        <button type="submit" className="text-sm text-ink-dim underline hover:text-ink">
+                          Save
+                        </button>
+                      </div>
+                    </form>
+                    <form action={attachEvidence} className="mt-2 flex flex-wrap items-center gap-2">
+                      <input type="hidden" name="engagementId" value={engagement.id} />
+                      <input type="hidden" name="outcomeId" value={o.id} />
+                      <select name="ref" required defaultValue=""
+                        className="max-w-[320px] rounded-lg border border-ink/15 bg-paper px-2 py-1 text-sm">
+                        <option value="" disabled>Link an artifact as evidence</option>
+                        <optgroup label="Deliverables">
+                          {(deliverables.data ?? []).map((d) => (
+                            <option key={d.id} value={`deliverable:${d.id}`}>{d.title.slice(0, 50)}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Sessions held">
+                          {(sessions.data ?? []).filter((sx) => sx.status === 'held').map((sx) => (
+                            <option key={sx.id} value={`session:${sx.id}`}>{fmt(sx.starts_at, sx.tz)}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Homework done">
+                          {(items.data ?? []).filter((it) => it.status === 'done').map((it) => (
+                            <option key={it.id} value={`action_item:${it.id}`}>{it.title.slice(0, 50)}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Decisions">
+                          {(decisions ?? []).map((d) => (
+                            <option key={d.id} value={`decision:${d.id}`}>{d.title.slice(0, 50)}</option>
+                          ))}
+                        </optgroup>
+                      </select>
+                      <input name="note" maxLength={300} placeholder="Why this counts (optional)"
+                        className="min-w-[180px] flex-1 rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink" />
+                      <button type="submit" className="text-sm text-ink-dim underline hover:text-ink">
+                        Link
+                      </button>
+                    </form>
+                  </details>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+        <form action={saveOutcome} className="mt-4 flex flex-wrap items-end gap-2">
+          <input type="hidden" name="engagementId" value={engagement.id} />
+          <input name="title" required maxLength={300} placeholder="A new outcome, one plain sentence"
+            className="min-w-[240px] flex-[2] rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink" />
+          <input name="baseline" maxLength={1000} placeholder="Baseline"
+            className="min-w-[160px] flex-1 rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink" />
+          <input name="target" maxLength={1000} placeholder="What done looks like"
+            className="min-w-[160px] flex-1 rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink" />
+          <button type="submit"
+            className="rounded-lg bg-forest px-4 py-2 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98]">
+            Add outcome
+          </button>
         </form>
       </section>
 

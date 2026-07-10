@@ -1258,4 +1258,79 @@ end $$;
 
 reset role;
 
+-- ── Outcomes and evidence (V2 2C): both walls, humane writes ────────
+
+insert into outcomes (id, engagement_id, practice_id, client_id, title, baseline_md, target_md) values
+  ('e0000000-0000-0000-0000-0000000000f1', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   'Pipeline live', 'No CRM', 'Pipeline running');
+insert into outcome_evidence (id, outcome_id, engagement_id, practice_id, client_id, kind, ref_id) values
+  ('e0000000-0000-0000-0000-0000000000f2', 'e0000000-0000-0000-0000-0000000000f1',
+   '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+   '20000000-0000-0000-0000-0000000000a1', 'decision', 'd0000000-0000-0000-0000-0000000000e1');
+
+set role authenticated;
+
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$
+declare n int;
+begin
+  if (select count(*) from outcomes) <> 1 then
+    raise exception 'member_a1 must read their engagement outcomes';
+  end if;
+  if (select count(*) from outcome_evidence) <> 1 then
+    raise exception 'member_a1 must read the evidence trail';
+  end if;
+  update outcomes set standing_md = 'forged standing'
+    where id = 'e0000000-0000-0000-0000-0000000000f1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a client member wrote an outcome standing'; end if;
+end $$;
+do $$ begin
+  insert into outcomes (engagement_id, practice_id, client_id, title)
+    values ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1', 'forged outcome');
+  raise exception 'HOLE: a client member created an outcome';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$ begin
+  if (select count(*) from outcomes) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 outcomes';
+  end if;
+  if (select count(*) from outcome_evidence) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 evidence';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from outcomes) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a outcomes';
+  end if;
+end $$;
+
+-- The practice: outcomes never session-delete; a mistaken evidence
+-- LINK may be removed (the artifact is untouched).
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$
+declare n int;
+begin
+  delete from outcomes where id = 'e0000000-0000-0000-0000-0000000000f1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a session deleted an outcome'; end if;
+  delete from outcome_evidence where id = 'e0000000-0000-0000-0000-0000000000f2';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'the practice must be able to remove a mistaken evidence link'; end if;
+  if (select count(*) from decisions where id = 'd0000000-0000-0000-0000-0000000000e1') <> 1 then
+    raise exception 'removing an evidence link must never touch the artifact';
+  end if;
+end $$;
+
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

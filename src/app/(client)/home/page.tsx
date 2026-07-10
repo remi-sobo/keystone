@@ -35,7 +35,7 @@ export default async function ClientHomePage() {
   let stages = DEFAULT_STAGES
   const freshByWorkstream = new Map<string, string[]>()
 
-  const [{ data: nextSession }, { data: myMembership }, { data: latestDeliverable }] = await Promise.all([
+  const [{ data: nextSession }, { data: myMembership }, { data: latestDeliverable }, { data: agreement }] = await Promise.all([
     supabase
       .from('sessions')
       .select('starts_at, tz')
@@ -56,6 +56,16 @@ export default async function ClientHomePage() {
       .select('id, title, delivered_on')
       .eq('client_id', viewer.client.clientId)
       .order('delivered_on', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    // RLS only ever returns SHARED documents of this client; the quiet
+    // empty state below covers the rest.
+    supabase
+      .from('engagement_documents')
+      .select('id, title, status, created_at')
+      .eq('client_id', viewer.client.clientId)
+      .eq('doc_type', 'agreement')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -126,6 +136,39 @@ export default async function ClientHomePage() {
         </section>
 
         <aside className="flex flex-col gap-4">
+          <KeystoneCard>
+            <p className="eyebrow">Your agreement</p>
+            {agreement ? (
+              <>
+                <p className="mt-2 text-sm font-medium text-ink">{agreement.title}</p>
+                <p className="text-xs text-ink-dim">
+                  {agreement.status === 'signed' ? 'Signed' : 'Shared'},{' '}
+                  {new Date(agreement.created_at).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </p>
+                <p className="mt-2 flex gap-3 text-sm">
+                  <a
+                    href={`/documents/${agreement.id}/file?view=1`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-forest underline"
+                  >
+                    View
+                  </a>
+                  <a href={`/documents/${agreement.id}/file`} className="text-forest underline">
+                    Download
+                  </a>
+                </p>
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-ink-dim">
+                Your agreement will appear here once it is shared.
+              </p>
+            )}
+          </KeystoneCard>
           <KeystoneCard>
             <p className="eyebrow">Next session</p>
             {nextSession ? (

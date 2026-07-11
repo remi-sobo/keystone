@@ -67,6 +67,22 @@ export default async function AccountPage({
       </KeystoneCard>
 
       <KeystoneCard className="mt-6">
+        <p className="eyebrow">Your record</p>
+        <p className="mt-2 text-sm text-ink-dim">
+          Everything in this room is yours to keep. The export is a zip holding the charter, the
+          decision log, outcomes, sessions and shared notes, homework, deliverables and their
+          files, sent digests, the message thread, and the library. Raw transcripts and the
+          consultant&apos;s working notes are never in it.
+        </p>
+        <a
+          href="/account/export"
+          className="mt-4 inline-block rounded-lg border border-forest px-4 py-2 text-sm text-forest transition-colors duration-200 hover:bg-forest hover:text-paper active:scale-[0.98]"
+        >
+          Download your record
+        </a>
+      </KeystoneCard>
+
+      <KeystoneCard className="mt-6">
         <p className="eyebrow">Email updates</p>
         <p className="mt-2 text-sm text-ink-dim">
           One email a day at most, only when something new happened: homework feedback, a shipped

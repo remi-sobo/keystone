@@ -427,6 +427,13 @@ export default async function EngagementDetailPage({
         <Link href={`/engagements/${engagement.id}/charter`} className="underline hover:text-ink">
           {publishedCharter ? 'Open the charter' : 'Draft the charter'}
         </Link>
+        {'  '}
+        <a
+          href={`/engagements/${engagement.id}/export`}
+          className="ml-3 underline hover:text-ink"
+        >
+          Export the record
+        </a>
       </p>
 
       <section className="flex flex-col gap-6">

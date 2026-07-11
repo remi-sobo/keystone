@@ -2,7 +2,7 @@
 
 **Parent:** `specs/keystone-v2.md` Phase 5 epic 5B, pulled forward out of Phase 5 on 2026-07-11. The trigger is contractual, not aesthetic: the revised SafeSpace agreement (Susan's Jul 11 review, `docs/seed/safespace-agreement-v2-draft.md` section 7) guarantees export "in commonly used formats, at any time and after the engagement ends, regardless of whether ongoing support services continue," and its 30-day termination clause means handover must be possible from early in the engagement. The V2 spec already called portability the thesis made literal; the agreement makes it owed.
 **Grounded against:** the live codebase after Phase 4's 4A/4D/4E (migrations 0001 through 0025). The corpus discipline this spec reuses is 2E's: `lib/qaCorpus.ts` builds the record on the CALLER'S OWN session under RLS, so scope is enforced by the walls that already exist, and raw transcripts stay out by query (SECURITY.md 4.2).
-**Status:** spec for Remi's gate review. Green-lit as the next build 2026-07-11; no build until the section 7 gates are decided.
+**Status:** BUILT 2026-07-11, same day as the spec; all four gates approved as recommended (Remi, "recommendations approved"). No migration, as expected: `src/lib/exportRecord.ts`, the two routes, both surface blocks, `LIMITS.EXPORT_*`, and `e2e/export-gate.spec.ts`.
 **Date:** 2026-07-11
 
 ---

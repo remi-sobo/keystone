@@ -255,6 +255,13 @@ export const LIMITS = {
     max: 30,
   },
 
+  // Engagement record export (V2 5B): a heavy read that zips the whole
+  // record plus its files. Low on purpose; a normal engagement exports
+  // a handful of times ever, and twice a day is a signal, not a
+  // workload.
+  EXPORT_PER_HOUR: { kind: 'export:user:hour', windowMs: 60 * 60 * 1000, max: 3 },
+  EXPORT_PER_DAY: { kind: 'export:user:day', windowMs: 24 * 60 * 60 * 1000, max: 8 },
+
   // The per-practice model-spend ceiling: a call-count proxy for spend,
   // consumed by lib/spend.ts before every AI call. Every Keystone AI
   // call is max_tokens-bounded, so capping calls per practice per day

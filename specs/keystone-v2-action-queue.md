@@ -2,7 +2,7 @@
 
 **Parent:** `specs/keystone-v2.md` Phase 4 epic 4A, the phase opener: one prioritized queue answering "what needs me today," grouped by urgency, descriptive and never red-badged (the /today law since Ring 3.5: the queue is aspirational, what landed is factual, the gap is the signal).
 **Grounded against:** the live codebase after Phase 3. /today already computes most of the raw signals in separate cards: unanswered client messages with age, submitted homework, the digest queue, the 4F inbox, the stall detector. Phase 3 quietly built the missing sensors: 3B's moves pair makes "workstream ready to move" mechanically readable, 3B's purpose/agenda make "session prep needed" a real query, and 3C's audience column makes internal follow-ups first-class. 4A is almost pure composition; the one thing it adds is order.
-**Status:** draft for Remi. CONFIRM gates in section 7.
+**Status:** BUILT 2026-07-11, same day as the spec. All five gates approved as recommended (Remi). No migration, as gated: pure composition in lib/actionQueue.ts.
 **Date:** 2026-07-11
 
 ---

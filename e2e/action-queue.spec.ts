@@ -102,8 +102,9 @@ test('age renders in prose, never in color or count-up badges', () => {
 })
 
 test('4A shipped with no migration (gate 4A-1)', () => {
+  // No migration belongs to this epic; later epics own later numbers.
   const migs = fs.readdirSync(path.join(process.cwd(), 'supabase/migrations'))
-  expect(migs.some((f) => /action.?queue|0025/.test(f))).toBe(false)
+  expect(migs.some((f) => /action.?queue/i.test(f))).toBe(false)
   // The page composes through the lib.
   const page = fs.readFileSync(
     path.join(process.cwd(), 'src/app/(practice)/today/page.tsx'),

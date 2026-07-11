@@ -1,7 +1,7 @@
 # Keystone seed: the SafeSpace engagement
 
 **Purpose:** the real content of the SafeSpace engagement, extracted and structured so it can be entered into Keystone at kickoff, and lifted directly into the Engagement Charter when V2 feature 2A ships. Until then, the charter draft in §3 can live as the engagement's first deliverable or a pinned resource.
-**Sources:** the client-facing proposal (June 2026), Remi's recap email to Susan and Liesl (July 8), and the Remi and Susan working call transcript (July 7).
+**Sources:** the client-facing proposal (June 2026), Remi's recap email to Susan and Liesl (July 8), the Remi and Susan working call transcript (July 7), and Susan's agreement review letter (July 11).
 **Status:** ready to seed on SafeSpace's yes. Decision expected Wednesday night or Thursday morning per Susan.
 **Rule for this document:** everything in §1 through §11 is safe for the engagement record, which all four SafeSpace members can see. §12 lists what stays out, permanently.
 
@@ -26,7 +26,7 @@
 The proposal SafeSpace reviewed names four workstreams. These are canonical; the app's seeded five should be renamed to match (see §13).
 
 1. **Build the system** (Remi). One customized hub for fundraising, finance, compliance, HR, and operations, fundraising first. Tracked in Keystone as progress and deliverables; the hub itself is the BloomOS build and lives there.
-2. **Develop the leaders** (Remi, weekly). Coaching and professional development so Aris and Jasmine operate like fundraisers and nonprofit executives. Homework before and after every session, tied to the real system.
+2. **Develop the leaders** (Remi, weekly). Coaching and professional development so Aris and Jasmine operate like fundraisers and nonprofit executives. Homework before and after every session, tied to the real system. Includes the board fundraising engagement (added Jul 11 per Susan's agreement review): a board fundraising toolkit and a working session with the board, walled per §12.
 3. **Show the impact** (Dr. Kendra). An impact and evaluation framework across Campus, Community, and the Youth Action Board, with funder-ready artifacts, wired into the hub.
 4. **Hold the back office** (Shannon, bi-weekly). Financial management, compliance, HR, and operations rhythms, stood up, carried through the build, then handed over.
 
@@ -35,13 +35,13 @@ All four start in **Diagnose**. Month one moves Build the system and Develop the
 ## 3. Charter draft (client-facing prose, voice-checked)
 
 ### Why this engagement exists
-The first ten years were liftoff. SafeSpace built a fundraising engine, a real financial picture, an active board, a footprint growing from San Mateo into Alameda County, and impact in the lives of young people through Campus, Community, and the Youth Action Board. The next ten are about sustainability: an organization rooted in this community and built to stay. This engagement is that investment. It is usually not the heart. It is the system.
+The first ten years were liftoff. SafeSpace built a fundraising engine, a real financial picture, an active board, deep roots in San Mateo County, and impact in the lives of young people through Campus, Community, and the Youth Action Board. The next ten are about sustainability: an organization rooted in this community and built to stay. This engagement is that investment. It is usually not the heart. It is the system.
 
 ### What we are building
-Over six months, Sobo Consulting brings SafeSpace's systems into one customized hub, builds a full fundraising strategy with the weekly rhythms to run it, and develops Aris and Jasmine to lead fundraising and operate like nonprofit executives. Fundraising first.
+Over six months, Sobo Consulting brings SafeSpace's systems into one customized hub, builds a full fundraising strategy with the weekly rhythms to run it, and develops Aris and Jasmine to lead fundraising and operate like nonprofit executives. Fundraising first. The board joins the fundraising work deliberately: a board fundraising toolkit and a working session so members can identify connections, make introductions, and support donor cultivation.
 
 ### Where this ends (the six outcomes)
-1. A full fundraising strategy, the internal rhythms to run it, and a digital tool built around how SafeSpace operates, from prospecting through cultivation, solicitation, and stewardship.
+1. A full fundraising strategy, the internal rhythms to run it, and a digital tool built around how SafeSpace operates, from prospecting through cultivation, solicitation, and stewardship, with a major donor component covering prospect identification, cultivation, and solicitation.
 2. The financial picture in a live dashboard, with a board login and views the board controls.
 3. Compliance and HR streamlined and solid, including the protections that come with working with minors.
 4. Operating rhythms that hold the week, the month, and the quarter.
@@ -49,10 +49,10 @@ Over six months, Sobo Consulting brings SafeSpace's systems into one customized 
 6. An impact and evaluation framework and the funder-ready artifacts to track and showcase it.
 
 ### How we will work
-Two modes at once: develop the people and build the system, then set it up to last. Five steps: Diagnose, Design, Build, Train, Stabilize. Every session is a working session with homework before and after, always tied to a real fundraising task. Each session adds one piece of the system, so by the end Aris and Jasmine are running something they built. Ownership transfers as they build it, not in one handoff at the end.
+Two modes at once: develop the people and build the system, then set it up to last. Five steps: Diagnose, Design, Build, Train, Stabilize. Every session is a working session with homework before and after, always tied to a real fundraising task. Each session adds one piece of the system, so by the end Aris and Jasmine are running something they built. Ownership transfers as they build it, not in one handoff at the end. Plan on three to five hours a week from each coachee: the session, the homework, and implementation time. Month one runs heavier while the work is front-loaded.
 
 ### What you own at the end
-All of it, in perpetuity. The hub is a custom build and SafeSpace owns it moving forward: strategy and goals, projects and tasks, a full CRM with donor and grant pipelines, and areas for program, finance, data, and compliance. A board login SafeSpace controls. The fundraising collateral built together: a pitch deck, a send deck, and a one-pager. Remi stays available as a resource afterward, shape to be decided together.
+All of it, once the engagement completes and the fee is paid in full. The hub is a custom build and SafeSpace owns it moving forward: strategy and goals, projects and tasks, a full CRM with donor and grant pipelines, and areas for program, finance, data, and compliance. A board login SafeSpace controls. The fundraising collateral built together: a pitch deck, a send deck, and a one-pager. SafeSpace can export everything, the hub's data and this engagement record, in commonly used formats at any time, whether or not support continues. Sobo Consulting keeps its general methods, frameworks, and tools, and SafeSpace holds a perpetual, non-exclusive license to use any of them that ship inside the delivered system for its internal operations. Remi stays available as a resource afterward, shape to be decided together.
 
 ### Roles
 - **Remi** coaches the leadership and builds the system.
@@ -110,8 +110,12 @@ Seed these as the first homework items once the kickoff cadence is set:
 
 ## 8. Planned deliverables (seed the ledger)
 
-- Fundraising strategy and plan document (workstream 1)
+- Fundraising strategy and plan document, with a major donor component: prospect identification approach, cultivation and solicitation plans (workstream 1; named prospects live in the hub CRM, entered by SafeSpace, per §12)
+- Annual fundraising calendar (workstream 1)
+- Case for support (workstream 1)
+- Donor templates: outreach, thank-you, and follow-up (workstream 1)
 - Donor pipeline and journeys live in the hub (workstream 1, hub milestone)
+- Board fundraising toolkit and introductions playbook (workstream 2; added Jul 11, walled per §12)
 - Pitch deck (workstream 2)
 - Send deck (workstream 2)
 - One-pager (workstream 2)
@@ -152,6 +156,9 @@ The website is deliberately not on this list: it was named on the call as the fo
 11. **Fee accepted at $25,000 without negotiation,** pending Aris and Jasmine's full buy-in; answer promised by Wednesday night or Thursday morning. (Call, Jul 7, Susan.)
 12. **Weekly pitch practice** as a standing rhythm from the start. (Call, Jul 7.)
 13. **Go/no-go rests on the coachees:** Susan wanted them 150 percent behind it before saying yes. (Call, Jul 7.)
+14. **Board fundraising engagement in scope, walled.** The toolkit, introductions playbook, and a board working session land as engagement deliverables; board-member-level intelligence (who knows whom, assignments, cultivation notes) lives only in the hub CRM, entered by SafeSpace; the §12 governance wall stands. (Susan's agreement review, Jul 11; Remi's decision, Jul 11.)
+15. **Ownership refined, decision 3 sharpened.** SafeSpace owns everything built specifically for it once the fee is paid in full, including data export in commonly used formats at any time, regardless of whether support continues. Sobo Consulting keeps its pre-existing methods, frameworks, tools, and platforms, licensed to SafeSpace perpetually and non-exclusively for internal operations. (Agreement section 6 plus Susan's export addition, Jul 11.)
+16. **Alameda County references removed everywhere;** the grant has concluded. Copy describes deep roots in San Mateo County. (Susan, Jul 11.)
 
 ## 11. Scope boundary and pre-named change orders
 
@@ -170,7 +177,7 @@ The transcript contains material that must never enter Keystone, because all fou
 - **Susan's personal finances:** her donor-advised fund, tax situation, remodel, personal giving mechanics.
 - **Named-donor personal details** shared as context (who married whom, who does not open email, personal histories). Donor intelligence belongs in SafeSpace's CRM inside the hub (BloomOS), entered by SafeSpace, not in the consulting engagement record.
 - **SafeSpace's runway, rent, and sublease details.** Financial operations context, sensitive, and BloomOS-side in any case.
-- **Board matters.** Remi sits on the SafeSpace board; board material never enters the engagement record, in either direction. The transcript's board-adjacent commentary stays out.
+- **Board governance.** Remi sits on the SafeSpace board; governance material (minutes, agendas, deliberations, board personnel matters) never enters the engagement record, in either direction. The transcript's board-adjacent commentary stays out. One precise carve-out, decided Jul 11 with the board fundraising component (decision 14): work product built FOR the board (the board fundraising toolkit, the introductions playbook, training materials) is ordinary engagement work and lands as deliverables. Board-member-level intelligence (who knows whom, assignments, cultivation notes) follows the donor-intelligence rule above: it lives only in SafeSpace's CRM inside the hub, entered by SafeSpace, never in the engagement record.
 - **Personal chatter** (family, camp, mutual acquaintances).
 
 Rule of thumb for every future transcript: the engagement record holds decisions, commitments, and work product. Confidence, gossip, personnel history, and personal finance never cross into it, even when the AI extraction proposes them. This is a standing instruction for the extract review step: reject any proposed item sourced from the categories above.
@@ -182,3 +189,4 @@ Rule of thumb for every future transcript: the engagement record holds decisions
 - **Client emails (V1 gate 2):** susan@safespace.org and liesl@safespace.org known. Aris and Jasmine's addresses still needed before invites go out.
 - **Awaiting the yes:** Susan committed to an answer by Wednesday night or Thursday morning. On yes: Remi opens the email thread, sets month-one cadence (twice weekly), and the seed above goes in.
 - **First-session candidates:** top-ten donor mapping with Susan; narrative frame kickoff; pitch practice rhythm established.
+- **From Susan's agreement review (Jul 11):** the weekly time range is drafted at three to five hours per coachee per week (heavier in month one); Remi confirms the number before the revised proposal goes back. The agreement redline lives at `docs/seed/safespace-agreement-v2-draft.md`; its bracketed items (board approval date in section 11, term and installment dates, the hub security description) are Remi's to fill. Charter v2 publishes in-app from the updated §3 body; per gate 2A-2 that withdraws v1's pending sign-off and re-requests against the new version. The live library's ledger resource needs the same §8 additions via /library/authoring. The export commitment makes V2 5B (engagement export and portability) a contractual obligation: with the 30-day termination clause, handover must be possible from early in the engagement, so 5B should be specced next, not at closeout.

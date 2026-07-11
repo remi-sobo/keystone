@@ -181,13 +181,13 @@ select p.id,
 $charter$This is the shared agreement for the SafeSpace engagement, drafted from the proposal, the recap email, and the July 7 call. It graduates to a first-class charter when that surface ships.
 
 ## Why this engagement exists
-The first ten years were liftoff. SafeSpace built a fundraising engine, a real financial picture, an active board, a footprint growing from San Mateo into Alameda County, and impact in the lives of young people through Campus, Community, and the Youth Action Board. The next ten are about sustainability: an organization rooted in this community and built to stay. This engagement is that investment. It is usually not the heart. It is the system.
+The first ten years were liftoff. SafeSpace built a fundraising engine, a real financial picture, an active board, deep roots in San Mateo County, and impact in the lives of young people through Campus, Community, and the Youth Action Board. The next ten are about sustainability: an organization rooted in this community and built to stay. This engagement is that investment. It is usually not the heart. It is the system.
 
 ## What we are building
-Over six months, Sobo Consulting brings SafeSpace's systems into one customized hub, builds a full fundraising strategy with the weekly rhythms to run it, and develops Aris and Jasmine to lead fundraising and operate like nonprofit executives. Fundraising first. The engagement runs six months at one fee, $25,000, covering all four workstreams.
+Over six months, Sobo Consulting brings SafeSpace's systems into one customized hub, builds a full fundraising strategy with the weekly rhythms to run it, and develops Aris and Jasmine to lead fundraising and operate like nonprofit executives. Fundraising first. The board joins the fundraising work deliberately: a board fundraising toolkit and a working session so members can identify connections, make introductions, and support donor cultivation. The engagement runs six months at one fee, $25,000, covering all four workstreams.
 
 ## Where this ends (the six outcomes)
-1. A full fundraising strategy, the internal rhythms to run it, and a digital tool built around how SafeSpace operates, from prospecting through cultivation, solicitation, and stewardship.
+1. A full fundraising strategy, the internal rhythms to run it, and a digital tool built around how SafeSpace operates, from prospecting through cultivation, solicitation, and stewardship, with a major donor component covering prospect identification, cultivation, and solicitation.
 2. The financial picture in a live dashboard, with a board login and views the board controls.
 3. Compliance and HR streamlined and solid, including the protections that come with working with minors.
 4. Operating rhythms that hold the week, the month, and the quarter.
@@ -195,10 +195,10 @@ Over six months, Sobo Consulting brings SafeSpace's systems into one customized 
 6. An impact and evaluation framework and the funder-ready artifacts to track and showcase it.
 
 ## How we will work
-Two modes at once: develop the people and build the system, then set it up to last. Five steps: Diagnose, Design, Build, Train, Stabilize. Every session is a working session with homework before and after, always tied to a real fundraising task. Each session adds one piece of the system, so by the end Aris and Jasmine are running something they built. Ownership transfers as they build it, not in one handoff at the end.
+Two modes at once: develop the people and build the system, then set it up to last. Five steps: Diagnose, Design, Build, Train, Stabilize. Every session is a working session with homework before and after, always tied to a real fundraising task. Each session adds one piece of the system, so by the end Aris and Jasmine are running something they built. Ownership transfers as they build it, not in one handoff at the end. Plan on three to five hours a week from each coachee: the session, the homework, and implementation time. Month one runs heavier while the work is front-loaded.
 
 ## What you own at the end
-All of it, in perpetuity. The hub is a custom build and SafeSpace owns it moving forward: strategy and goals, projects and tasks, a full CRM with donor and grant pipelines, and areas for program, finance, data, and compliance. A board login SafeSpace controls. The fundraising collateral built together: a pitch deck, a send deck, and a one-pager. Remi stays available as a resource afterward, shape to be decided together.
+All of it, once the engagement completes and the fee is paid in full. The hub is a custom build and SafeSpace owns it moving forward: strategy and goals, projects and tasks, a full CRM with donor and grant pipelines, and areas for program, finance, data, and compliance. A board login SafeSpace controls. The fundraising collateral built together: a pitch deck, a send deck, and a one-pager. SafeSpace can export everything, the hub's data and this engagement record, in commonly used formats at any time, whether or not support continues. Sobo Consulting keeps its general methods, frameworks, and tools, and SafeSpace holds a perpetual, non-exclusive license to use any of them that ship inside the delivered system for its internal operations. Remi stays available as a resource afterward, shape to be decided together.
 
 ## Roles
 - Remi coaches the leadership and builds the system.
@@ -236,7 +236,10 @@ select p.id,
 $ledger$What this engagement will ship, by workstream. Each item becomes a deliverable row in the record as it ships; this ledger is the plan, kept here until planned deliverables have a first-class home.
 
 **Build the system**
-- Fundraising strategy and plan document
+- Fundraising strategy and plan document, with a major donor component: prospect identification approach, cultivation and solicitation plans (named prospects live in the hub CRM, entered by SafeSpace)
+- Annual fundraising calendar
+- Case for support
+- Donor templates: outreach, thank-you, and follow-up
 - Donor pipeline and journeys live in the hub (hub milestone)
 - Gift table and segmentation strategy
 - Finance dashboard and board login (hub milestone)
@@ -246,6 +249,7 @@ $ledger$What this engagement will ship, by workstream. Each item becomes a deliv
 - Send deck
 - One-pager
 - Narrative frame: the next ten years
+- Board fundraising toolkit and introductions playbook
 
 **Show the impact**
 - Impact and evaluation framework

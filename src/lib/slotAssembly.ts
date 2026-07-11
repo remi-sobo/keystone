@@ -24,10 +24,17 @@ export async function assembleSlots(
   supabase: SupabaseClient,
   client: { practiceId: string },
   from: Date,
-  opts: { durationMinutes?: number | null; settings?: SchedulingSettings } = {}
+  opts: {
+    durationMinutes?: number | null
+    /** Bypass the offer check: an already-agreed duration (a poll's
+     *  slot_minutes, a booked session being rescheduled) stays honest
+     *  even after the practice narrows the offer. */
+    exactDurationMinutes?: number
+    settings?: SchedulingSettings
+  } = {}
 ): Promise<Slot[]> {
   const settings = opts.settings ?? (await fetchSchedulingSettings(supabase, client.practiceId))
-  const duration = resolveDuration(settings, opts.durationMinutes)
+  const duration = opts.exactDurationMinutes ?? resolveDuration(settings, opts.durationMinutes)
 
   const [windowsRes, busyRes] = await Promise.all([
     supabase

@@ -23,6 +23,7 @@ import { searchRecord } from '@/lib/recordSearch'
 import { clientTeamRecipients, notify } from '@/lib/notify'
 import { parseAnchorParam, resolveAnchor } from '@/lib/messageAnchors'
 import { assembleSlots } from '@/lib/slotAssembly'
+import { fetchSchedulingSettings, resolveDuration } from '@/lib/schedulingSettings'
 import { isOfferedSlot } from '@/lib/scheduling'
 
 /**
@@ -1529,6 +1530,9 @@ const PollCreateShape = z.object({
   engagementId: z.string().uuid(),
   purpose: z.string().trim().max(200).optional(),
   starts: z.array(z.string().datetime({ offset: true })).min(1).max(8),
+  // One duration per poll (gate 4I-6); outside the offer it collapses
+  // to the practice default inside assembly.
+  slotMinutes: z.coerce.number().int().min(15).max(240).optional(),
 })
 
 export async function createSessionPoll(formData: FormData): Promise<void> {
@@ -1537,6 +1541,7 @@ export async function createSessionPoll(formData: FormData): Promise<void> {
     engagementId: formData.get('engagementId'),
     purpose: String(formData.get('purpose') ?? '').trim() || undefined,
     starts: formData.getAll('starts').map(String),
+    slotMinutes: formData.get('slotMinutes') ?? undefined,
   })
   if (!parsed.success) redirect('/engagements')
   const d = parsed.data
@@ -1553,8 +1558,14 @@ export async function createSessionPoll(formData: FormData): Promise<void> {
     redirect(`/engagements/${engagement.id}?state=${state}#scheduling`)
 
   // Every candidate must be an offered slot RIGHT NOW; a hand-crafted
-  // POST cannot put a time on the poll the calendar cannot honor.
-  const offered = await assembleSlots(supabase, { practiceId: engagement.practice_id }, new Date())
+  // POST cannot put a time on the poll the calendar cannot honor. The
+  // poll's one duration (gate 4I-6) rides the same offer validation.
+  const settings = await fetchSchedulingSettings(supabase, engagement.practice_id)
+  const pollMinutes = resolveDuration(settings, d.slotMinutes)
+  const offered = await assembleSlots(supabase, { practiceId: engagement.practice_id }, new Date(), {
+    settings,
+    durationMinutes: pollMinutes,
+  })
   const candidates = d.starts.map((s) => isOfferedSlot(offered, new Date(s)))
   if (candidates.some((c) => c === null)) back('poll_slot_gone')
 
@@ -1565,6 +1576,7 @@ export async function createSessionPoll(formData: FormData): Promise<void> {
       practice_id: engagement.practice_id,
       client_id: engagement.client_id,
       purpose: d.purpose ? sweepHomework(engagement.practice_id, d.purpose) : null,
+      slot_minutes: pollMinutes,
       created_by: viewer.user!.id,
     })
     .select('id')
@@ -1638,7 +1650,7 @@ export async function confirmPollOption(formData: FormData): Promise<void> {
   const supabase = await createServerSupabase()
   const { data: poll } = await supabase
     .from('session_polls')
-    .select('id, engagement_id, practice_id, client_id, status')
+    .select('id, engagement_id, practice_id, client_id, status, slot_minutes')
     .eq('id', pollId)
     .eq('engagement_id', engagementId)
     .eq('practice_id', viewer.practice!.practiceId)
@@ -1653,8 +1665,12 @@ export async function confirmPollOption(formData: FormData): Promise<void> {
   if (!poll || poll.status !== 'open' || !option) back('poll_error')
 
   // The candidate must still be offered at CONFIRM time; a stale one
-  // refuses honestly and stays on the poll.
-  const offered = await assembleSlots(supabase, { practiceId: poll!.practice_id }, new Date())
+  // refuses honestly and stays on the poll. The poll's own duration is
+  // exact here: the team marked candidates of THAT length, and a later
+  // narrowing of the offer never rewrites what they agreed to.
+  const offered = await assembleSlots(supabase, { practiceId: poll!.practice_id }, new Date(), {
+    exactDurationMinutes: poll!.slot_minutes,
+  })
   const slot = isOfferedSlot(offered, new Date(option!.starts_at))
   if (!slot) back('poll_slot_gone')
 

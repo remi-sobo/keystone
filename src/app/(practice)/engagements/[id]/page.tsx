@@ -12,6 +12,7 @@ import FindRecordForm from '@/components/FindRecordForm'
 import { loopStatesByItem, LOOP_LABEL } from '@/lib/homework'
 import { anchorHref, parseAnchorParam, resolveAnchor, type AnchorType } from '@/lib/messageAnchors'
 import { assembleSlots } from '@/lib/slotAssembly'
+import { fetchSchedulingSettings, resolveDuration } from '@/lib/schedulingSettings'
 import {
   addDecision,
   addHomework,
@@ -98,10 +99,10 @@ export default async function EngagementDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ state?: string; anchor?: string }>
+  searchParams: Promise<{ state?: string; anchor?: string; pollDuration?: string }>
 }) {
   const { id } = await params
-  const { state, anchor: anchorRaw } = await searchParams
+  const { state, anchor: anchorRaw, pollDuration } = await searchParams
   const supabase = await createServerSupabase()
 
   const { data: engagement } = await supabase
@@ -209,10 +210,17 @@ export default async function EngagementDetailPage({
   // offered slots to open one from (the practice's own availability).
   const { data: openPoll } = await supabase
     .from('session_polls')
-    .select('id, purpose, status, created_at')
+    .select('id, purpose, status, slot_minutes, created_at')
     .eq('engagement_id', id)
     .eq('status', 'open')
     .maybeSingle()
+  // The poll's one duration (V2 4I): picked before opening, from the
+  // practice's own offer; candidates recompute at that length.
+  const schedulingSettings = await fetchSchedulingSettings(supabase, engagement.practice_id)
+  const pollMinutes = resolveDuration(
+    schedulingSettings,
+    pollDuration ? Number(pollDuration) : null
+  )
   const [{ data: pollOptions }, { data: pollMarks }, offeredSlots] = openPoll
     ? await Promise.all([
         supabase
@@ -229,7 +237,10 @@ export default async function EngagementDetailPage({
     : [
         { data: null },
         { data: null },
-        await assembleSlots(supabase, { practiceId: engagement.practice_id }, new Date()),
+        await assembleSlots(supabase, { practiceId: engagement.practice_id }, new Date(), {
+          settings: schedulingSettings,
+          durationMinutes: pollMinutes,
+        }),
       ]
 
   // 3D: acceptance states and the version history, as facts.
@@ -377,6 +388,7 @@ export default async function EngagementDetailPage({
               {openPoll.purpose ? (
                 <p className="text-sm text-ink-dim">{openPoll.purpose}</p>
               ) : null}
+              <p className="text-sm text-ink-dim">{openPoll.slot_minutes} minutes together.</p>
               <ul className="flex flex-col gap-2">
                 {(pollOptions ?? []).map((o) => {
                   const marks = (pollMarks ?? []).filter((m) => m.option_id === o.id)
@@ -432,12 +444,33 @@ export default async function EngagementDetailPage({
               </p>
               <form action={createSessionPoll} className="mt-3 flex flex-col gap-3">
                 <input type="hidden" name="engagementId" value={id} />
+                <input type="hidden" name="slotMinutes" value={pollMinutes} />
                 <input
                   name="purpose"
                   maxLength={200}
                   placeholder="What this session is for (optional)"
                   className="rounded-lg border border-ink/15 bg-paper-raised p-2 text-sm text-ink"
                 />
+                {schedulingSettings.durationOptions.length > 1 ? (
+                  <p className="text-sm text-ink">
+                    <span className="text-ink-dim">How long: </span>
+                    {schedulingSettings.durationOptions.map((mins, i) => (
+                      <span key={mins}>
+                        {i > 0 ? <span className="text-ink-dim"> / </span> : null}
+                        {mins === pollMinutes ? (
+                          <span className="font-medium">{mins} minutes</span>
+                        ) : (
+                          <a
+                            href={`/engagements/${id}?pollDuration=${mins}#scheduling`}
+                            className="text-forest underline"
+                          >
+                            {mins} minutes
+                          </a>
+                        )}
+                      </span>
+                    ))}
+                  </p>
+                ) : null}
                 {(offeredSlots ?? []).length === 0 ? (
                   <p className="text-sm text-ink-dim">
                     No offered slots right now. Check your availability windows in Settings.

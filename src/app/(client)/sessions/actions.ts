@@ -19,7 +19,12 @@ import { shiftSessionHomework } from '@/lib/rescheduleShift'
  * requested start must match a server-recomputed offered slot.
  */
 
-const BookShape = z.object({ start: z.string().datetime() })
+const BookShape = z.object({
+  start: z.string().datetime(),
+  // The chosen session length (V2 4I). Optional: absent falls to the
+  // practice default; anything outside the offer collapses to it too.
+  duration: z.coerce.number().int().min(15).max(240).optional(),
+})
 const SessionRef = z.object({ id: z.string().uuid() })
 
 async function guard() {
@@ -35,7 +40,10 @@ async function guard() {
 
 export async function bookSession(formData: FormData): Promise<void> {
   const viewer = await guard()
-  const parsed = BookShape.safeParse({ start: formData.get('start') })
+  const parsed = BookShape.safeParse({
+    start: formData.get('start'),
+    duration: formData.get('duration') ?? undefined,
+  })
   if (!parsed.success) redirect('/sessions?state=invalid')
 
   const supabase = await createServerSupabase()
@@ -51,7 +59,9 @@ export async function bookSession(formData: FormData): Promise<void> {
     .maybeSingle()
   if (!engagement) redirect('/sessions?state=no_engagement')
 
-  const slots = await assembleSlots(supabase, client, new Date())
+  const slots = await assembleSlots(supabase, client, new Date(), {
+    durationMinutes: parsed.data.duration,
+  })
   const slot = isOfferedSlot(slots, new Date(parsed.data.start))
   if (!slot) redirect('/sessions?state=slot_gone')
 
@@ -80,7 +90,10 @@ export async function bookSession(formData: FormData): Promise<void> {
 export async function rescheduleSession(formData: FormData): Promise<void> {
   const viewer = await guard()
   const ref = SessionRef.safeParse({ id: formData.get('id') })
-  const parsed = BookShape.safeParse({ start: formData.get('start') })
+  const parsed = BookShape.safeParse({
+    start: formData.get('start'),
+    duration: formData.get('duration') ?? undefined,
+  })
   if (!ref.success || !parsed.success) redirect('/sessions?state=invalid')
 
   const note = String(formData.get('note') ?? '').trim().slice(0, 300) || null
@@ -91,14 +104,27 @@ export async function rescheduleSession(formData: FormData): Promise<void> {
   // The old date first, so the homework delta is honest (gate 3B-2).
   const { data: before } = await supabase
     .from('sessions')
-    .select('starts_at')
+    .select('starts_at, ends_at')
     .eq('id', ref.data.id)
     .eq('client_id', client.clientId)
     .eq('status', 'booked')
     .maybeSingle()
   if (!before) redirect('/sessions?state=invalid')
 
-  const slots = await assembleSlots(supabase, client, new Date())
+  // The session keeps its own length unless the booker chose another;
+  // an already-booked length stays honest even off the current offer.
+  const currentLen = Math.round(
+    (Date.parse(before!.ends_at) - Date.parse(before!.starts_at)) / 60000
+  )
+  const requested = parsed.data.duration ?? currentLen
+  const slots = await assembleSlots(
+    supabase,
+    client,
+    new Date(),
+    requested === currentLen
+      ? { exactDurationMinutes: currentLen }
+      : { durationMinutes: requested }
+  )
   const slot = isOfferedSlot(slots, new Date(parsed.data.start))
   if (!slot) redirect('/sessions?state=slot_gone')
 

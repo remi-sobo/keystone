@@ -2,7 +2,7 @@
 
 **Parent:** `specs/keystone-v2.md` Phase 4 epic 4E: a practice-only read of momentum (responsiveness both ways, homework completion, stage movement, cadence held, messages unanswered, digest consistency), rendered in voice: "holding steady," "waiting on the client," "ready for closeout." Never a score, never a color, never a client-visible surface.
 **Grounded against:** the live codebase after 4D. Every signal already exists in the record: 4A reads them for TODAY (what needs me now); 4E reads the same sensors ACROSS TIME (how is this engagement moving). 4D's `readinessFacts` set the pattern this epic completes: a pure fixture-gated lib turning rows into prose, with the walls belonging to the pages that call it (both practice-only here).
-**Status:** draft for Remi. CONFIRM gates in section 7.
+**Status:** BUILT 2026-07-11. All five gates approved as recommended. `src/lib/health.ts` (engagementHealth plus the replyLag and reviewStanding derivations), the phrase and fact line on /engagements cards, the phrase in the engagement page eyebrow with the fact paragraph under the header, `e2e/health.spec.ts` walking every rung. No migration; derived at render.
 **Date:** 2026-07-11
 
 ---

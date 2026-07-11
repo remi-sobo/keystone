@@ -12,6 +12,7 @@ import FindRecordForm from '@/components/FindRecordForm'
 import { loopStatesByItem, LOOP_LABEL } from '@/lib/homework'
 import { anchorHref, parseAnchorParam, resolveAnchor, type AnchorType } from '@/lib/messageAnchors'
 import { readinessFacts } from '@/lib/readinessFacts'
+import { engagementHealth, replyLag, reviewStanding } from '@/lib/health'
 import MarkdownEditor from '@/components/MarkdownEditor'
 import { assembleSlots } from '@/lib/slotAssembly'
 import {
@@ -155,9 +156,17 @@ export default async function EngagementDetailPage({
 
   const { data: messages } = await supabase
     .from('messages')
-    .select('id, author_side, body, created_at, read_at, anchor_type, anchor_id, anchor_label')
+    .select('id, thread_id, author_side, body, created_at, read_at, anchor_type, anchor_id, anchor_label')
     .eq('engagement_id', id)
     .order('created_at', { ascending: true })
+    .limit(200)
+
+  // 4E: stage events feed the health read (moving, quiet weeks).
+  const { data: stageEventRows } = await supabase
+    .from('workstream_stage_events')
+    .select('at')
+    .eq('engagement_id', id)
+    .order('at', { ascending: false })
     .limit(200)
 
   // 3E: an Ask-about-this link handed the reply box an anchor.
@@ -336,6 +345,49 @@ export default async function EngagementDetailPage({
     })),
     trail: (hwTrail ?? []).map((t) => ({ kind: t.kind, createdAt: t.created_at })),
   })
+  // 4E: the health read, derived from rows this page already holds
+  // plus the stage events. One phrase, facts in prose, never stored.
+  const pollMarkers = new Set((pollMarks ?? []).map((m) => m.client_member_id))
+  const health = engagementHealth({
+    now: factsNow,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    clientName: (((engagement.clients as any)?.name as string) || 'the client'),
+    finalStage: stages[stages.length - 1],
+    workstreamStages: (ws.data ?? []).map((w) => w.stage),
+    stageEventAts: (stageEventRows ?? []).map((e) => e.at),
+    pastSessionAts: (sessions.data ?? [])
+      .filter((s) => ['booked', 'held'].includes(s.status) && Date.parse(s.starts_at) < factsNow)
+      .map((s) => s.starts_at),
+    itemsDone: (items.data ?? [])
+      .filter((it) => it.status === 'done' && it.done_at)
+      .map((it) => ({ dueOn: it.due_on, doneAt: it.done_at as string })),
+    ...reviewStanding(
+      open.filter((i) => i.review_requested).map((i) => ({ id: i.id, dueOn: i.due_on })),
+      hwTrail ?? [],
+      factsNow
+    ),
+    ...replyLag(
+      (messages ?? []).map((m) => ({
+        threadId: m.thread_id,
+        authorSide: m.author_side,
+        createdAt: m.created_at,
+      })),
+      factsNow
+    ),
+    openPoll: openPoll
+      ? {
+          openedDaysAgo: Math.floor((factsNow - Date.parse(openPoll.created_at)) / 86400000),
+          marks: pollMarkers.size,
+          teamSize: (clientRoster ?? []).length,
+        }
+      : null,
+    digest: {
+      cadence: (engagement.digest_cadence as 'weekly' | 'biweekly' | 'off') ?? 'weekly',
+      sentInLastTwoWeeks: (sentDigests ?? []).filter(
+        (d) => d.week_of >= new Date(factsNow - 14 * 86400000).toISOString().slice(0, 10)
+      ).length,
+    },
+  })
   const reflectionSeed = PILLARS.map(
     (pillar) => `## ${pillar[0].toUpperCase()}${pillar.slice(1)}\n${readinessByPillar.get(pillar)?.note_md ?? ''}`
   ).join('\n\n')
@@ -345,8 +397,10 @@ export default async function EngagementDetailPage({
 
   return (
     <RoomShell
+      // The phrase sits in the eyebrow, quietly (4E): a reading, not a
+      // gauge.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      eyebrow={((engagement.clients as any)?.name as string) ?? ''}
+      eyebrow={`${((engagement.clients as any)?.name as string) ?? ''}, ${health.phrase}`}
       title={engagement.title}
       maxWidth="max-w-4xl"
     >
@@ -355,6 +409,8 @@ export default async function EngagementDetailPage({
           {STATES[state]}
         </p>
       ) : null}
+
+      <p className="mb-6 text-sm text-ink-dim">{health.lines.join('; ')}.</p>
 
       <p className="mb-6 text-sm text-ink-dim">
         {publishedCharter

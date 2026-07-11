@@ -74,3 +74,6 @@ grant usage on schema storage to authenticated, anon, service_role;
 grant execute on function storage.foldername(text) to authenticated, anon, service_role;
 grant select on storage.buckets, storage.objects to authenticated, anon, service_role;
 grant insert, update, delete on storage.buckets, storage.objects to service_role;
+-- Real Supabase grants writes on storage.objects to authenticated and
+-- lets RLS gate them; mirror that so upload policies are testable.
+grant insert on storage.objects to authenticated;

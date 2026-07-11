@@ -176,6 +176,8 @@ export async function extractFromTranscript(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: session.engagement_id,
+    practiceId: session.practice_id,
     action: 'ai.extract',
     target: session.id,
     detail: {
@@ -279,7 +281,7 @@ export async function decideProposal(formData: FormData): Promise<void> {
 
   const { data: proposal } = await supabaseAdmin
     .from('ai_proposals')
-    .select('id, status, practice_id')
+    .select('id, status, practice_id, engagement_id')
     .eq('id', proposalId)
     .eq('practice_id', viewer.practice!.practiceId)
     .eq('status', 'proposed')
@@ -292,6 +294,8 @@ export async function decideProposal(formData: FormData): Promise<void> {
     .eq('id', proposal.id)
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: proposal.engagement_id,
+    practiceId: proposal.practice_id,
     action: 'ai.proposal.dismiss',
     target: proposal.id,
   })
@@ -516,6 +520,8 @@ export async function reviewProposal(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: proposal.engagement_id,
+    practiceId: proposal.practice_id,
     action: 'ai.proposal.publish',
     target: proposal.id,
     detail: {
@@ -617,6 +623,8 @@ export async function saveRunOfShow(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: session.engagement_id,
+    practiceId: session.practice_id,
     action: 'session.run_of_show',
     target: session.id,
   })

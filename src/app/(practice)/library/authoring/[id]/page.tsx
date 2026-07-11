@@ -5,6 +5,7 @@ import { RoomShell } from '@/components/RoomShell'
 import MarkdownEditor from '@/components/MarkdownEditor'
 import AttachDocForm from './AttachDocForm'
 import { deleteResource, removeResourceFile, updateResource } from '../actions'
+import { KIND_OPTIONS } from '../kinds'
 
 /**
  * Edit one resource (Ring 4). Reads and writes ride the session client;
@@ -31,7 +32,7 @@ export default async function EditResourcePage({
 
   const { data: resource } = await supabase
     .from('resources')
-    .select('id, title, kind, tags, body_md, storage_path')
+    .select('id, title, kind, audience, tags, body_md, storage_path')
     .eq('id', id)
     .maybeSingle()
   if (!resource) redirect('/library/authoring')
@@ -68,9 +69,19 @@ export default async function EditResourcePage({
             defaultValue={resource.kind}
             className="rounded-lg border border-ink/15 bg-paper-raised px-2 py-1 text-sm"
           >
-            <option value="guide">Guide</option>
-            <option value="framework">Framework</option>
-            <option value="template">Template</option>
+            {KIND_OPTIONS.map((k) => (
+              <option key={k.value} value={k.value}>
+                {k.label}
+              </option>
+            ))}
+          </select>
+          <select
+            name="audience"
+            defaultValue={resource.audience ?? 'client'}
+            className="rounded-lg border border-ink/15 bg-paper-raised px-2 py-1 text-sm"
+          >
+            <option value="client">Client learning path</option>
+            <option value="practice">Knowledge base (practice only)</option>
           </select>
         </div>
         <input

@@ -222,6 +222,9 @@ export const LIMITS = {
   AI_DIGEST_PER_HOUR: { kind: 'ai-digest:practice:hour', windowMs: 60 * 60 * 1000, max: 10 },
 
   // Resource suggestion (Ring 4). Fast tier, still capped.
+  // V2 5C: case-study drafting is rare, deliberate work.
+  AI_CASE_STUDY_PER_HOUR: { kind: 'ai-casestudy:user:hour', windowMs: 60 * 60 * 1000, max: 6 },
+
   AI_SUGGEST_PER_MIN: { kind: 'ai-suggest:user:min', windowMs: 60 * 1000, max: 10 },
   AI_SUGGEST_PER_HOUR: { kind: 'ai-suggest:user:hour', windowMs: 60 * 60 * 1000, max: 60 },
 

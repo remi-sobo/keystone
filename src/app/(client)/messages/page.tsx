@@ -4,6 +4,7 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
 import { RoomShell } from '@/components/RoomShell'
 import { markAllNotificationsRead, sendMessage } from './actions'
+import { anchorHref, parseAnchorParam, resolveAnchor, type AnchorType } from '@/lib/messageAnchors'
 
 /**
  * The client message thread (Ring 5): one thread with the practice, per
@@ -16,6 +17,7 @@ import { markAllNotificationsRead, sendMessage } from './actions'
 const STATES: Record<string, string> = {
   sent: 'Sent. Your consultant gets an email.',
   sent_no_email: 'Your message is saved and visible, but the email notification did not go out.',
+  anchor_gone: 'That item could not be attached. The message was not sent; try again from the item.',
   invalid: 'Write something first.',
   no_engagement: 'No active engagement to message on yet.',
   slow: 'Too many messages at once. Wait a minute.',
@@ -34,9 +36,9 @@ function fmt(dt: string): string {
 export default async function MessagesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ state?: string }>
+  searchParams: Promise<{ state?: string; anchor?: string }>
 }) {
-  const { state } = await searchParams
+  const { state, anchor: anchorRaw } = await searchParams
   const viewer = await getViewer()
   if (!viewer.client) redirect('/login')
   const supabase = await createServerSupabase()
@@ -52,10 +54,28 @@ export default async function MessagesPage({
   const { data: messages } = thread
     ? await supabase
         .from('messages')
-        .select('id, author_side, author_user_id, body, created_at, read_at')
+        .select('id, author_side, author_user_id, body, created_at, read_at, anchor_type, anchor_id, anchor_label, engagement_id')
         .eq('thread_id', thread.id)
         .order('created_at', { ascending: true })
     : { data: [] }
+
+  // 3E: an entry point handed us an anchor; resolve it through THIS
+  // session for the composer chip (out-of-scope resolves to nothing).
+  const anchorParam = parseAnchorParam(anchorRaw ?? null)
+  const { data: myEngagement } = anchorParam
+    ? await supabase
+        .from('engagements')
+        .select('id')
+        .eq('client_id', viewer.client.clientId)
+        .in('status', ['active', 'proposed', 'paused'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null }
+  const composerAnchor =
+    anchorParam && myEngagement
+      ? await resolveAnchor(supabase, myEngagement.id, anchorParam.type, anchorParam.id)
+      : null
 
   // 4F: your notifications (RLS returns only yours), newest first.
   const { data: newForYou } = await supabase
@@ -118,6 +138,17 @@ export default async function MessagesPage({
                 m.author_side === 'client' ? 'self-end bg-paper-raised' : 'self-start bg-paper-deep'
               }`}
             >
+              {m.anchor_type && m.anchor_label ? (
+                <p className="mb-1 font-mono text-[0.65rem] uppercase text-ink-dim">
+                  about:{' '}
+                  <Link
+                    href={anchorHref('client', m.anchor_type as AnchorType, m.anchor_id as string, m.engagement_id)}
+                    className="underline"
+                  >
+                    {m.anchor_label}
+                  </Link>
+                </p>
+              ) : null}
               <p className="whitespace-pre-line text-sm leading-relaxed text-ink">{m.body}</p>
               <p className="mt-1.5 font-mono text-[0.65rem] uppercase text-ink-dim">
                 {m.author_side === 'client' ? 'You' : 'Your consultant'} / {fmt(m.created_at)}
@@ -129,6 +160,17 @@ export default async function MessagesPage({
       </section>
 
       <form action={sendMessage} className="mt-8">
+        {composerAnchor ? (
+          <p className="mb-2 font-mono text-xs uppercase text-ink-dim">
+            about: {composerAnchor.label}{' '}
+            <Link href="/messages" className="underline">
+              remove
+            </Link>
+          </p>
+        ) : null}
+        {composerAnchor ? (
+          <input type="hidden" name="anchor" value={`${composerAnchor.type}:${composerAnchor.id}`} />
+        ) : null}
         <textarea
           name="body"
           rows={4}

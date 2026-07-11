@@ -21,6 +21,7 @@ import type { AskResult } from '@/components/AskRecordForm'
 import type { FindResult } from '@/components/FindRecordForm'
 import { searchRecord } from '@/lib/recordSearch'
 import { clientTeamRecipients, notify } from '@/lib/notify'
+import { parseAnchorParam, resolveAnchor } from '@/lib/messageAnchors'
 import { assembleSlots } from '@/lib/slotAssembly'
 import { isOfferedSlot } from '@/lib/scheduling'
 
@@ -340,6 +341,13 @@ export async function replyMessage(formData: FormData): Promise<void> {
   }
   if (!thread) redirect(`/engagements/${engagementId}?state=msg_error#messages`)
 
+  // 3E: resolve the anchor inside this engagement; the label is ours.
+  const anchorParam = parseAnchorParam(String(formData.get('anchor') ?? '') || null)
+  const anchor = anchorParam
+    ? await resolveAnchor(supabase, engagement.id, anchorParam.type, anchorParam.id)
+    : null
+  if (anchorParam && !anchor) redirect(`/engagements/${engagementId}?state=msg_error#messages`)
+
   const { error } = await supabase.from('messages').insert({
     thread_id: thread.id,
     engagement_id: engagement.id,
@@ -348,6 +356,9 @@ export async function replyMessage(formData: FormData): Promise<void> {
     author_user_id: viewer.user!.id,
     author_side: 'practice',
     body,
+    anchor_type: anchor?.type ?? null,
+    anchor_id: anchor?.id ?? null,
+    anchor_label: anchor?.label ?? null,
   })
   if (error) {
     console.error('[messages] reply failed:', error.message)

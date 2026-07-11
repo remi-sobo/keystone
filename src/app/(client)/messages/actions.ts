@@ -8,6 +8,7 @@ import { getViewer } from '@/lib/membership'
 import { checkRateLimits, LIMITS } from '@/lib/rateLimit'
 import { appBaseUrl, sendEmail } from '@/lib/email'
 import { notify, practiceTeamRecipients } from '@/lib/notify'
+import { parseAnchorParam, resolveAnchor } from '@/lib/messageAnchors'
 
 /**
  * Client message send (Ring 5). Pure RLS end to end: the thread and the
@@ -72,6 +73,14 @@ export async function sendMessage(formData: FormData): Promise<void> {
   }
   if (!thread) redirect('/messages?state=error')
 
+  // 3E: the anchor resolves through THIS session, so only what the
+  // caller's wall admits can ever be anchored; the label is ours.
+  const anchorParam = parseAnchorParam(String(formData.get('anchor') ?? '') || null)
+  const anchor = anchorParam
+    ? await resolveAnchor(supabase, engagement.id, anchorParam.type, anchorParam.id)
+    : null
+  if (anchorParam && !anchor) redirect('/messages?state=anchor_gone')
+
   const { error } = await supabase.from('messages').insert({
     thread_id: thread.id,
     engagement_id: engagement.id,
@@ -80,6 +89,9 @@ export async function sendMessage(formData: FormData): Promise<void> {
     author_user_id: viewer.user!.id,
     author_side: 'client',
     body: parsed.data.body,
+    anchor_type: anchor?.type ?? null,
+    anchor_id: anchor?.id ?? null,
+    anchor_label: anchor?.label ?? null,
   })
   if (error) {
     console.error('[messages] send failed:', error.message)

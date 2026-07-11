@@ -10,6 +10,7 @@ import { MarkdownLite } from '@/components/MarkdownLite'
 import AskRecordForm from '@/components/AskRecordForm'
 import FindRecordForm from '@/components/FindRecordForm'
 import { loopStatesByItem, LOOP_LABEL } from '@/lib/homework'
+import { anchorHref, parseAnchorParam, resolveAnchor, type AnchorType } from '@/lib/messageAnchors'
 import { assembleSlots } from '@/lib/slotAssembly'
 import {
   addDecision,
@@ -94,10 +95,10 @@ export default async function EngagementDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ state?: string }>
+  searchParams: Promise<{ state?: string; anchor?: string }>
 }) {
   const { id } = await params
-  const { state } = await searchParams
+  const { state, anchor: anchorRaw } = await searchParams
   const supabase = await createServerSupabase()
 
   const { data: engagement } = await supabase
@@ -144,10 +145,16 @@ export default async function EngagementDetailPage({
 
   const { data: messages } = await supabase
     .from('messages')
-    .select('id, author_side, body, created_at, read_at')
+    .select('id, author_side, body, created_at, read_at, anchor_type, anchor_id, anchor_label')
     .eq('engagement_id', id)
     .order('created_at', { ascending: true })
     .limit(200)
+
+  // 3E: an Ask-about-this link handed the reply box an anchor.
+  const anchorParam = parseAnchorParam(anchorRaw ?? null)
+  const composerAnchor = anchorParam
+    ? await resolveAnchor(supabase, id, anchorParam.type, anchorParam.id)
+    : null
 
   const { data: documents } = await supabase
     .from('engagement_documents')
@@ -910,6 +917,12 @@ export default async function EngagementDetailPage({
                     </span>
                   </span>
                   <span className="flex items-center gap-3">
+                    <Link
+                      href={`/engagements/${engagement.id}?anchor=deliverable:${d.id}#messages`}
+                      className="text-sm text-ink-dim underline hover:text-ink"
+                    >
+                      Message about this
+                    </Link>
                     {!dlvApprovalFor(d.id) ? (
                       <form action={requestDeliverableAcceptance}>
                         <input type="hidden" name="deliverableId" value={d.id} />
@@ -1096,6 +1109,17 @@ export default async function EngagementDetailPage({
                   m.author_side === 'practice' ? 'self-end bg-paper-raised' : 'self-start bg-paper-deep'
                 }`}
               >
+                {m.anchor_type && m.anchor_label ? (
+                  <p className="mb-1 font-mono text-[0.65rem] uppercase text-ink-dim">
+                    about:{' '}
+                    <Link
+                      href={anchorHref('practice', m.anchor_type as AnchorType, m.anchor_id as string, engagement.id)}
+                      className="underline"
+                    >
+                      {m.anchor_label}
+                    </Link>
+                  </p>
+                ) : null}
                 <p className="whitespace-pre-line text-sm leading-relaxed text-ink">{m.body}</p>
                 <p className="mt-1.5 font-mono text-[0.65rem] uppercase text-ink-dim">
                   {m.author_side === 'practice' ? 'You' : 'Client'} / {fmt2(m.created_at)}
@@ -1107,6 +1131,21 @@ export default async function EngagementDetailPage({
         </div>
         <form action={replyMessage} className="mt-4">
           <input type="hidden" name="engagementId" value={engagement.id} />
+          {composerAnchor ? (
+            <p className="mb-2 font-mono text-xs uppercase text-ink-dim">
+              about: {composerAnchor.label}{' '}
+              <Link href={`/engagements/${engagement.id}#messages`} className="underline">
+                remove
+              </Link>
+            </p>
+          ) : null}
+          {composerAnchor ? (
+            <input
+              type="hidden"
+              name="anchor"
+              value={`${composerAnchor.type}:${composerAnchor.id}`}
+            />
+          ) : null}
           <textarea
             name="body"
             rows={4}

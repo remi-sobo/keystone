@@ -98,6 +98,15 @@ export default async function HomeworkItemPage({
         {chip ? <span className="eyebrow ml-2">{chip}</span> : null}
       </p>
 
+      <p className="mt-1 text-sm">
+        <Link
+          href={`/messages?anchor=action_item:${item.id}`}
+          className="text-ink-dim underline hover:text-ink"
+        >
+          Ask your consultant about this
+        </Link>
+      </p>
+
       {state && STATES[state] ? (
         <p role="status" className="mt-3 text-sm text-ink-dim">
           {STATES[state]}

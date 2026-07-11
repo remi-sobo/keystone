@@ -1942,4 +1942,38 @@ do $$ begin
   end if;
 end $$;
 
+-- ── V2 3E: message anchors, sealed at send ───────────────────────────
+-- The anchor columns ride the 0007 column grant: a session may still
+-- update only read_at, so an anchor (like the body) can never be
+-- repointed after sending. An anchored self-authored insert works.
+
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$
+declare tid uuid;
+begin
+  select id into tid from message_threads
+    where engagement_id = '30000000-0000-0000-0000-0000000000a1' limit 1;
+  if tid is null then
+    insert into message_threads (engagement_id, practice_id, client_id)
+      values ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+              '20000000-0000-0000-0000-0000000000a1')
+      returning id into tid;
+  end if;
+  insert into messages (thread_id, engagement_id, practice_id, client_id,
+                        author_user_id, author_side, body,
+                        anchor_type, anchor_id, anchor_label)
+    values (tid, '30000000-0000-0000-0000-0000000000a1',
+            '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+            '00000000-0000-0000-0000-0000000000a1', 'client', 'a question about the deck',
+            'deliverable', '80000000-0000-0000-0000-0000000000a1', 'leak-test deliverable');
+end $$;
+do $$ begin
+  update messages set anchor_label = 'repointed';
+  raise exception 'HOLE 3E: a session repointed a message anchor';
+exception when insufficient_privilege then null; -- the column grant held
+end $$;
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

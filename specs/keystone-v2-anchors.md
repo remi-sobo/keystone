@@ -2,7 +2,7 @@
 
 **Parent:** `specs/keystone-v2.md` Phase 3 epic 3E: keep the single calm thread, but let a message carry its context. The 3E law from the harvest list holds on both ends: one thread per engagement, and the inbox stays a reading surface; anchors add context to the one place people already write, never a second place to write.
 **Grounded against:** the live codebase after 3D. Messages are one thread per engagement, self-authored inserts, bodies immutable to every session with `read_at` as the only updatable column (the 0007 column grant). That grant is this epic's free lunch: anchor columns set at send time become immutable the same way the body is, with zero new machinery. Every anchorable artifact now exists: sessions with purposes, homework items with loops, deliverables with acceptance, workstreams, decisions.
-**Status:** draft for Remi. CONFIRM gates in section 7.
+**Status:** BUILT 2026-07-10, same day as the spec. All five gates approved as recommended (Remi). Migration 0023 applied live; the anchors ride the 0007 column grant unchanged.
 **Date:** 2026-07-10
 
 ---

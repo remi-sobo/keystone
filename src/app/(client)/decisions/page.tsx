@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
@@ -43,7 +44,13 @@ export default async function ClientDecisionsPage() {
                 className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised px-4 py-3"
               >
                 <p className={`text-sm ${supersededBy ? 'text-ink-dim line-through' : 'text-ink'}`}>
-                  {d.title}
+                  {d.title}{' '}
+                  <Link
+                    href={`/messages?anchor=decision:${d.id}`}
+                    className="ml-1 text-xs text-ink-dim underline hover:text-ink"
+                  >
+                    Ask about this
+                  </Link>
                 </p>
                 <p className="mt-0.5 text-xs text-ink-dim">
                   {new Date(d.decided_on + 'T00:00:00').toLocaleDateString('en-US', {

@@ -64,6 +64,15 @@ export default async function ClientSessionPage({
       title="Session"
       maxWidth="max-w-3xl"
     >
+      <p className="text-sm">
+        <Link
+          href={`/messages?anchor=session:${session.id}`}
+          className="text-ink-dim underline hover:text-ink"
+        >
+          Ask about this session
+        </Link>
+      </p>
+
       {session.purpose || session.agenda_md || session.moves_to_stage ? (
         <KeystoneCard feature>
           <p className="eyebrow">The run of show</p>

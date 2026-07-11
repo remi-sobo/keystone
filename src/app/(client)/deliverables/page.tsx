@@ -118,6 +118,14 @@ export default async function DeliverablesPage({
                   )}
                 </p>
                 {d.note ? <p className="mt-1.5 text-sm text-ink-dim">{d.note}</p> : null}
+                <p className="mt-1.5 text-sm">
+                  <Link
+                    href={`/messages?anchor=deliverable:${d.id}`}
+                    className="text-ink-dim underline hover:text-ink"
+                  >
+                    Ask about this
+                  </Link>
+                </p>
                 {d.about_md ? (
                   <div className="mt-2 border-t border-ink/10 pt-2">
                     <MarkdownLite text={d.about_md} />

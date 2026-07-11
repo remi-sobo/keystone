@@ -22,13 +22,13 @@ export function clientNav(): NavItem[] {
     { href: '/deliverables', label: 'Deliverables', icon: 'deliverables', mobile: true },
     { href: '/library', label: 'Library', icon: 'library' },
     // Desktop rail only, like Account: the archive is a reading page.
-    { href: '/digests', label: 'Digests', icon: 'library' },
+    { href: '/digests', label: 'Digests', icon: 'digests' },
     // Desktop rail only: the ending's room (V2 5A); quiet until published.
-    { href: '/closeout', label: 'Closeout', icon: 'deliverables' },
+    { href: '/closeout', label: 'Closeout', icon: 'closeout' },
     { href: '/messages', label: 'Messages', icon: 'messages', mobile: true },
     // Desktop rail only: the mobile bar holds its five; phones reach
     // Account through the quiet line at the bottom of Home.
-    { href: '/account', label: 'Account', icon: 'settings' },
+    { href: '/account', label: 'Account', icon: 'account' },
   ]
 }
 
@@ -38,7 +38,7 @@ export function practiceNav(): NavItem[] {
     { href: '/clients', label: 'Clients', icon: 'clients', mobile: true },
     { href: '/engagements', label: 'Engagements', icon: 'engagements', mobile: true },
     // Desktop rail only: the mobile bar keeps its five.
-    { href: '/team', label: 'Team', icon: 'clients' },
+    { href: '/team', label: 'Team', icon: 'team' },
     // /library belongs to the client surface; authoring sits beneath it
     // (the App Router cannot give two route groups the same path).
     { href: '/library/authoring', label: 'Library', icon: 'library', mobile: true },

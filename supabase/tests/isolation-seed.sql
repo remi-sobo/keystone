@@ -2559,62 +2559,72 @@ do $$ declare n int; begin
 end $$;
 reset role;
 
--- ── Client profile (V2 client-profiles): org facts on clients ───────
--- The four CP-3 columns ride the clients walls already proven above: an
--- owner writes them (clients_update = practice.manage), a client member
--- reads their own client row but can never write it, and the
--- same-practice other-client and cross-practice reads stay zero. The
--- columns named here so a reader sees them covered.
+-- ── Client profile (V2 client-profiles): practice-only client_profiles
+-- The org-level facts live on their OWN table, read by practice members
+-- only (is_practice_member) and written by owners only (practice.manage).
+-- A client session sees NOTHING here, by construction: the profile is
+-- the practice's record ABOUT the client, never client-visible (the
+-- axis the spec promises and the reason it is not columns on clients).
+-- The columns named so a reader sees them covered.
 
 set role authenticated;
 
--- The owner sets the profile facts, primary contact into client_a1's roster.
+-- The owner creates the profile row, primary contact into client_a1's roster.
 select set_config('request.jwt.claims',
   '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
 do $$ declare n int; begin
-  update clients set
-    relationship_note = 'the anchor client, fundraising first',
-    website = 'client-a.example.org',
-    relationship_started_on = date '2026-01-15',
-    primary_contact_member_id = (select id from client_members where email = 'member_a1@client-a.test')
-    where id = '20000000-0000-0000-0000-0000000000a1';
+  insert into client_profiles
+    (client_id, practice_id, relationship_note, website, relationship_started_on, primary_contact_member_id)
+    values ('20000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            'the anchor client, fundraising first', 'client-a.example.org', date '2026-01-15',
+            (select id from client_members where email = 'member_a1@client-a.test'));
   get diagnostics n = row_count;
-  if n <> 1 then raise exception 'owner_a must set the client_a1 profile facts'; end if;
+  if n <> 1 then raise exception 'owner_a must create the client_a1 profile'; end if;
+  if (select count(*) from client_profiles) <> 1 then
+    raise exception 'owner_a must read the profile they wrote';
+  end if;
 end $$;
 
--- A client member reads their own client row and its new columns...
+-- A consultant reads it (a practice member) but cannot write (owner-only).
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000b","email":"consultant_a@practice-a.test"}', false);
+do $$ declare n int; begin
+  if (select count(*) from client_profiles) <> 1 then
+    raise exception 'consultant_a must read the client profile';
+  end if;
+  update client_profiles set relationship_note = 'consultant edit'
+    where client_id = '20000000-0000-0000-0000-0000000000a1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE client-profile: a consultant wrote the profile (owner-only)'; end if;
+end $$;
+
+-- THE WALL: the client's OWN member reads nothing here and writes nothing.
 select set_config('request.jwt.claims',
   '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
 do $$ declare n int; begin
-  if (select count(*) from clients where relationship_note is not null) <> 1 then
-    raise exception 'member_a1 must read their own client profile row';
+  if (select count(*) from client_profiles) <> 0 then
+    raise exception 'LEAK client-profile: a client member reads the practice-only client profile';
   end if;
-  -- ...but never writes it (clients_update is practice.manage, owner-only).
-  update clients set relationship_note = 'forged note', website = 'evil.example'
-    where id = '20000000-0000-0000-0000-0000000000a1';
+  update client_profiles set relationship_note = 'forged note';
   get diagnostics n = row_count;
-  if n <> 0 then raise exception 'HOLE client-profile: a client member wrote the client record'; end if;
+  if n <> 0 then raise exception 'HOLE client-profile: a client member wrote the client profile'; end if;
 end $$;
 
--- cross-client: the OTHER client of the same practice reads zero of
--- client_a1's profile row (the profile page rides this wall).
+-- cross-client: the OTHER client of the same practice reads zero.
 select set_config('request.jwt.claims',
   '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
 do $$ begin
-  if (select count(*) from clients where id = '20000000-0000-0000-0000-0000000000a1') <> 0 then
-    raise exception 'LEAK cross-client: member_a2 reads client_a1 profile row';
-  end if;
-  if (select count(*) from clients where relationship_note is not null) <> 0 then
-    raise exception 'LEAK cross-client: member_a2 reads client_a1 relationship note';
+  if (select count(*) from client_profiles) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 profile';
   end if;
 end $$;
 
--- cross-practice: practice_b's owner reads zero of practice_a clients.
+-- cross-practice: practice_b's owner reads zero of practice_a profiles.
 select set_config('request.jwt.claims',
   '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
 do $$ begin
-  if (select count(*) from clients where practice_id = '10000000-0000-0000-0000-00000000000a') <> 0 then
-    raise exception 'LEAK cross-practice: owner_b reads practice_a client profile rows';
+  if (select count(*) from client_profiles where practice_id = '10000000-0000-0000-0000-00000000000a') <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a client profile';
   end if;
 end $$;
 

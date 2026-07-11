@@ -11,14 +11,17 @@ import { logVoiceViolation } from '@/lib/voiceViolations'
 
 /**
  * Client-profile actions (specs/keystone-v2-client-profiles.md, CP-3).
- * The four org-level facts are edited in place on the clients row. The
- * write rides the SESSION client, so the clients_update policy is the
- * wall: keystone_can(practice_id, null, 'practice.manage'), which only
- * an owner holds. The action verifies the client is the caller's own
- * and that a chosen primary contact belongs to that client before the
- * write, so a forged id refuses rather than no-opping. The relationship
- * note is practice-authored prose, voice-swept like every note we save;
- * it is practice-only and never crosses the wall to a client.
+ * The four org-level facts live on the PRACTICE-ONLY client_profiles
+ * table (never on the client-readable clients row), upserted one row
+ * per client. The write rides the SESSION client, so the
+ * client_profiles_write/update policies are the wall:
+ * keystone_can(practice_id, null, 'practice.manage'), which only an
+ * owner holds, and a client session matches no policy at all. The
+ * action verifies the client is the caller's own and that a chosen
+ * primary contact belongs to that client before the write, so a forged
+ * id refuses rather than no-opping. The relationship note is
+ * practice-authored prose, voice-swept like every note we save; it is
+ * practice-only and never crosses the wall to a client.
  */
 
 const ProfileShape = z.object({
@@ -88,15 +91,18 @@ export async function saveClientProfile(formData: FormData): Promise<void> {
     }
   }
 
-  const { error } = await supabase
-    .from('clients')
-    .update({
+  const { error } = await supabase.from('client_profiles').upsert(
+    {
+      client_id: client.id,
+      practice_id: client.practice_id,
       relationship_note: note,
       website: input.website.trim() || null,
       relationship_started_on: input.relationshipStartedOn || null,
       primary_contact_member_id: primaryContactId,
-    })
-    .eq('id', client.id)
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'client_id' }
+  )
   if (error) {
     console.error('[clients] profile save failed:', error.message)
     redirect(`/clients/${client.id}?state=profile_error`)

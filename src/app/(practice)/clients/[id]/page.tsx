@@ -65,14 +65,16 @@ export default async function ClientProfilePage({
   const nowIso = new Date(now).toISOString()
   const twoWeeksAgoDate = new Date(now - 14 * 86400000).toISOString().slice(0, 10)
 
-  const [{ data: client }, { data: roster }, { data: engagements }, { data: practice }] =
+  const [{ data: client }, { data: profile }, { data: roster }, { data: engagements }, { data: practice }] =
     await Promise.all([
+      supabase.from('clients').select('id, name, status, created_at').eq('id', id).maybeSingle(),
+      // The org-level facts live on the practice-only client_profiles
+      // table (never on the client-readable clients row). One row per
+      // client, absent until first saved.
       supabase
-        .from('clients')
-        .select(
-          'id, name, status, created_at, relationship_note, website, relationship_started_on, primary_contact_member_id'
-        )
-        .eq('id', id)
+        .from('client_profiles')
+        .select('relationship_note, website, relationship_started_on, primary_contact_member_id')
+        .eq('client_id', id)
         .maybeSingle(),
       supabase
         .from('client_members')
@@ -206,8 +208,8 @@ export default async function ClientProfilePage({
 
   const activeEngs = engs.filter((e) => e.status === 'active')
   const since =
-    dateWord(client.relationship_started_on) ?? dateWord(client.created_at) ?? null
-  const website = safeHref(client.website)
+    dateWord(profile?.relationship_started_on ?? null) ?? dateWord(client.created_at) ?? null
+  const website = safeHref(profile?.website ?? null)
   const cadences = Array.from(
     new Set(activeEngs.map((e) => CADENCE_WORD[(e.digest_cadence as string) ?? 'weekly'] ?? 'weekly'))
   )
@@ -241,14 +243,14 @@ export default async function ClientProfilePage({
         {cadences.length > 0 ? <span>Digest {cadences.join(', ')}</span> : null}
         {website ? (
           <a href={website} target="_blank" rel="noreferrer" className="text-forest hover:underline">
-            {client.website}
+            {profile?.website}
           </a>
         ) : null}
       </div>
 
-      {client.relationship_note ? (
+      {profile?.relationship_note ? (
         <p className="mt-4 max-w-2xl text-[0.95rem] leading-relaxed text-ink">
-          {client.relationship_note}
+          {profile?.relationship_note}
         </p>
       ) : null}
 
@@ -266,7 +268,7 @@ export default async function ClientProfilePage({
               >
                 <span className="text-sm text-ink">
                   {m.email}
-                  {m.id === client.primary_contact_member_id ? (
+                  {m.id === profile?.primary_contact_member_id ? (
                     <span className="ml-2 text-xs font-medium text-brass">primary contact</span>
                   ) : null}
                 </span>
@@ -394,7 +396,7 @@ export default async function ClientProfilePage({
                 name="relationshipNote"
                 rows={2}
                 maxLength={2000}
-                defaultValue={client.relationship_note ?? ''}
+                defaultValue={profile?.relationship_note ?? ''}
                 placeholder="One line on who this client is and why the work matters."
                 className="rounded-lg border border-ink/15 bg-paper-raised px-3 py-2 text-sm text-ink"
               />
@@ -406,7 +408,7 @@ export default async function ClientProfilePage({
                   type="text"
                   name="website"
                   maxLength={500}
-                  defaultValue={client.website ?? ''}
+                  defaultValue={profile?.website ?? ''}
                   placeholder="example.org"
                   className="rounded-lg border border-ink/15 bg-paper-raised px-3 py-2 text-sm text-ink"
                 />
@@ -416,7 +418,7 @@ export default async function ClientProfilePage({
                 <input
                   type="date"
                   name="relationshipStartedOn"
-                  defaultValue={client.relationship_started_on ?? ''}
+                  defaultValue={profile?.relationship_started_on ?? ''}
                   className="rounded-lg border border-ink/15 bg-paper-raised px-3 py-2 text-sm text-ink"
                 />
               </label>
@@ -425,7 +427,7 @@ export default async function ClientProfilePage({
               <span className="eyebrow">Primary contact</span>
               <select
                 name="primaryContactMemberId"
-                defaultValue={client.primary_contact_member_id ?? ''}
+                defaultValue={profile?.primary_contact_member_id ?? ''}
                 className="rounded-lg border border-ink/15 bg-paper-raised px-3 py-2 text-sm text-ink"
               >
                 <option value="">No primary contact set</option>

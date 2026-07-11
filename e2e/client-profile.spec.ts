@@ -15,25 +15,37 @@ import path from 'path'
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf-8')
 const norm = (s: string) => s.replace(/\s+/g, ' ').toLowerCase()
 
-test('0034 adds the four client-facts columns and nothing else', () => {
-  const sql = norm(read('supabase/migrations/0034_v2_client_profile.sql'))
-  expect(sql).toContain('alter table public.clients')
-  expect(sql).toContain('add column if not exists relationship_note text')
-  expect(sql).toContain('add column if not exists primary_contact_member_id uuid')
-  expect(sql).toContain('references public.client_members(id) on delete set null')
-  expect(sql).toContain('add column if not exists website text')
-  expect(sql).toContain('add column if not exists relationship_started_on date')
-  // Columns only: the clients walls already stand.
-  expect(sql).not.toContain('create table')
-  expect(sql).not.toContain('create policy')
-  expect(sql).not.toMatch(/\bgrant\b/i)
+test('0034 creates a practice-only client_profiles table (never columns on clients)', () => {
+  const raw = read('supabase/migrations/0034_v2_client_profile.sql')
+  // Strip SQL line comments: the header prose names is_member_of_client
+  // to explain why this table avoids it, which is not the DDL.
+  const ddl = norm(raw.replace(/^\s*--.*$/gm, ''))
+  // The facts live on their OWN table, not on the client-readable
+  // clients row (RLS is row-level; a note on clients would leak to the
+  // client member who can read their own client row).
+  expect(ddl).toContain('create table if not exists public.client_profiles')
+  expect(ddl).not.toContain('alter table public.clients')
+  // Both scope dimensions carried (the per-feature gate).
+  expect(ddl).toContain('client_id')
+  expect(ddl).toContain('practice_id')
+  expect(ddl).toContain('relationship_note text')
+  expect(ddl).toContain('references public.client_members(id) on delete set null')
+  // RLS on, and the read policy is practice-only: is_practice_member,
+  // NEVER is_member_of_client (that is the leak this table avoids).
+  expect(ddl).toContain('alter table public.client_profiles enable row level security')
+  expect(ddl).toContain('is_practice_member(practice_id)')
+  expect(ddl).not.toContain('is_member_of_client')
+  // Writes are owner-only (practice.manage).
+  expect(ddl).toMatch(/keystone_can\(practice_id, null, 'practice\.manage'\)/)
 })
 
 test('the profile edit verifies owner and the client against the caller', () => {
   const actions = read('src/app/(practice)/clients/[id]/actions.ts')
   expect(actions).toContain("viewer.practice!.role !== 'owner'")
-  expect(actions).toContain("from('clients')")
   expect(actions).toContain("eq('practice_id', viewer.practice!.practiceId)")
+  // The write lands on the practice-only table, upserted per client.
+  expect(actions).toContain("from('client_profiles')")
+  expect(actions).toContain('upsert')
   // A chosen primary contact must belong to THIS client.
   expect(actions).toContain("from('client_members')")
   expect(actions).toContain("eq('client_id', client.id)")
@@ -41,7 +53,7 @@ test('the profile edit verifies owner and the client against the caller', () => 
   expect(actions).toContain('validateVoice')
 })
 
-test('the client surface never reads the new client-record columns', () => {
+test('the client surface never touches the practice-only profile table', () => {
   const walk = (dir: string): string[] =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap((d) => {
       const p = path.join(dir, d.name)
@@ -49,8 +61,8 @@ test('the client surface never reads the new client-record columns', () => {
     })
   for (const f of walk(path.join(process.cwd(), 'src/app/(client)'))) {
     const src = fs.readFileSync(f, 'utf-8')
-    for (const col of ['relationship_note', 'primary_contact_member_id', 'relationship_started_on']) {
-      expect(src, `${f} must not read ${col}`).not.toContain(col)
+    for (const needle of ['client_profiles', 'relationship_note', 'primary_contact_member_id']) {
+      expect(src, `${f} must not touch ${needle}`).not.toContain(needle)
     }
   }
 })
@@ -74,12 +86,15 @@ test('/clients links each client into its profile with the health phrase', () =>
   expect(list).toContain('assembleHealth')
 })
 
-test('the live matrix asserts the profile read and the client write wall', () => {
+test('the live matrix proves the profile is practice-only, both walls', () => {
   const seed = read('supabase/tests/isolation-seed.sql')
-  expect(seed).toContain('member_a1 must read their own client profile row')
-  expect(seed).toContain('HOLE client-profile: a client member wrote the client record')
-  expect(seed).toContain('LEAK cross-client: member_a2 reads client_a1 profile row')
-  expect(seed).toContain('LEAK cross-practice: owner_b reads practice_a client profile rows')
+  // The client's OWN member reads nothing here (the axis the spec promises).
+  expect(seed).toContain('LEAK client-profile: a client member reads the practice-only client profile')
+  expect(seed).toContain('HOLE client-profile: a client member wrote the client profile')
+  // Owner writes, consultant reads-not-writes, and both classic walls.
+  expect(seed).toContain('HOLE client-profile: a consultant wrote the profile (owner-only)')
+  expect(seed).toContain('LEAK cross-client: member_a2 reads client_a1 profile')
+  expect(seed).toContain('LEAK cross-practice: owner_b reads practice_a client profile')
 })
 
 test('both surfaces share one health assembly (no drift)', () => {

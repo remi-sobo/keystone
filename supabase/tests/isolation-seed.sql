@@ -2043,4 +2043,115 @@ do $$ begin
 end $$;
 reset role;
 
+-- ── V2 4I: the scheduling upgrade ─────────────────────────────────────
+-- Settings are read by both sides (the pure-RLS booking page needs the
+-- boundaries) and written only by the practice. Blackouts are
+-- practice-only rows; a client member reads ZERO and receives blackout
+-- time solely as anonymous intervals from the bridge function.
+-- calendar_busy is deny-all to every session, the practice owner
+-- included. The widened bridge returns all three busy sources to
+-- members of both sides and nothing to a stranger.
+
+insert into scheduling_settings (practice_id, buffer_min, lead_hours, horizon_days, video_link)
+  values ('10000000-0000-0000-0000-00000000000a', 15, 24, 30, 'https://zoom.example/leak-test');
+insert into scheduling_blackouts (practice_id, starts_at, ends_at, reason)
+  values ('10000000-0000-0000-0000-00000000000a',
+          now() + interval '10 days', now() + interval '12 days', 'leak-test vacation');
+insert into calendar_busy (practice_id, practice_member_id, starts_at, ends_at)
+  select '10000000-0000-0000-0000-00000000000a', id,
+         now() + interval '5 days', now() + interval '5 days 2 hours'
+  from practice_members
+  where practice_id = '10000000-0000-0000-0000-00000000000a' and role = 'owner';
+
+set role authenticated;
+
+-- The practice owner: reads settings and blackouts, never calendar_busy
+-- rows; the bridge shows all three sources.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from scheduling_settings) <> 1 then
+    raise exception 'owner_a must read their scheduling settings';
+  end if;
+  if (select count(*) from scheduling_blackouts) <> 1 then
+    raise exception 'owner_a must read their blackouts';
+  end if;
+  if (select count(*) from calendar_busy) <> 0 then
+    raise exception 'LEAK: session reads calendar_busy (the real calendar is deny-all)';
+  end if;
+  if (select count(*) from keystone_busy_intervals('10000000-0000-0000-0000-00000000000a')) < 3 then
+    raise exception 'the bridge must union sessions, calendar busy, and blackouts for the practice';
+  end if;
+end $$;
+
+-- The client member: reads the settings (the booking page needs them),
+-- ZERO blackout rows, ZERO calendar_busy rows; the bridge still hands
+-- over the full anonymous busy list; every write is denied.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from scheduling_settings) <> 1 then
+    raise exception 'member_a1 must read the practice scheduling settings';
+  end if;
+  if (select count(*) from scheduling_blackouts) <> 0 then
+    raise exception 'LEAK: a client member reads blackout rows (gate 4I-5)';
+  end if;
+  if (select count(*) from calendar_busy) <> 0 then
+    raise exception 'LEAK: a client member reads calendar_busy';
+  end if;
+  if (select count(*) from keystone_busy_intervals('10000000-0000-0000-0000-00000000000a')) < 3 then
+    raise exception 'the bridge must hand the client the anonymous busy list';
+  end if;
+end $$;
+do $$ begin
+  update scheduling_settings set buffer_min = 0
+    where practice_id = '10000000-0000-0000-0000-00000000000a';
+  if found then raise exception 'LEAK: a client member edited scheduling settings'; end if;
+end $$;
+do $$ begin
+  insert into scheduling_settings (practice_id, buffer_min)
+    values ('10000000-0000-0000-0000-00000000000a', 0);
+  raise exception 'LEAK: a client member inserted scheduling settings';
+exception when insufficient_privilege then null; -- expected RLS denial
+          when unique_violation then raise exception 'LEAK: a client member inserted scheduling settings';
+end $$;
+do $$ begin
+  insert into scheduling_blackouts (practice_id, starts_at, ends_at)
+    values ('10000000-0000-0000-0000-00000000000a', now(), now() + interval '1 day');
+  raise exception 'LEAK: a client member created a blackout';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+do $$
+declare n int;
+begin
+  delete from scheduling_blackouts
+    where practice_id = '10000000-0000-0000-0000-00000000000a';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'LEAK: a client member deleted a blackout'; end if;
+end $$;
+
+-- Cross-client member and cross-practice owner: settings of practice_a
+-- readable only under it; the stranger reads zero and the bridge hands
+-- the stranger nothing.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from scheduling_settings
+      where practice_id = '10000000-0000-0000-0000-00000000000a') <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a scheduling settings';
+  end if;
+  if (select count(*) from scheduling_blackouts
+      where practice_id = '10000000-0000-0000-0000-00000000000a') <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a blackouts';
+  end if;
+  if (select count(*) from calendar_busy) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads calendar_busy';
+  end if;
+  if (select count(*) from keystone_busy_intervals('10000000-0000-0000-0000-00000000000a')) <> 0 then
+    raise exception 'LEAK cross-practice: the bridge handed practice_a busy time to owner_b';
+  end if;
+end $$;
+
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

@@ -9,6 +9,7 @@ import {
 import { encryptToken } from '@/lib/crypto'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { logAuditAction } from '@/lib/audit'
+import { syncMember } from '@/lib/calendarSync'
 
 /**
  * The Google OAuth callback (practice surface, service-role-after-
@@ -74,6 +75,11 @@ export async function GET(req: NextRequest) {
     target: ctx.practiceId,
     detail: { has_refresh_token: !!tokens.refresh_token },
   })
+
+  // A fresh connection is immediately real: push what Keystone holds
+  // and pull the first free/busy window (V2 4I). Failure here degrades
+  // to the hourly cron; the connection itself is already saved.
+  await syncMember({ memberId: member.id, practiceId: ctx.practiceId, actorEmail: ctx.email })
 
   return NextResponse.redirect(new URL('/settings?calendar=connected', origin))
 }

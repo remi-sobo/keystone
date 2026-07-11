@@ -4,6 +4,7 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
 import { RoomShell } from '@/components/RoomShell'
 import { assembleSlots } from '@/lib/slotAssembly'
+import { fetchSchedulingSettings, resolveDuration } from '@/lib/schedulingSettings'
 import { bookSession, cancelSession, rescheduleSession, togglePollMark } from './actions'
 import type { Slot } from '@/lib/scheduling'
 
@@ -46,9 +47,9 @@ function dayKey(s: Slot): string {
 export default async function SessionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ state?: string; reschedule?: string }>
+  searchParams: Promise<{ state?: string; reschedule?: string; duration?: string }>
 }) {
-  const { state, reschedule } = await searchParams
+  const { state, reschedule, duration } = await searchParams
   const viewer = await getViewer()
   if (!viewer.client) redirect('/login')
   const supabase = await createServerSupabase()
@@ -94,7 +95,7 @@ export default async function SessionsPage({
   // everything, because agreeing on the next date is the next move.
   const { data: openPoll } = await supabase
     .from('session_polls')
-    .select('id, purpose')
+    .select('id, purpose, slot_minutes')
     .eq('client_id', viewer.client.clientId)
     .eq('status', 'open')
     .maybeSingle()
@@ -118,13 +119,40 @@ export default async function SessionsPage({
       ])
     : [{ data: null }, { data: null }, { data: null }]
 
-  const slots = await assembleSlots(supabase, viewer.client, new Date())
+  // The duration choice (V2 4I): the offer and default come from the
+  // practice's settings; a reschedule defaults to the session's own
+  // length. The picked duration recomputes the offered slots.
+  const settings = await fetchSchedulingSettings(supabase, viewer.client.practiceId)
+  const rescheduling = upcoming.find((s) => s.id === reschedule) ?? null
+  const reschedulingId = rescheduling?.id ?? null
+  const currentLen = rescheduling
+    ? Math.round(
+        (Date.parse(rescheduling.ends_at) - Date.parse(rescheduling.starts_at)) / 60000
+      )
+    : null
+  const requestedDuration = duration ? Number(duration) : null
+  const activeDuration =
+    requestedDuration && settings.durationOptions.includes(requestedDuration)
+      ? requestedDuration
+      : (currentLen ?? resolveDuration(settings, null))
+
+  const slots = await assembleSlots(
+    supabase,
+    viewer.client,
+    new Date(),
+    activeDuration === currentLen
+      ? { settings, exactDurationMinutes: currentLen }
+      : { settings, durationMinutes: activeDuration }
+  )
   const byDay = new Map<string, Slot[]>()
   for (const s of slots) {
     const k = dayKey(s)
     byDay.set(k, [...(byDay.get(k) ?? []), s])
   }
-  const reschedulingId = upcoming.find((s) => s.id === reschedule)?.id ?? null
+  const durationHref = (mins: number) =>
+    reschedulingId
+      ? `/sessions?reschedule=${reschedulingId}&duration=${mins}`
+      : `/sessions?duration=${mins}`
 
   return (
     <RoomShell eyebrow={viewer.client.clientName} title="Sessions" maxWidth="max-w-4xl">
@@ -139,46 +167,67 @@ export default async function SessionsPage({
           <p className="eyebrow">Pick the next date together</p>
           {openPoll.purpose ? <p className="mt-1 text-sm text-ink">{openPoll.purpose}</p> : null}
           <p className="mt-1 text-sm text-ink-dim">
-            Tap every time that works for you. Tap again to take one back. Your consultant books
-            the one that works for the team.
+            {openPoll.slot_minutes} minutes together. Tap every time that works for you. Tap
+            again to take one back. Your consultant books the one that works for the team.
           </p>
-          <ul className="mt-3 flex flex-col gap-2">
-            {(pollOptions ?? []).map((o) => {
-              const marks = (pollMarks ?? []).filter((m) => m.option_id === o.id)
-              const minePicked = marks.some((m) => m.client_member_id === myMembership?.id)
-              /* eslint-disable @typescript-eslint/no-explicit-any */
-              const names = marks
-                .map((m) => (((m.client_members as any)?.email as string) ?? '').split('@')[0])
-                .filter(Boolean)
-              /* eslint-enable @typescript-eslint/no-explicit-any */
-              return (
-                <li
-                  key={o.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-ink/10 bg-paper px-4 py-3"
-                >
-                  <span className="min-w-0 text-sm text-ink">
-                    {fmt(o.starts_at, o.tz)}
-                    {names.length > 0 ? (
-                      <span className="text-ink-dim"> ({names.join(', ')})</span>
-                    ) : null}
-                  </span>
-                  <form action={togglePollMark}>
-                    <input type="hidden" name="optionId" value={o.id} />
-                    <button
-                      type="submit"
-                      className={`rounded-lg px-3 py-1.5 text-sm transition-colors duration-200 active:scale-[0.98] ${
-                        minePicked
-                          ? 'bg-forest text-paper hover:bg-forest-deep'
-                          : 'border border-sage text-forest hover:bg-sage hover:text-paper'
-                      }`}
-                    >
-                      {minePicked ? 'Works for me ✓' : 'Works for me'}
-                    </button>
-                  </form>
-                </li>
-              )
-            })}
-          </ul>
+          {(() => {
+            const optionDays = new Map<string, NonNullable<typeof pollOptions>>()
+            for (const o of pollOptions ?? []) {
+              const k = new Intl.DateTimeFormat('en-US', {
+                timeZone: o.tz,
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+              }).format(new Date(o.starts_at))
+              optionDays.set(k, [...(optionDays.get(k) ?? []), o])
+            }
+            return [...optionDays.entries()].map(([day, dayOptions]) => (
+              <div key={day} className="mt-3">
+                <p className="eyebrow">{day}</p>
+                <ul className="mt-2 flex flex-col gap-2">
+                  {dayOptions.map((o) => {
+                    const marks = (pollMarks ?? []).filter((m) => m.option_id === o.id)
+                    const minePicked = marks.some((m) => m.client_member_id === myMembership?.id)
+                    /* eslint-disable @typescript-eslint/no-explicit-any */
+                    const names = marks
+                      .map((m) => (((m.client_members as any)?.email as string) ?? '').split('@')[0])
+                      .filter(Boolean)
+                    /* eslint-enable @typescript-eslint/no-explicit-any */
+                    return (
+                      <li
+                        key={o.id}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-ink/10 bg-paper px-4 py-3"
+                      >
+                        <span className="min-w-0 text-sm text-ink">
+                          {new Intl.DateTimeFormat('en-US', {
+                            timeZone: o.tz,
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          }).format(new Date(o.starts_at))}
+                          {names.length > 0 ? (
+                            <span className="text-ink-dim"> ({names.join(', ')})</span>
+                          ) : null}
+                        </span>
+                        <form action={togglePollMark}>
+                          <input type="hidden" name="optionId" value={o.id} />
+                          <button
+                            type="submit"
+                            className={`rounded-lg px-3 py-1.5 text-sm transition-colors duration-200 active:scale-[0.98] ${
+                              minePicked
+                                ? 'bg-forest text-paper hover:bg-forest-deep'
+                                : 'border border-sage text-forest hover:bg-sage hover:text-paper'
+                            }`}
+                          >
+                            {minePicked ? 'Works for me ✓' : 'Works for me'}
+                          </button>
+                        </form>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            ))
+          })()}
         </section>
       ) : null}
 
@@ -247,13 +296,31 @@ export default async function SessionsPage({
         <h2 className="font-display text-2xl font-medium text-ink">
           {reschedulingId ? 'Pick the new time' : 'Book a session'}
         </h2>
+        {settings.durationOptions.length > 1 ? (
+          <p className="mt-2 text-sm text-ink">
+            <span className="text-ink-dim">How long: </span>
+            {settings.durationOptions.map((mins, i) => (
+              <span key={mins}>
+                {i > 0 ? <span className="text-ink-dim"> / </span> : null}
+                {mins === activeDuration ? (
+                  <span className="font-medium">{mins} minutes</span>
+                ) : (
+                  <Link href={durationHref(mins)} className="text-forest underline">
+                    {mins} minutes
+                  </Link>
+                )}
+              </span>
+            ))}
+          </p>
+        ) : null}
         {slots.length === 0 ? (
           <p className="mt-3 text-sm text-ink-dim">
-            No open times in the next two weeks. Your consultant will share more availability.
+            No open times ahead. Your consultant will share more availability.
           </p>
         ) : reschedulingId ? (
           <form action={rescheduleSession} className="mt-4 flex flex-col gap-5">
             <input type="hidden" name="id" value={reschedulingId} />
+            <input type="hidden" name="duration" value={activeDuration} />
             {[...byDay.entries()].map(([day, daySlots]) => (
               <div key={day}>
                 <p className="eyebrow">{day}</p>
@@ -296,6 +363,7 @@ export default async function SessionsPage({
                   {daySlots.map((s) => (
                     <form key={s.startsAt.toISOString()} action={bookSession}>
                       <input type="hidden" name="start" value={s.startsAt.toISOString()} />
+                      <input type="hidden" name="duration" value={activeDuration} />
                       <button
                         type="submit"
                         className="rounded-lg border border-forest px-3 py-1.5 text-sm text-forest transition-colors duration-200 hover:bg-forest hover:text-paper active:scale-[0.98]"

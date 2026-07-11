@@ -1,36 +1,65 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { isErrorResponse, requireClientMember } from '@/lib/auth'
-import { buildEngagementRecord } from '@/lib/exportRecord'
+import { enforceRateLimits, LIMITS } from '@/lib/rateLimit'
+import { buildArchiveZip, safeName } from '@/lib/exportRecord'
 
 /**
- * The client's export (V2 5B). PURE RLS: the record builder runs on
- * the SESSION client, so this file contains exactly what this client
- * may read: the published charter, the shared record, the sent
- * digests, the published closeout. You own your data; you can leave
- * with it.
+ * The client's export (V2 5B): the engagement record as a zip they
+ * keep. Pure RLS end to end: the archive is assembled on THIS SESSION,
+ * so its scope is exactly what this member can already read, and the
+ * storage policies serve every byte. Deliberately NOT audited: the
+ * export is the client's right, and a client action never feeds the
+ * practice's activity fold (the activity-view rule); the rate limit
+ * is the only meter.
  */
 export async function GET() {
   const ctx = await requireClientMember()
   if (isErrorResponse(ctx)) return ctx
 
+  const limited = await enforceRateLimits([
+    { config: LIMITS.EXPORT_PER_HOUR, key: ctx.userId },
+    { config: LIMITS.EXPORT_PER_DAY, key: ctx.userId },
+  ])
+  if (limited) return limited
+
   const supabase = await createServerSupabase()
   const { data: engagement } = await supabase
     .from('engagements')
-    .select('id')
+    .select('id, title, starts_on, ends_on, clients(name), practices(name)')
     .eq('client_id', ctx.clientId)
-    .order('created_at', { ascending: true })
+    .in('status', ['active', 'proposed', 'paused', 'done'])
+    .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
   if (!engagement) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
-  const record = await buildEngagementRecord(supabase, engagement.id)
-  if (!record) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const clientName = ((engagement.clients as any)?.name as string) ?? 'client'
+  const practiceName = ((engagement.practices as any)?.name as string) ?? 'the practice'
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+  const exportedOn = new Date().toISOString().slice(0, 10)
 
-  return new NextResponse(record.markdown, {
+  const result = await buildArchiveZip(supabase, engagement.id, {
+    engagementTitle: engagement.title,
+    clientName,
+    practiceName,
+    startsOn: engagement.starts_on,
+    endsOn: engagement.ends_on,
+    exportedFor: ctx.email,
+    side: 'client',
+    exportedOn,
+  })
+  if (!result.ok) {
+    const status = result.error === 'too_large' ? 413 : 502
+    return NextResponse.json({ error: result.error }, { status })
+  }
+
+  const filename = `${safeName(clientName, 'client')}-engagement-record-${exportedOn}.zip`
+  return new NextResponse(new Uint8Array(result.zip), {
     headers: {
-      'Content-Type': 'text/markdown; charset=utf-8',
-      'Content-Disposition': `attachment; filename="${record.fileName}"`,
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="${filename}"`,
       'Cache-Control': 'private, no-store',
     },
   })

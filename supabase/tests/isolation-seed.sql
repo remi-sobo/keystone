@@ -2097,4 +2097,60 @@ begin
 end $$;
 reset role;
 
+-- ── V2 4G: deals are practice-only, no money, no client eyes ────────
+-- The pipeline predates the client, so no client member may ever read
+-- a deal, including the client the deal is about becoming.
+
+insert into deals (id, practice_id, name, contact_name, stage) values
+  ('e5000000-0000-0000-0000-0000000000f1', '10000000-0000-0000-0000-00000000000a',
+   'Northside Youth Alliance', 'Dana Whitfield', 'verbal_yes');
+
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from deals) <> 1 then
+    raise exception 'the practice must read its own deals';
+  end if;
+  insert into deals (practice_id, name, stage)
+    values ('10000000-0000-0000-0000-00000000000a', 'Second Deal', 'lead');
+  update deals set stage = 'discovery' where name = 'Second Deal';
+end $$;
+
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from deals) <> 0 then
+    raise exception 'LEAK 4G: a client member reads the practice pipeline';
+  end if;
+end $$;
+do $$ begin
+  insert into deals (practice_id, name)
+    values ('10000000-0000-0000-0000-00000000000a', 'forged deal');
+  raise exception 'HOLE 4G: a client member wrote a deal';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ declare n int; begin
+  if (select count(*) from deals) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a deals';
+  end if;
+  update deals set stage = 'closed'
+    where id = 'e5000000-0000-0000-0000-0000000000f1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE 4G: owner_b moved a practice_a deal'; end if;
+end $$;
+
+-- No delete policy for anyone: closed is a stage, not an erasure.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ declare n int; begin
+  delete from deals where id = 'e5000000-0000-0000-0000-0000000000f1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE 4G: a deal was deleted'; end if;
+end $$;
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

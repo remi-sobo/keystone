@@ -137,3 +137,20 @@ export async function decideDigest(formData: FormData): Promise<void> {
   revalidatePath('/today')
   redirect(allSent ? '/today?state=digest_sent' : '/today?state=digest_no_email')
 }
+
+// ── 4F: mark the inbox read ───────────────────────────────────────────
+
+export async function markAllNotificationsRead(): Promise<void> {
+  const viewer = await getViewer()
+  if (!viewer.user || !viewer.practice) redirect('/login')
+
+  const supabase = await createServerSupabase()
+  // RLS admits only the caller's own rows; the column grant admits only
+  // read_at.
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .is('read_at', null)
+  if (error) console.error('[notify] mark read failed:', error.code)
+  revalidatePath('/today')
+}

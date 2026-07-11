@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { getViewer } from '@/lib/membership'
 import { RoomShell } from '@/components/RoomShell'
 import { KeystoneCard } from '@/components/KeystoneCard'
-import { addWindow, removeWindow, syncNow } from './actions'
+import { addWindow, removeWindow, saveEmailPref, syncNow } from './actions'
 
 /**
  * Practice settings (Ring 2): availability windows and the Google
@@ -44,6 +44,23 @@ export default async function SettingsPage({
   const { calendar, window: windowState } = await searchParams
   const viewer = await getViewer()
   const supabase = await createServerSupabase()
+
+  const { data: myMembership } = viewer.user && viewer.practice
+    ? await supabase
+        .from('practice_members')
+        .select('id')
+        .eq('user_id', viewer.user.id)
+        .eq('practice_id', viewer.practice.practiceId)
+        .is('revoked_at', null)
+        .maybeSingle()
+    : { data: null }
+  const { data: emailPref } = myMembership
+    ? await supabase
+        .from('notification_prefs')
+        .select('email_mode')
+        .eq('practice_member_id', myMembership.id)
+        .maybeSingle()
+    : { data: null }
 
   const { data: windows } = await supabase
     .from('availability_windows')
@@ -222,6 +239,23 @@ export default async function SettingsPage({
               <span className="text-ink-dim"> ({viewer.practice.role} at {viewer.practice.practiceName})</span>
             ) : null}
           </p>
+          <form action={saveEmailPref} className="mt-4 flex flex-wrap items-center gap-3">
+            <span className="text-sm text-ink-dim">Notification email:</span>
+            <select
+              name="mode"
+              defaultValue={emailPref?.email_mode ?? 'batched'}
+              className="rounded-lg border border-ink/15 bg-paper-raised px-3 py-2 text-sm text-ink"
+            >
+              <option value="batched">One daily summary</option>
+              <option value="off">Off; I live on /today</option>
+            </select>
+            <button
+              type="submit"
+              className="rounded-lg border border-forest px-3 py-1.5 text-sm text-forest transition-colors duration-200 hover:bg-forest hover:text-paper active:scale-[0.98]"
+            >
+              Save
+            </button>
+          </form>
           <form action="/auth/signout" method="post" className="mt-4">
             <button
               type="submit"

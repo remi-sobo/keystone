@@ -105,3 +105,37 @@ export async function syncNow(): Promise<void> {
       : '/settings?calendar=sync_partial'
   )
 }
+
+// ── 4F: the notification email mute ──────────────────────────────────
+
+const PrefShape = z.object({ mode: z.enum(['batched', 'off']) })
+
+export async function saveEmailPref(formData: FormData): Promise<void> {
+  const viewer = await getViewer()
+  if (!viewer.user || !viewer.practice) redirect('/login')
+
+  const parsed = PrefShape.safeParse({ mode: formData.get('mode') })
+  if (!parsed.success) redirect('/settings')
+
+  const supabase = await createServerSupabase()
+  const { data: me } = await supabase
+    .from('practice_members')
+    .select('id, practice_id')
+    .eq('user_id', viewer.user.id)
+    .eq('practice_id', viewer.practice.practiceId)
+    .is('revoked_at', null)
+    .maybeSingle()
+  if (!me) redirect('/settings')
+
+  const { error } = await supabase.from('notification_prefs').upsert(
+    {
+      practice_id: me.practice_id,
+      practice_member_id: me.id,
+      email_mode: parsed.data.mode,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'practice_member_id' }
+  )
+  if (error) console.error('[prefs] save failed:', error.code)
+  revalidatePath('/settings')
+}

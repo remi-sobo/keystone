@@ -20,6 +20,7 @@ import { recordQaExchange } from '@/lib/qaExchange'
 import type { AskResult } from '@/components/AskRecordForm'
 import type { FindResult } from '@/components/FindRecordForm'
 import { searchRecord } from '@/lib/recordSearch'
+import { clientTeamRecipients, notify } from '@/lib/notify'
 import { assembleSlots } from '@/lib/slotAssembly'
 import { isOfferedSlot } from '@/lib/scheduling'
 
@@ -201,6 +202,17 @@ export async function createDeliverable(
     target: engagement.id,
     detail: { kind: d.kind },
   })
+  await notify(
+    {
+      practiceId: engagement.practice_id,
+      clientId: engagement.client_id,
+      engagementId: engagement.id,
+      kind: 'deliverable_shipped',
+      title: `New deliverable: ${d.title}`,
+      href: '/deliverables',
+    },
+    await clientTeamRecipients(engagement.client_id)
+  )
   revalidatePath(`/engagements/${engagement.id}`)
   revalidatePath('/deliverables')
   revalidatePath('/home')
@@ -338,6 +350,19 @@ export async function replyMessage(formData: FormData): Promise<void> {
     .eq('thread_id', thread.id)
     .eq('author_side', 'client')
     .is('read_at', null)
+
+  // 4F: the in-app row beside the email they already get.
+  await notify(
+    {
+      practiceId: engagement.practice_id,
+      clientId: engagement.client_id,
+      engagementId: engagement.id,
+      kind: 'message_reply',
+      title: 'A reply from your consultant',
+      href: '/messages',
+    },
+    await clientTeamRecipients(engagement.client_id)
+  )
 
   // Email the client members who have spoken in this thread; if the
   // practice speaks first, every member of the client hears it.
@@ -1246,7 +1271,7 @@ async function loadPracticeItem(itemId: string, engagementId: string, practiceId
   const { data: item } = await supabase
     .from('action_items')
     .select(
-      'id, engagement_id, practice_id, client_id, status, review_requested, assigned_client_member_id'
+      'id, title, engagement_id, practice_id, client_id, status, review_requested, assigned_client_member_id'
     )
     .eq('id', itemId)
     .eq('engagement_id', engagementId)
@@ -1296,6 +1321,19 @@ export async function acceptHomework(formData: FormData): Promise<void> {
     action: 'homework.accepted',
     target: item.id,
   })
+  if (item.assigned_client_member_id) {
+    await notify(
+      {
+        practiceId: item.practice_id,
+        clientId: item.client_id,
+        engagementId: item.engagement_id,
+        kind: 'homework_feedback',
+        title: `Homework accepted: ${item.title}`,
+        href: `/homework/${item.id}`,
+      },
+      [{ clientMemberId: item.assigned_client_member_id }]
+    )
+  }
   revalidatePath(`/engagements/${engagementId}`)
   revalidatePath(`/engagements/${engagementId}/homework/${itemId}`)
   revalidatePath('/homework')
@@ -1342,6 +1380,19 @@ export async function sendBackHomework(formData: FormData): Promise<void> {
     action: 'homework.sent_back',
     target: item.id,
   })
+  if (item.assigned_client_member_id) {
+    await notify(
+      {
+        practiceId: item.practice_id,
+        clientId: item.client_id,
+        engagementId: item.engagement_id,
+        kind: 'homework_feedback',
+        title: `Homework sent back with a note: ${item.title}`,
+        href: `/homework/${item.id}`,
+      },
+      [{ clientMemberId: item.assigned_client_member_id }]
+    )
+  }
   revalidatePath(`/engagements/${engagementId}`)
   revalidatePath(`/engagements/${engagementId}/homework/${itemId}`)
   revalidatePath('/homework')
@@ -1525,6 +1576,17 @@ export async function createSessionPoll(formData: FormData): Promise<void> {
     target: engagement.id,
     detail: { options: rows.length },
   })
+  await notify(
+    {
+      practiceId: engagement.practice_id,
+      clientId: engagement.client_id,
+      engagementId: engagement.id,
+      kind: 'poll_opened',
+      title: 'Pick the next session date: mark the times that work',
+      href: '/sessions',
+    },
+    await clientTeamRecipients(engagement.client_id)
+  )
   revalidatePath(`/engagements/${engagement.id}`)
   revalidatePath('/sessions')
   revalidatePath('/home')
@@ -1603,6 +1665,17 @@ export async function confirmPollOption(formData: FormData): Promise<void> {
     target: poll!.id,
     detail: { session: session!.id },
   })
+  await notify(
+    {
+      practiceId: poll!.practice_id,
+      clientId: poll!.client_id,
+      engagementId: poll!.engagement_id,
+      kind: 'poll_booked',
+      title: 'The next session is booked',
+      href: '/sessions',
+    },
+    await clientTeamRecipients(poll!.client_id)
+  )
   revalidatePath(`/engagements/${engagementId}`)
   revalidatePath('/sessions')
   revalidatePath('/home')

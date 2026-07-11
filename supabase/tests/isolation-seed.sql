@@ -1716,4 +1716,109 @@ do $$ begin
 end $$;
 reset role;
 
+-- ── V2 4F: notifications behind the recipient wall ───────────────────
+-- Your inbox is yours: the read policy admits only the owner of the
+-- recipient membership. A teammate reads zero of your rows; so does
+-- the practice OWNER for a client member's rows (the wall cuts both
+-- ways). The one session write is read_at on your own rows (column
+-- grant); no session inserts or deletes anything. Prefs are one row
+-- per person, theirs alone.
+
+insert into notifications (practice_id, client_id, engagement_id,
+                           recipient_client_member_id, kind, title, href)
+  select '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+         '30000000-0000-0000-0000-0000000000a1', id, 'homework_feedback',
+         'leak-test notification (member)', '/homework'
+  from client_members where email = 'member_a1@client-a.test';
+insert into notifications (practice_id, recipient_practice_member_id, kind, title, href)
+  select '10000000-0000-0000-0000-00000000000a', id, 'homework_submitted',
+         'leak-test notification (owner)', '/today'
+  from practice_members where email = 'owner_a@practice-a.test';
+
+set role authenticated;
+
+-- The recipient: reads their row, marks it read, and nothing else.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from notifications) <> 1 then
+    raise exception 'member_a1 must read exactly their own notification';
+  end if;
+  update notifications set read_at = now() where read_at is null;
+  if not found then raise exception 'the recipient must be able to mark their row read'; end if;
+end $$;
+do $$ begin
+  update notifications set title = 'defaced';
+  raise exception 'HOLE: a session rewrote a notification title';
+exception when insufficient_privilege then null; -- the column grant held
+end $$;
+do $$ begin
+  insert into notifications (practice_id, client_id,
+                             recipient_client_member_id, kind, title, href)
+    select '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+           id, 'message_reply', 'forged', '/messages'
+    from client_members where email = 'member_a1@client-a.test';
+  raise exception 'HOLE: a session inserted a notification';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+do $$
+declare n int;
+begin
+  delete from notifications;
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a session deleted a notification'; end if;
+end $$;
+-- Prefs: your own row lands; a forged row for the teammate is denied.
+do $$ begin
+  insert into notification_prefs (practice_id, client_member_id, email_mode)
+    select '10000000-0000-0000-0000-00000000000a', id, 'off'
+    from client_members where email = 'member_a1@client-a.test';
+end $$;
+do $$ begin
+  insert into notification_prefs (practice_id, client_member_id, email_mode)
+    select '10000000-0000-0000-0000-00000000000a', id, 'off'
+    from client_members where email = 'member_a1c@client-a.test';
+  raise exception 'LEAK: a member set a teammate''s notification pref';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+-- The teammate and the buyer persona: zero rows of yours.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a3","email":"member_a1c@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from notifications) <> 0 then
+    raise exception 'LEAK 4F: a teammate reads another member''s notifications';
+  end if;
+  if (select count(*) from notification_prefs) <> 0 then
+    raise exception 'LEAK 4F: a teammate reads another member''s prefs';
+  end if;
+end $$;
+
+-- The practice owner: their OWN row only; the member's row is walled.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from notifications) <> 1 then
+    raise exception 'LEAK 4F: the recipient wall must cut both ways (owner reads only their own row)';
+  end if;
+end $$;
+
+-- Cross-client and cross-practice: zero.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$ begin
+  if (select count(*) from notifications) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 notifications';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from notifications) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a notifications';
+  end if;
+end $$;
+
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

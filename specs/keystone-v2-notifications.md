@@ -2,7 +2,7 @@
 
 **Parent:** `specs/keystone-v2.md` Phase 4 epic 4F, pulled to the front of Phase 3 by the roadmap's own note: several Phase 3 features silently assume this infrastructure (3C's reminders, 3H's nudges, 3B's run-of-show reminders), so the infra lands before those nudges ship. Shaped by pilot harvest item 2 (Remi, 2026-07-09): messages and notifications as one deliberately built surface, "messages plus nudges in one place," batching over pings, and every user a mute. A consulting client should feel held, not hounded.
 **Grounded against:** the live codebase after 3A. Today the only notifications are the message emails (immediate, per message, working) and the invite emails. Homework feedback, submissions, poll openings, and shipped deliverables make no sound at all; homework due dates nag nobody. `lib/email.ts` (Resend, the branded shell, honest degradation) and the digest cron pattern (CRON_SECRET, fails closed) are the delivery rails this epic reuses.
-**Status:** draft for Remi. CONFIRM gates in section 7.
+**Status:** BUILT 2026-07-10, same day as the spec. All five gates approved as recommended (Remi). Migration 0020 applied live; the cron rides vercel.json daily at 14:00 UTC.
 **Date:** 2026-07-10
 
 ---

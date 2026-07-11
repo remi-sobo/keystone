@@ -9,6 +9,7 @@ import { getViewer } from '@/lib/membership'
 import { validateVoice } from '@/lib/voice'
 import { logVoiceViolation } from '@/lib/voiceViolations'
 import { logAuditAction } from '@/lib/audit'
+import { clientTeamRecipients, notify } from '@/lib/notify'
 
 /**
  * Charter actions (V2 2A, specs/keystone-v2-charter.md). Draft saves
@@ -237,6 +238,17 @@ export async function requestCharterSignoff(formData: FormData): Promise<void> {
     target: engagement.id,
     detail: { version: current.version },
   })
+  await notify(
+    {
+      practiceId: engagement.practice_id,
+      clientId: engagement.client_id,
+      engagementId: engagement.id,
+      kind: 'approval_waiting',
+      title: 'Your sign-off is asked: the engagement charter',
+      href: '/charter',
+    },
+    await clientTeamRecipients(engagement.client_id)
+  )
   revalidatePath(back)
   redirect(`${back}?state=asked`)
 }

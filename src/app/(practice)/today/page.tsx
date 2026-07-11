@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { RoomShell } from '@/components/RoomShell'
 import { KeystoneCard } from '@/components/KeystoneCard'
-import { decideDigest } from './actions'
+import { decideDigest, markAllNotificationsRead } from './actions'
 import { loopStatesByItem } from '@/lib/homework'
 
 /**
@@ -106,6 +106,14 @@ export default async function PracticeHomePage({
   const loopStates = loopStatesByItem(reviewTrail ?? [])
   const submitted = (openReviewItems ?? []).filter((i) => loopStates.get(i.id) === 'submitted')
 
+  // 4F: your own notifications (the recipient wall returns only yours).
+  const { data: inbox } = await supabase
+    .from('notifications')
+    .select('id, title, href, created_at')
+    .is('read_at', null)
+    .order('created_at', { ascending: false })
+    .limit(20)
+
   const { data: digestQueue } = await supabase
     .from('ai_proposals')
     .select('id, payload, model_used, created_at, clients(name)')
@@ -167,6 +175,32 @@ export default async function PracticeHomePage({
                   <span className="text-ink-dim">
                     {clientOf(s)}, {s.kind}
                   </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </KeystoneCard>
+
+        <KeystoneCard>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="eyebrow">New for you</p>
+            {(inbox ?? []).length > 0 ? (
+              <form action={markAllNotificationsRead}>
+                <button type="submit" className="text-xs text-ink-dim underline hover:text-ink">
+                  Mark all read
+                </button>
+              </form>
+            ) : null}
+          </div>
+          {(inbox ?? []).length === 0 ? (
+            <p className="mt-3 text-sm text-ink-dim">Nothing new. The room is quiet.</p>
+          ) : (
+            <ul className="mt-3 flex flex-col gap-1.5">
+              {(inbox ?? []).map((n) => (
+                <li key={n.id} className="text-sm text-ink">
+                  <Link href={n.href} className="text-forest underline">
+                    {n.title}
+                  </Link>
                 </li>
               ))}
             </ul>

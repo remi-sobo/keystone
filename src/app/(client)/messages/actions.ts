@@ -7,6 +7,7 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
 import { checkRateLimits, LIMITS } from '@/lib/rateLimit'
 import { appBaseUrl, sendEmail } from '@/lib/email'
+import { notify, practiceTeamRecipients } from '@/lib/notify'
 
 /**
  * Client message send (Ring 5). Pure RLS end to end: the thread and the
@@ -89,6 +90,19 @@ export async function sendMessage(formData: FormData): Promise<void> {
     .update({ last_message_at: new Date().toISOString() })
     .eq('id', thread.id)
 
+  // 4F: the in-app row beside the email below.
+  await notify(
+    {
+      practiceId: engagement.practice_id,
+      clientId: engagement.client_id,
+      engagementId: engagement.id,
+      kind: 'message_reply',
+      title: `New message from ${viewer.client!.clientName}`,
+      href: `/engagements/${engagement.id}#messages`,
+    },
+    await practiceTeamRecipients(engagement.practice_id)
+  )
+
   // Notify the practice owners. The message stands either way; a failed
   // email is reported, never papered over.
   const { data: targets } = await supabase.rpc('keystone_message_notify_targets', {
@@ -117,4 +131,21 @@ export async function sendMessage(formData: FormData): Promise<void> {
 
   revalidatePath('/messages')
   redirect(allSent ? '/messages?state=sent' : '/messages?state=sent_no_email')
+}
+
+// ── 4F: mark the inbox read (the one notification write a session has) ─
+
+export async function markAllNotificationsRead(): Promise<void> {
+  const viewer = await getViewer()
+  if (!viewer.user || !viewer.client) redirect('/login')
+
+  const supabase = await createServerSupabase()
+  // RLS admits only the caller's own rows; the column grant admits only
+  // read_at. Pure RLS, nothing to check beyond the session itself.
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .is('read_at', null)
+  if (error) console.error('[notify] mark read failed:', error.code)
+  revalidatePath('/messages')
 }

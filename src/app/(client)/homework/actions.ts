@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
+import { notify, practiceTeamRecipients } from '@/lib/notify'
 
 /**
  * The client side of homework (PURE RLS, V2 3C). Two writes exist:
@@ -81,7 +82,7 @@ export async function addHomeworkActivity(formData: FormData): Promise<void> {
   const [{ data: item }, { data: me }] = await Promise.all([
     supabase
       .from('action_items')
-      .select('id, engagement_id, practice_id, client_id, assigned_client_member_id, review_requested')
+      .select('id, title, engagement_id, practice_id, client_id, assigned_client_member_id, review_requested')
       .eq('id', id)
       .eq('client_id', viewer.client.clientId)
       .maybeSingle(),
@@ -108,6 +109,21 @@ export async function addHomeworkActivity(formData: FormData): Promise<void> {
   if (error) {
     console.error('[homework] trail write failed:', error.code)
     redirect(`/homework/${id}?state=error`)
+  }
+
+  // 4F: a submission is the one loop event the practice waits on.
+  if (kind === 'submission') {
+    await notify(
+      {
+        practiceId: item.practice_id,
+        clientId: item.client_id,
+        engagementId: item.engagement_id,
+        kind: 'homework_submitted',
+        title: `Homework submitted: ${item.title}`,
+        href: `/engagements/${item.engagement_id}/homework/${item.id}`,
+      },
+      await practiceTeamRecipients(item.practice_id)
+    )
   }
 
   revalidatePath(`/homework/${id}`)

@@ -1,8 +1,9 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
 import { RoomShell } from '@/components/RoomShell'
-import { sendMessage } from './actions'
+import { markAllNotificationsRead, sendMessage } from './actions'
 
 /**
  * The client message thread (Ring 5): one thread with the practice, per
@@ -56,6 +57,14 @@ export default async function MessagesPage({
         .order('created_at', { ascending: true })
     : { data: [] }
 
+  // 4F: your notifications (RLS returns only yours), newest first.
+  const { data: newForYou } = await supabase
+    .from('notifications')
+    .select('id, kind, title, href, created_at')
+    .is('read_at', null)
+    .order('created_at', { ascending: false })
+    .limit(20)
+
   // Read receipt: the practice's words, now seen by the client.
   const unseen = (messages ?? []).filter((m) => m.author_side === 'practice' && !m.read_at)
   if (unseen.length > 0) {
@@ -72,6 +81,28 @@ export default async function MessagesPage({
         <p role="status" className="mb-6 text-sm text-forest">
           {STATES[state]}
         </p>
+      ) : null}
+
+      {(newForYou ?? []).length > 0 ? (
+        <section className="mb-8 rounded-[var(--radius)] border border-brass/50 bg-paper-raised p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="eyebrow">New for you</p>
+            <form action={markAllNotificationsRead}>
+              <button type="submit" className="text-xs text-ink-dim underline hover:text-ink">
+                Mark all read
+              </button>
+            </form>
+          </div>
+          <ul className="mt-2 flex flex-col gap-1.5">
+            {(newForYou ?? []).map((n) => (
+              <li key={n.id} className="text-sm text-ink">
+                <Link href={n.href} className="text-forest underline">
+                  {n.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
 
       <section className="flex flex-col gap-3">

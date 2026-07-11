@@ -2267,4 +2267,164 @@ do $$ begin
 end $$;
 reset role;
 
+-- ── V2 5A: the closeout room walls ──────────────────────────────────
+-- Drafts are the practice's workshop; publish opens the room to the
+-- client's own team only; nobody deletes an ending.
+
+insert into closeouts (id, engagement_id, practice_id, client_id, breaks_md) values
+  ('a7000000-0000-0000-0000-0000000000f1', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   'call the owner of the rhythm first');
+
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from closeouts) <> 0 then
+    raise exception 'LEAK 5A: a client member reads a draft closeout';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from closeouts) <> 1 then
+    raise exception 'the practice must read its own draft closeout';
+  end if;
+  update closeouts set status = 'published', published_at = now()
+    where id = 'a7000000-0000-0000-0000-0000000000f1';
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from closeouts) <> 1 then
+    raise exception 'a published closeout must reach the client team';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000b1","email":"member_b@client-b.test"}', false);
+do $$ begin
+  if (select count(*) from closeouts) <> 0 then
+    raise exception 'LEAK cross-client: member_b reads client_a closeout';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from closeouts) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a closeout';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ declare n int; begin
+  delete from closeouts where id = 'a7000000-0000-0000-0000-0000000000f1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE 5A: a closeout was deleted (you do not un-ring the bell)'; end if;
+end $$;
+reset role;
+
+-- ── V2 5C: case studies show the client only at review time ────────
+
+insert into case_studies (id, engagement_id, practice_id, client_id, title, body_md) values
+  ('b8000000-0000-0000-0000-0000000000f1', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   'Draft case study', 'the draft body');
+
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from case_studies) <> 0 then
+    raise exception 'LEAK 5C: a client member reads a draft case study';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  update case_studies set status = 'client_review'
+    where id = 'b8000000-0000-0000-0000-0000000000f1';
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ declare n int; begin
+  if (select count(*) from case_studies) <> 1 then
+    raise exception 'a case study in review must reach the client team';
+  end if;
+  update case_studies set body_md = 'edited by the client'
+    where id = 'b8000000-0000-0000-0000-0000000000f1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE 5C: a client member edited the case study'; end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from case_studies) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a case study';
+  end if;
+end $$;
+reset role;
+
+-- ── V2 5E: change orders, the shared page with one pen per side ────
+-- The client writes the ask, the practice writes the decision, both
+-- teams read, nobody deletes, and no fee column exists to leak.
+
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  insert into change_orders (engagement_id, practice_id, client_id, title, description_md,
+                             requested_by_client_member_id)
+    values ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1', 'A grant tracker inside Keystone',
+            'we keep asking for this',
+            (select id from client_members where email = 'member_a1@client-a.test'));
+end $$;
+-- A forged pre-decided ask never lands.
+do $$ begin
+  insert into change_orders (engagement_id, practice_id, client_id, title, status, response_md,
+                             requested_by_client_member_id)
+    values ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1', 'self-approved ask', 'agreed', 'sure',
+            (select id from client_members where email = 'member_a1@client-a.test'));
+  raise exception 'HOLE 5E: a client member wrote a pre-decided change order';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+-- The teammate reads the shared page; the other client reads nothing.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a3","email":"member_a1c@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from change_orders) <> 1 then
+    raise exception 'a change order is a shared page for the whole client team';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000b1","email":"member_b@client-b.test"}', false);
+do $$ begin
+  if (select count(*) from change_orders) <> 0 then
+    raise exception 'LEAK cross-client: member_b reads client_a change orders';
+  end if;
+end $$;
+-- The client cannot decide; the practice can.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ declare n int; begin
+  update change_orders set status = 'agreed', response_md = 'granting myself the tracker';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE 5E: a client member decided a change order'; end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ declare n int; begin
+  update change_orders set status = 'declined',
+    response_md = 'outside the five workstreams; BloomOS holds the operation',
+    decided_at = now()
+    where title = 'A grant tracker inside Keystone';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'the practice must be able to decide a change order'; end if;
+  delete from change_orders;
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE 5E: a change order was deleted (a boundary held is worth keeping)'; end if;
+end $$;
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

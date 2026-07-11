@@ -19,8 +19,8 @@ const DecideShape = z.object({
   approvalId: z.string().uuid(),
   decision: z.enum(['approved', 'not_yet']),
   note: z.string().max(2000).optional(),
-  // The surface to return to; approvals now decide on two pages.
-  back: z.enum(['/charter', '/deliverables']).default('/charter'),
+  // The surface to return to; approvals decide on several pages now.
+  back: z.enum(['/charter', '/deliverables', '/closeout', '/case-study']).default('/charter'),
 })
 
 export async function decideApproval(formData: FormData): Promise<void> {
@@ -37,8 +37,10 @@ export async function decideApproval(formData: FormData): Promise<void> {
   const back = parsed.data.back
 
   // Not-yet without words is a shrug; the note is required (3D keeps
-  // the charter's looser manners since a signature needs no reason).
-  if (back === '/deliverables' && parsed.data.decision === 'not_yet' && !parsed.data.note) {
+  // the charter's looser manners since a signature needs no reason;
+  // the closeout follows the deliverable rule: refusing an ending
+  // deserves a reason).
+  if (back !== '/charter' && parsed.data.decision === 'not_yet' && !parsed.data.note) {
     redirect(`${back}?state=note_needed`)
   }
 
@@ -83,4 +85,69 @@ export async function decideApproval(formData: FormData): Promise<void> {
   revalidatePath('/deliverables')
   revalidatePath('/home')
   redirect(`${back}?state=${parsed.data.decision === 'approved' ? 'approved' : 'noted'}`)
+}
+
+// ── Change orders (V2 5E) ────────────────────────────────────────────
+// The pressure valve for the boundary: the ask in writing, pure RLS
+// (the insert policy admits only a self-authored, open, unanswered ask
+// on the client's own engagement). No numbers here, by design.
+
+const ChangeOrderShape = z.object({
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(4000).optional(),
+})
+
+export async function requestChangeOrder(formData: FormData): Promise<void> {
+  const viewer = await getViewer()
+  if (!viewer.user || !viewer.client) redirect('/login')
+
+  const parsed = ChangeOrderShape.safeParse({
+    title: formData.get('title'),
+    description: String(formData.get('description') ?? '').trim() || undefined,
+  })
+  if (!parsed.success) redirect('/charter?state=co_invalid')
+
+  const supabase = await createServerSupabase()
+  const [{ data: engagement }, { data: me }] = await Promise.all([
+    supabase
+      .from('engagements')
+      .select('id, practice_id, client_id')
+      .eq('client_id', viewer.client.clientId)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('client_members')
+      .select('id')
+      .eq('user_id', viewer.user.id)
+      .eq('client_id', viewer.client.clientId)
+      .maybeSingle(),
+  ])
+  if (!engagement || !me) redirect('/charter?state=co_error')
+
+  const { error } = await supabase.from('change_orders').insert({
+    engagement_id: engagement.id,
+    practice_id: engagement.practice_id,
+    client_id: engagement.client_id,
+    title: parsed.data.title,
+    description_md: parsed.data.description ?? null,
+    requested_by_client_member_id: me.id,
+  })
+  if (error) {
+    console.error('[change-orders] request failed:', error.code)
+    redirect('/charter?state=co_error')
+  }
+  await notify(
+    {
+      practiceId: engagement.practice_id,
+      clientId: engagement.client_id,
+      engagementId: engagement.id,
+      kind: 'change_order_requested',
+      title: `Change order asked: ${parsed.data.title}`,
+      href: `/engagements/${engagement.id}#change-orders`,
+    },
+    await practiceTeamRecipients(engagement.practice_id)
+  )
+  revalidatePath('/charter')
+  redirect('/charter?state=co_asked')
 }

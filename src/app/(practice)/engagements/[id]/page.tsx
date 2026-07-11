@@ -22,6 +22,7 @@ import {
   closeSessionPoll,
   completeInternalTask,
   reopenInternalTask,
+  decideChangeOrder,
   setEngagementOwner,
   setWorkstreamOwner,
   confirmPollOption,
@@ -73,6 +74,9 @@ const STATES: Record<string, string> = {
   internal_reopened: 'Reopened.',
   owner_saved: 'Owner saved.',
   owner_error: 'That did not save. Try again.',
+  co_decided: 'Decided, in writing. The client team hears about it.',
+  co_gone: 'That change order was already decided.',
+  co_error: 'That did not save. Try again.',
   poll_opened: 'Poll opened. The team sees it on their sessions page now.',
   poll_exists: 'There is already an open poll for this engagement. Close it first.',
   poll_slot_gone: 'One of those times is no longer free. Refresh and pick again.',
@@ -173,6 +177,13 @@ export default async function EngagementDetailPage({
   // Activity view: service-role read AFTER the practice layout check
   // and the RLS engagement resolve above (the sanctioned path).
   const activity = await listEngagementAudit(id, 30)
+
+  // 5E: the shared page of asks that sit outside the walls.
+  const { data: changeOrders } = await supabase
+    .from('change_orders')
+    .select('id, title, description_md, status, response_md, created_at, client_members:requested_by_client_member_id(email)')
+    .eq('engagement_id', id)
+    .order('created_at', { ascending: false })
 
   // 4E: stage events feed the health read (moving, quiet weeks).
   const { data: stageEventRows } = await supabase
@@ -444,6 +455,10 @@ export default async function EngagementDetailPage({
           : 'No charter published yet. '}
         <Link href={`/engagements/${engagement.id}/charter`} className="underline hover:text-ink">
           {publishedCharter ? 'Open the charter' : 'Draft the charter'}
+        </Link>
+        {'  '}
+        <Link href={`/engagements/${engagement.id}/closeout`} className="ml-2 underline hover:text-ink">
+          The closeout room
         </Link>
       </p>
 
@@ -1576,6 +1591,77 @@ export default async function EngagementDetailPage({
             </button>
           </form>
         </details>
+      </section>
+
+      {/* V2 5E: change orders. The ask and the answer, one page. */}
+      <section id="change-orders" className="mt-12">
+        <h2 className="font-display text-2xl font-medium text-ink">Change orders</h2>
+        <p className="mt-1 text-sm text-ink-dim">
+          Asks that sit outside the charter. The answer goes on the record in writing; no numbers
+          here, the fee conversation stays a conversation.
+        </p>
+        {(changeOrders ?? []).length === 0 ? (
+          <p className="mt-3 text-sm text-ink-dim">Nothing asked. The boundary is holding.</p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-3">
+            {(changeOrders ?? []).map((co) => (
+              <li key={co.id} className="rounded-lg border border-ink/10 bg-paper-raised px-4 py-3">
+                <p className="text-sm font-medium text-ink">
+                  {co.title} <span className="eyebrow ml-2">{co.status}</span>
+                </p>
+                {co.description_md ? (
+                  <p className="mt-1 text-sm text-ink-dim">{co.description_md}</p>
+                ) : null}
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                {((co.client_members as any)?.email as string) ? (
+                  <p className="mt-1 text-xs text-ink-dim">
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    asked by {((co.client_members as any)?.email as string)}
+                  </p>
+                ) : null}
+                {co.status === 'open' ? (
+                  <form action={decideChangeOrder} className="mt-3 flex flex-col gap-2">
+                    <input type="hidden" name="engagementId" value={engagement.id} />
+                    <input type="hidden" name="changeOrderId" value={co.id} />
+                    <textarea
+                      name="response"
+                      required
+                      rows={2}
+                      maxLength={4000}
+                      placeholder="The answer, in writing. If it is outside the walls, say where it lives instead."
+                      className="rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink"
+                    />
+                    <div className="flex gap-3">
+                      <button
+                        type="submit"
+                        name="decision"
+                        value="agreed"
+                        className="rounded-lg bg-forest px-3 py-1.5 text-sm font-medium text-paper hover:bg-forest-deep"
+                      >
+                        Agree
+                      </button>
+                      <button
+                        type="submit"
+                        name="decision"
+                        value="declined"
+                        className="rounded-lg border border-ink/20 px-3 py-1.5 text-sm text-ink-dim hover:text-ink"
+                      >
+                        Decline, with the reason
+                      </button>
+                    </div>
+                  </form>
+                ) : co.response_md ? (
+                  <p className="mt-2 text-sm text-ink">Answer: {co.response_md}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-3 text-xs text-ink-dim">
+          The case study room and the closeout room live on their own pages:{' '}
+          <a className="underline" href={`/engagements/${engagement.id}/case-study`}>case study</a>,{' '}
+          <a className="underline" href={`/engagements/${engagement.id}/closeout`}>closeout</a>.
+        </p>
       </section>
 
       {/* V2 activity view: what happened here lately. Action, when,

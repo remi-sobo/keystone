@@ -23,6 +23,8 @@ export function clientNav(): NavItem[] {
     { href: '/library', label: 'Library', icon: 'library' },
     // Desktop rail only, like Account: the archive is a reading page.
     { href: '/digests', label: 'Digests', icon: 'library' },
+    // Desktop rail only: the ending's room (V2 5A); quiet until published.
+    { href: '/closeout', label: 'Closeout', icon: 'deliverables' },
     { href: '/messages', label: 'Messages', icon: 'messages', mobile: true },
     // Desktop rail only: the mobile bar holds its five; phones reach
     // Account through the quiet line at the bottom of Home.

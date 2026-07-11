@@ -67,7 +67,7 @@ One permission authority (`private.keystone_can`, Ring 1) is called by BOTH the 
 
 ## AI rules
 
-Exactly four inert propose-then-accept jobs (transcript extraction, digest draft, resource suggestion, engagement Q&A) plus the voice sweep. Every AI write lands in `ai_proposals`, never a live table; a single human accept route is the only path into the system of record. Q&A answers only from that engagement's own record. Model tiers: extraction on `claude-opus-4-8`, digest and Q&A on `claude-sonnet-5`, suggestion and voice sweep on `claude-haiku-4-5-20251001`; `claude-fable-5` is declared but wired to no job. The fallback contract lives in `anthropicClient.ts`: on `stop_reason: "refusal"`, retry once on the declared fallback model and log which model answered.
+Exactly five inert propose-then-accept jobs (transcript extraction, digest draft, resource suggestion, engagement Q&A, case study draft since V2 5C) plus the voice sweep. Every AI write lands in `ai_proposals`, never a live table; a single human accept route is the only path into the system of record. Q&A answers only from that engagement's own record; the case study model never writes the client quote. Model tiers: extraction on `claude-opus-4-8`, digest, Q&A, and case study on `claude-sonnet-5`, suggestion and voice sweep on `claude-haiku-4-5-20251001`; `claude-fable-5` is declared but wired to no job. The fallback contract lives in `anthropicClient.ts`: on `stop_reason: "refusal"`, retry once on the declared fallback model and log which model answered.
 
 ## The per-feature gate (every PR; from SOBO_PLAYBOOK.md section 10)
 

@@ -740,6 +740,75 @@ const NoteShape = z.object({
  * engagement.write policy; client-visible on save by design, so the
  * prose rides the voice gate.
  */
+// ── Change orders (V2 5E) ────────────────────────────────────────
+// Only the practice decides, in writing; the row keeps the ask and
+// the answer together. No numbers pass through here, by design.
+
+const ChangeOrderDecideShape = z.object({
+  engagementId: z.string().uuid(),
+  changeOrderId: z.string().uuid(),
+  decision: z.enum(['agreed', 'declined']),
+  response: z.string().trim().min(1).max(4000),
+})
+
+export async function decideChangeOrder(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = ChangeOrderDecideShape.safeParse({
+    engagementId: formData.get('engagementId'),
+    changeOrderId: formData.get('changeOrderId'),
+    decision: formData.get('decision'),
+    response: formData.get('response'),
+  })
+  if (!parsed.success) redirect('/engagements')
+
+  const supabase = await createServerSupabase()
+  const { data: row } = await supabase
+    .from('change_orders')
+    .select('id, title, engagement_id, practice_id, client_id, status')
+    .eq('id', parsed.data.changeOrderId)
+    .eq('engagement_id', parsed.data.engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!row || row.status !== 'open') {
+    redirect(`/engagements/${parsed.data.engagementId}?state=co_gone#change-orders`)
+  }
+
+  const response = sweepHomework(row.practice_id, parsed.data.response)
+  const { error } = await supabase
+    .from('change_orders')
+    .update({
+      status: parsed.data.decision,
+      response_md: response,
+      decided_at: new Date().toISOString(),
+    })
+    .eq('id', row.id)
+  if (error) {
+    console.error('[change-orders] decide failed:', error.message)
+    redirect(`/engagements/${row.engagement_id}?state=co_error#change-orders`)
+  }
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    action: 'change_order.decided',
+    target: row.id,
+    detail: { decision: parsed.data.decision },
+    engagementId: row.engagement_id,
+    practiceId: row.practice_id,
+  })
+  await notify(
+    {
+      practiceId: row.practice_id,
+      clientId: row.client_id,
+      engagementId: row.engagement_id,
+      kind: 'change_order_decided',
+      title: `Change order ${parsed.data.decision}: ${row.title}`,
+      href: '/charter',
+    },
+    await clientTeamRecipients(row.client_id)
+  )
+  revalidatePath(`/engagements/${row.engagement_id}`)
+  redirect(`/engagements/${row.engagement_id}?state=co_decided#change-orders`)
+}
+
 // ── Ownership (V2 4C) ────────────────────────────────────────────────
 // Descriptive, never a score: the owner is who to ask. The assignee is
 // verified against the caller's OWN practice before the write, and the

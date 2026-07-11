@@ -195,7 +195,10 @@ test('4E shipped with no migration and no client surface (gates 4E-1, 4E-4)', ()
     path.join(process.cwd(), 'src/app/(practice)/engagements/[id]/page.tsx'),
     'utf-8'
   )
-  expect(index).toContain('engagementHealth')
+  // The list composes through the shared assembly (lib/healthInputs,
+  // added with the client profile so both surfaces read momentum the
+  // same way); the engagement page still calls the ladder directly.
+  expect(index).toContain('assembleHealth')
   expect(detail).toContain('engagementHealth')
   // Nothing under the client surface, the digest path, or the notify
   // chokepoint reads health.

@@ -2559,4 +2559,65 @@ do $$ declare n int; begin
 end $$;
 reset role;
 
+-- ── Client profile (V2 client-profiles): org facts on clients ───────
+-- The four CP-3 columns ride the clients walls already proven above: an
+-- owner writes them (clients_update = practice.manage), a client member
+-- reads their own client row but can never write it, and the
+-- same-practice other-client and cross-practice reads stay zero. The
+-- columns named here so a reader sees them covered.
+
+set role authenticated;
+
+-- The owner sets the profile facts, primary contact into client_a1's roster.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ declare n int; begin
+  update clients set
+    relationship_note = 'the anchor client, fundraising first',
+    website = 'client-a.example.org',
+    relationship_started_on = date '2026-01-15',
+    primary_contact_member_id = (select id from client_members where email = 'member_a1@client-a.test')
+    where id = '20000000-0000-0000-0000-0000000000a1';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'owner_a must set the client_a1 profile facts'; end if;
+end $$;
+
+-- A client member reads their own client row and its new columns...
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ declare n int; begin
+  if (select count(*) from clients where relationship_note is not null) <> 1 then
+    raise exception 'member_a1 must read their own client profile row';
+  end if;
+  -- ...but never writes it (clients_update is practice.manage, owner-only).
+  update clients set relationship_note = 'forged note', website = 'evil.example'
+    where id = '20000000-0000-0000-0000-0000000000a1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE client-profile: a client member wrote the client record'; end if;
+end $$;
+
+-- cross-client: the OTHER client of the same practice reads zero of
+-- client_a1's profile row (the profile page rides this wall).
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$ begin
+  if (select count(*) from clients where id = '20000000-0000-0000-0000-0000000000a1') <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 profile row';
+  end if;
+  if (select count(*) from clients where relationship_note is not null) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 relationship note';
+  end if;
+end $$;
+
+-- cross-practice: practice_b's owner reads zero of practice_a clients.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from clients where practice_id = '10000000-0000-0000-0000-00000000000a') <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a client profile rows';
+  end if;
+end $$;
+
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

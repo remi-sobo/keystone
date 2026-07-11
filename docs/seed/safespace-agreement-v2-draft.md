@@ -1,6 +1,6 @@
 # SafeSpace agreement, draft two
 
-**What this is:** the revised Consulting Services Agreement, redrafted July 11, 2026 from Remi's first draft and Susan's review letter. Bracketed items are Remi's to fill before this goes back to Susan. Once executed, the signed PDF lands in the engagement document store and charter v2 publishes from the seed doc section 3 body.
+**What this is:** the revised Consulting Services Agreement, redrafted July 11, 2026 from Remi's first draft and Susan's review letter. Remi confirmed the installment dates, the hub security description, and the time range the same day; the one remaining bracket is the board approval date in section 12, open until the disinterested board members vote. Once executed, the signed PDF lands in the engagement document store and charter v2 publishes from the seed doc section 3 body.
 
 **What changed from the first draft, and why:**
 
@@ -8,12 +8,12 @@
 2. **Scope restructured to the four workstreams** the proposal, the charter, and the engagement room all use, so Susan reads one consistent shape everywhere.
 3. **Fundraising deliverables named in full** (Susan's ask): written strategy with a major donor component, annual fundraising calendar, case for support, donor templates, gift table and segmentation, pipelines, rhythms, collateral.
 4. **The hub clarified** (Susan's ask): custom build, SafeSpace ownership, export rights, and a data security statement covering donor, financial, HR, and youth information.
-5. **Weekly time expectation added** (Susan's ask): drafted at three to five hours per coachee per week [Remi confirms the range].
+5. **Weekly time expectation added** (Susan's ask): five to eight hours per coachee per week, confirmed by Remi Jul 11. Like training.
 6. **Board fundraising engagement added** (Susan's ask, Remi's decision Jul 11): toolkit, introductions playbook, and a board working session, with board-member-level tracking living only in SafeSpace's own CRM.
 7. **Success measures defined** (Susan's ask): written outcomes with baselines and evidence, set in month one, tracked in the shared engagement room.
 8. **Ownership section absorbed Susan's language:** her narrower internal-operations license (favorable to Sobo Consulting) and her export guarantee, merged with the first draft's section 6.
 9. **Out of Scope expanded** to match the charter: the Youth Action Board portal, ongoing support beyond the term, and the program-design boundary now sit beside the website, so the binding document and the charter agree.
-10. **Dates fixed:** the first draft's term started July 10 but the agreement was effective July 15, so the work began before the contract existed. The term now runs from the effective date. Installment dates shifted to match [Remi confirms].
+10. **Dates fixed:** the first draft's term started July 10 but the agreement was effective July 15, so the work began before the contract existed. The term now runs from the effective date. Installment dates shifted to match, confirmed by Remi Jul 11.
 11. **Termination clause** now points at the export rights explicitly, so a 30-day exit and the handover promise are one mechanism.
 
 No reference to Alameda County appears anywhere in this draft (the grant has concluded).
@@ -40,14 +40,14 @@ Sobo Consulting will deliver the following four workstreams, using its five-part
 **a. Build the system (led by Remi Sobomehin)**
 
 - **The operating hub.** A custom platform that runs the organization from one place: strategy and goals, projects and tasks, a full CRM with a donor pipeline and stages, a grants pipeline, and dedicated areas for program, finance, data, and compliance. A board login with access SafeSpace controls, so the board sees what SafeSpace wants it to see.
-- **The platform, plainly.** The hub is a custom build on the system Sobo Consulting runs for its own youth nonprofit, hosted on managed cloud infrastructure [Remi confirms the hosting and security description matches the hub build]. It is not a per-seat software license. SafeSpace owns the system and the data inside it as described in Section 6.
+- **The platform, plainly.** The hub is a custom build on the system Sobo Consulting runs for its own youth nonprofit, hosted on managed cloud infrastructure with role-based access controls and encryption in transit and at rest. It is not a per-seat software license. SafeSpace owns the system and the data inside it as described in Section 7.
 - **Fundraising strategy.** A written fundraising strategy SafeSpace owns, including a major donor component covering prospect identification, cultivation, and solicitation; an annual fundraising calendar; a gift table and segmentation strategy; a case for support; and donor templates for outreach, thank-you, and follow-up.
 - **Fundraising systems and collateral.** Donor journeys, the week-to-week stewardship and cultivation rhythms, and the fundraising collateral: a pitch deck, a send deck, and a one-pager.
 
 **b. Develop the leaders (led by Remi Sobomehin)**
 
 - Working sessions with Aris and Jasmine, with prework and homework tied to real fundraising tasks, pitch practice, and live fundraising reps, so they can lead fundraising and operations independently.
-- Plan on three to five hours a week from each of them: the session, the homework, and implementation time. Month one runs heavier while the work is front-loaded. [Remi confirms the range.]
+- Plan on five to eight hours a week from each of them: the session, the homework, and implementation time. It is training, and month one runs heavier while the work is front-loaded.
 - **Board fundraising engagement.** A board fundraising toolkit, an introductions playbook, and a working session with the board, so board members can identify connections, make introductions, and support donor cultivation.
 
 **c. Show the impact (led by Dr. Kendra Sobomehin)**
@@ -84,10 +84,10 @@ The total fee for this engagement is $25,000, paid in five installments of $5,00
 | Installment | Amount | Due |
 |---|---|---|
 | 1 | $5,000 | On signing, before the first working session |
-| 2 | $5,000 | August 15, 2026 [confirm] |
-| 3 | $5,000 | September 15, 2026 [confirm] |
-| 4 | $5,000 | October 15, 2026 [confirm] |
-| 5 | $5,000 | November 15, 2026 [confirm] |
+| 2 | $5,000 | August 15, 2026 |
+| 3 | $5,000 | September 15, 2026 |
+| 4 | $5,000 | October 15, 2026 |
+| 5 | $5,000 | November 15, 2026 |
 | **Total** | **$25,000** | |
 
 Invoices will be sent through QuickBooks. The first installment is due on signing, before the first working session. SafeSpace owns the work as described in Section 7 once the full fee has been paid.
@@ -104,7 +104,7 @@ SafeSpace keeps full access to its data and the customized hub, including the ab
 
 Each side will protect the other's non-public information and use it only to do the work described here. Donor data and organizational records stay confidential and are handled with care.
 
-Donor, financial, HR, and youth information lives inside the hub, in areas SafeSpace controls, visible only to the people SafeSpace authorizes. The consulting engagement record holds decisions, commitments, and work product; it does not hold donor intelligence, youth records, or personnel files. [Remi confirms the technical description before signing: access controls, encryption in transit and at rest.]
+Donor, financial, HR, and youth information lives inside the hub, in areas SafeSpace controls, visible only to the people SafeSpace authorizes, behind role-based access controls with encryption in transit and at rest. The consulting engagement record holds decisions, commitments, and work product; it does not hold donor intelligence, youth records, or personnel files.
 
 ### 9. Independent Contractor
 

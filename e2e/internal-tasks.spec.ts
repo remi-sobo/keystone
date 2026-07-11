@@ -16,12 +16,15 @@ test('the 0017 wall stands unchanged: client sessions read client-audience rows 
   const mig = read('supabase/migrations/0017_v2_homework_loop.sql')
   expect(mig).toContain("check (audience in ('client','practice'))")
   expect(mig).toContain("or (audience = 'client' and private.is_member_of_client(client_id))")
-  // No later migration widens the audience enum.
+  // No later migration widens the HOMEWORK audience enum (resources
+  // grew its own audience wall in 0029; that one is 4H's, not ours).
   const migs = fs.readdirSync(path.join(process.cwd(), 'supabase/migrations'))
   for (const f of migs) {
     if (f.slice(0, 4) <= '0017') continue
     const body = read(`supabase/migrations/${f}`)
-    expect(body, `${f} must not touch the audience check`).not.toMatch(/audience in \(/)
+    const touchesItems =
+      body.includes('action_items') && /audience in \(/.test(body)
+    expect(touchesItems, `${f} must not touch the action_items audience check`).toBe(false)
   }
 })
 

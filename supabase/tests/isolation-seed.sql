@@ -2153,4 +2153,42 @@ do $$ declare n int; begin
 end $$;
 reset role;
 
+-- ── V2 4H: the resources audience wall ──────────────────────────────
+-- The knowledge base is the practice's own shelf: a client member
+-- reads the client learning path only, and the practice-audience row
+-- never arrives, same-client or not.
+
+insert into resources (id, practice_id, title, kind, audience, body_md) values
+  ('70000000-0000-0000-0000-0000000000a9', '10000000-0000-0000-0000-00000000000a',
+   'Discovery call SOP', 'sop', 'practice', 'internal steps');
+
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from resources where practice_id = '10000000-0000-0000-0000-00000000000a') <> 3 then
+    raise exception 'the practice must read its whole catalog, both audiences';
+  end if;
+end $$;
+
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from resources where audience = 'practice') <> 0 then
+    raise exception 'LEAK 4H: a client member reads the practice knowledge base';
+  end if;
+  if (select count(*) from resources) <> 2 then
+    raise exception 'member_a1 must still read the client learning path, exactly';
+  end if;
+end $$;
+
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from resources where practice_id = '10000000-0000-0000-0000-00000000000a') <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a knowledge base';
+  end if;
+end $$;
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

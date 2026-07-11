@@ -3,7 +3,7 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import WorkstreamArc from '@/components/WorkstreamArc'
 import { RoomShell } from '@/components/RoomShell'
 import { KeystoneCard } from '@/components/KeystoneCard'
-import { engagementHealth, replyLag, reviewStanding } from '@/lib/health'
+import { assembleHealth, type HealthSignalRows } from '@/lib/healthInputs'
 import { newDraft } from './drafts/actions'
 
 const DEFAULT_STAGES = ['diagnose', 'design', 'build', 'train', 'stabilize']
@@ -36,7 +36,7 @@ export default async function EngagementsPage({
     await Promise.all([
       supabase
         .from('engagements')
-        .select('id, title, status, digest_cadence, clients(name), workstreams(id, title, stage, sort)')
+        .select('id, title, status, client_id, digest_cadence, clients(name), workstreams(id, title, stage, sort)')
         .order('created_at', { ascending: true }),
       supabase.from('practices').select('stage_config').limit(1).maybeSingle(),
       supabase
@@ -109,57 +109,41 @@ export default async function EngagementsPage({
   for (const r of roster.data ?? []) {
     teamSizeByClient.set(r.client_id, (teamSizeByClient.get(r.client_id) ?? 0) + 1)
   }
+
+  // The shared signal bundle (lib/healthInputs): the same assembly the
+  // client profile uses, so momentum reads identically on both surfaces.
+  const signalRows: HealthSignalRows = {
+    stageEvents: stageEvents.data ?? [],
+    pastSessions: pastSessions.data ?? [],
+    doneItems: doneItems.data ?? [],
+    openReview: openReview.data ?? [],
+    hwTrail: hwTrail.data ?? [],
+    msgs: msgs.data ?? [],
+    polls: polls.data ?? [],
+    marks: marks.data ?? [],
+    sentDigests: sent.data ?? [],
+    teamSizeByClient,
+  }
   const healthOf = (e: {
     id: string
+    client_id: string
     digest_cadence?: string | null
     clients?: unknown
     workstreams?: Array<{ stage: string }> | null
-  }) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const clientName = ((e.clients as any)?.name as string) || 'the client'
-    const poll = (polls.data ?? []).find((p) => p.engagement_id === e.id)
-    const markers = poll
-      ? new Set((marks.data ?? []).filter((m) => m.poll_id === poll.id).map((m) => m.client_member_id))
-      : null
-    return engagementHealth({
-      now,
-      clientName,
-      finalStage: stages[stages.length - 1],
-      workstreamStages: (e.workstreams ?? []).map((w) => w.stage),
-      stageEventAts: (stageEvents.data ?? []).filter((s) => s.engagement_id === e.id).map((s) => s.at),
-      pastSessionAts: (pastSessions.data ?? [])
-        .filter((s) => s.engagement_id === e.id)
-        .map((s) => s.starts_at),
-      itemsDone: (doneItems.data ?? [])
-        .filter((it) => it.engagement_id === e.id)
-        .map((it) => ({ dueOn: it.due_on, doneAt: it.done_at as string })),
-      ...reviewStanding(
-        (openReview.data ?? [])
-          .filter((it) => it.engagement_id === e.id)
-          .map((it) => ({ id: it.id, dueOn: it.due_on })),
-        hwTrail.data ?? [],
-        now
-      ),
-      ...replyLag(
-        (msgs.data ?? [])
-          .filter((m) => m.engagement_id === e.id)
-          .map((m) => ({ threadId: m.thread_id, authorSide: m.author_side, createdAt: m.created_at })),
-        now
-      ),
-      openPoll:
-        poll && markers
-          ? {
-              openedDaysAgo: Math.floor((now - Date.parse(poll.created_at)) / 86400000),
-              marks: markers.size,
-              teamSize: teamSizeByClient.get(poll.client_id) ?? 0,
-            }
-          : null,
-      digest: {
-        cadence: (e.digest_cadence as 'weekly' | 'biweekly' | 'off') ?? 'weekly',
-        sentInLastTwoWeeks: (sent.data ?? []).filter((d) => d.engagement_id === e.id).length,
+  }) =>
+    assembleHealth(
+      {
+        id: e.id,
+        client_id: e.client_id,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        clientName: ((e.clients as any)?.name as string) || 'the client',
+        finalStage: stages[stages.length - 1],
+        digest_cadence: e.digest_cadence,
+        workstreamStages: (e.workstreams ?? []).map((w) => w.stage),
       },
-    })
-  }
+      signalRows,
+      now
+    )
 
   const openDrafts = (drafts ?? []).filter((d) => d.status === 'draft')
   const publishedDrafts = (drafts ?? []).filter((d) => d.status === 'published')

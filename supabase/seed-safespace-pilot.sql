@@ -307,3 +307,25 @@ from p, (values
 where not exists (
   select 1 from resources r, p where r.practice_id = p.id and r.title = v.title
 );
+
+-- ---------------------------------------------------------------------
+-- The client profile (V2 client-profiles): SafeSpace's steady-state
+-- record on the practice-only client_profiles table. Idempotent: a
+-- re-run never clobbers a note Remi has since edited in the UI.
+-- Susan is the primary contact (the buyer who stays close to the day to
+-- day, spec section 3); the relationship starts with the engagement.
+-- ---------------------------------------------------------------------
+insert into public.client_profiles
+  (client_id, practice_id, relationship_note, website, relationship_started_on, primary_contact_member_id)
+select
+  c.id,
+  c.practice_id,
+  'SafeSpace is the anchor pilot: a six-month engagement, systems and leaders with fundraising first. Susan and Liesl are the founders and buyers; Aris and Jasmine are the two being coached to lead the ask. Remi sits on their board, and that governance work stays out of Keystone by design.',
+  'safespace.org',
+  date '2026-07-08',
+  (select cm.id from client_members cm
+     where cm.client_id = c.id and lower(cm.email) = 'susan@safespace.org'
+     limit 1)
+from clients c
+where c.name = 'SafeSpace'
+on conflict (client_id) do nothing;

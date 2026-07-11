@@ -2,11 +2,15 @@
 
 The live operational doc. If it is happening and it is not here, it is not happening. Weekly ritual per SOBO_PLAYBOOK.md section 8.
 
-Last updated: 2026-07-10 (Phases 0 through 2 built and deployed; test-pass fixes shipped; Phase 3 next).
+Last updated: 2026-07-11 (THE V2 BUILD PROGRAM IS COMPLETE: all five phases built, gated, matrix-proven, merged, and deployed; 33 migrations live; 260 gate assertions green).
 
-## Build resumed 2026-07-10 after Remi's test pass
+## Where things stand after the V2 close (2026-07-11)
 
-The walkthrough surfaced two asks, both shipped the same day (sign-out and accounts everywhere; the nine library guides written in full). Four test personas (remi+susan/liesl/aris/jasmine@ambitionangels.org) sit on the SafeSpace roster for Remi's client-view testing; deactivate them from Members and access before the real four arrive. The three keys in `docs/setup-checklist.md` still gate the dormant features (auth allow-list, RESEND_API_KEY, ANTHROPIC_API_KEY). Next: Phase 3 opens with 3C (the homework loop, pulled ahead on Remi's call), then 3A (editable AI proposal review), then 4F notifications infra pulled forward.
+Every plannable epic is shipped. What remains is not code, it is operations:
+- **Remi's manual steps** (docs/setup-checklist.md): attach app.soboconsulting.com (section 4b: Vercel Domains plus the CNAME, then the Supabase URL allow-list and Google redirect URIs); the three keys (RESEND_API_KEY, ANTHROPIC_API_KEY, CRON_SECRET) that wake email, all five AI jobs, and the two crons; deactivate the four remi+ test personas before the real SafeSpace four arrive.
+- **The 390px live runs** owed across the shipped surfaces.
+- **1C (one real template)** stays deliberately parked until the first engagement completes; the closeout room now exists to produce that ending.
+- **Deferred by decision, not debt:** per-recipient digest modes and the 3E composer picker (tenant-two era), the deliverable-promised queue source (until promises have structure), 4G nav for practices that flip the pipeline flag on.
 
 ## State
 

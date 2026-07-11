@@ -8,8 +8,10 @@ import {
   extractFromTranscript,
   removePrepResource,
   reviewProposal,
+  saveRunOfShow,
   saveTranscript,
 } from '../actions'
+import MarkdownEditor from '@/components/MarkdownEditor'
 import { draftFromPayload, type EditedPayload, type ExtractionPayload } from '@/lib/aiReview'
 
 /**
@@ -22,6 +24,8 @@ import { draftFromPayload, type EditedPayload, type ExtractionPayload } from '@/
 const STATES: Record<string, string> = {
   saved: 'Transcript saved.',
   extracted: 'Proposal ready below. Nothing is live until you publish.',
+  ros_saved: 'Run of show saved. The client sees it on the session.',
+  ros_error: 'That did not save. Check the fields and try again.',
   accepted: 'Accepted. The note and homework are live for the client.',
   draft_saved: 'Draft saved. Nothing is live; pick it back up any time.',
   published: 'Published. The checked groups are live; the original stays on record.',
@@ -52,7 +56,7 @@ export default async function PracticeSessionPage({
 
   const { data: session } = await supabase
     .from('sessions')
-    .select('id, starts_at, tz, kind, status, practice_id, client_id, clients(name)')
+    .select('id, starts_at, tz, kind, status, practice_id, client_id, engagement_id, purpose, agenda_md, moves_workstream_id, moves_to_stage, reschedule_note, clients(name)')
     .eq('id', id)
     .maybeSingle()
   if (!session) redirect('/engagements')
@@ -72,7 +76,7 @@ export default async function PracticeSessionPage({
       supabase.from('client_members').select('id, email').eq('client_id', session.client_id),
       supabase
         .from('action_items')
-        .select('id, title, status, due_on, client_members:assigned_client_member_id(email)')
+        .select('id, title, status, due_on, timing, client_members:assigned_client_member_id(email)')
         .eq('session_id', id)
         .order('created_at', { ascending: true }),
       supabase
@@ -81,6 +85,19 @@ export default async function PracticeSessionPage({
         .eq('session_id', id),
       supabase.from('resources').select('id, title, kind').order('created_at', { ascending: false }),
     ])
+
+  const [{ data: engagementWorkstreams }, { data: practiceRow }] = await Promise.all([
+    supabase
+      .from('workstreams')
+      .select('id, title, stage')
+      .eq('engagement_id', session.engagement_id)
+      .order('sort'),
+    supabase.from('practices').select('stage_config').eq('id', session.practice_id).maybeSingle(),
+  ])
+  const stageOptions =
+    Array.isArray(practiceRow?.stage_config) && (practiceRow?.stage_config as string[]).length > 0
+      ? (practiceRow?.stage_config as string[])
+      : ['diagnose', 'design', 'build', 'train', 'stabilize']
 
   const { data: practiceRoster } = await supabase
     .from('practice_members')
@@ -378,6 +395,92 @@ export default async function PracticeSessionPage({
           </section>
         )
       })}
+
+      <section className="mt-8">
+        <h2 className="font-display text-2xl font-medium text-ink">Run of show</h2>
+        <p className="mt-1 text-sm text-ink-dim">
+          What this session is for, what it intends to move, and what to bring. The client sees
+          all of it on the session.
+        </p>
+        {session.reschedule_note ? (
+          <p className="mt-2 text-sm text-ink">
+            <span className="eyebrow mr-2">rescheduled</span>
+            {session.reschedule_note}
+          </p>
+        ) : null}
+        <form action={saveRunOfShow} className="mt-3 flex flex-col gap-3">
+          <input type="hidden" name="sessionId" value={session.id} />
+          <input
+            name="purpose"
+            maxLength={200}
+            defaultValue={session.purpose ?? ''}
+            placeholder="What this session is for, in one line"
+            className="rounded-lg border border-ink/15 bg-paper-raised p-2 text-sm text-ink"
+          />
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-1 text-sm text-ink">
+              Moves
+              <select
+                name="movesWorkstreamId"
+                defaultValue={session.moves_workstream_id ?? ''}
+                className="rounded-lg border border-ink/15 bg-paper-raised p-2 text-sm text-ink"
+              >
+                <option value="">No workstream named</option>
+                {(engagementWorkstreams ?? []).map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.title} (now {w.stage})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-ink">
+              Toward
+              <select
+                name="movesToStage"
+                defaultValue={session.moves_to_stage ?? ''}
+                className="rounded-lg border border-ink/15 bg-paper-raised p-2 text-sm text-ink"
+              >
+                <option value="">Pick a stage</option>
+                {stageOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <MarkdownEditor
+            name="agenda"
+            defaultValue={session.agenda_md ?? ''}
+            rows={8}
+            placeholder="The agenda. Headings, lists, and links render for the client."
+          />
+          <button
+            type="submit"
+            className="self-start rounded-lg bg-forest px-4 py-2 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98]"
+          >
+            Save run of show
+          </button>
+        </form>
+        {(items ?? []).filter((it) => it.timing === 'before_session' && it.status === 'open').length > 0 ? (
+          <>
+            <h3 className="font-display mt-5 text-xl font-medium text-ink">Due before this session</h3>
+            <ul className="mt-2 flex flex-col gap-1">
+              {(items ?? [])
+                .filter((it) => it.timing === 'before_session' && it.status === 'open')
+                .map((it) => (
+                  <li key={it.id} className="text-sm text-ink">
+                    {it.title}
+                    <span className="text-ink-dim">
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      {(it.client_members as any)?.email ? ` (${((it.client_members as any).email as string).split('@')[0]})` : ''}
+                    </span>
+                  </li>
+                ))}
+            </ul>
+          </>
+        ) : null}
+      </section>
 
       <section className="mt-8">
         <h2 className="font-display text-2xl font-medium text-ink">Prep</h2>

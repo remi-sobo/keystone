@@ -1821,4 +1821,39 @@ end $$;
 
 reset role;
 
+-- ── V2 3B: the sessions column grant ─────────────────────────────────
+-- The reschedule verbs (times, status, the courtesy note) stay session
+-- writes; the run-of-show structure (purpose, agenda, the moves pair)
+-- is practice-authored through the service role, and the grant makes a
+-- session write of it impossible for BOTH sides of the wall.
+
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  update sessions set purpose = 'hijacked purpose';
+  raise exception 'HOLE 3B: a client session wrote the run of show';
+exception when insufficient_privilege then null; -- the column grant held
+end $$;
+do $$ begin
+  update sessions set reschedule_note = 'moved for the board meeting'
+    where status = 'booked';
+  if not found then
+    raise exception 'the reschedule note must stay a session write';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  update sessions set agenda_md = 'session-written agenda';
+  raise exception 'HOLE 3B: a practice session wrote the run of show (service role only)';
+exception when insufficient_privilege then null; -- the column grant held
+end $$;
+reset role;
+do $$ begin
+  update sessions set purpose = 'service-role purpose'
+    where id = '50000000-0000-0000-0000-0000000000a1';
+  if not found then raise exception 'the service role must write the run of show'; end if;
+end $$;
+
 select 'keystone isolation matrix: all assertions passed' as result;

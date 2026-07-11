@@ -8,6 +8,7 @@ import { getViewer } from '@/lib/membership'
 import { checkRateLimits, LIMITS } from '@/lib/rateLimit'
 import { assembleSlots } from '@/lib/slotAssembly'
 import { isOfferedSlot } from '@/lib/scheduling'
+import { shiftSessionHomework } from '@/lib/rescheduleShift'
 
 /**
  * Booking actions (client surface, PURE RLS). Every write goes through
@@ -82,20 +83,34 @@ export async function rescheduleSession(formData: FormData): Promise<void> {
   const parsed = BookShape.safeParse({ start: formData.get('start') })
   if (!ref.success || !parsed.success) redirect('/sessions?state=invalid')
 
+  const note = String(formData.get('note') ?? '').trim().slice(0, 300) || null
+
   const supabase = await createServerSupabase()
   const client = viewer.client!
+
+  // The old date first, so the homework delta is honest (gate 3B-2).
+  const { data: before } = await supabase
+    .from('sessions')
+    .select('starts_at')
+    .eq('id', ref.data.id)
+    .eq('client_id', client.clientId)
+    .eq('status', 'booked')
+    .maybeSingle()
+  if (!before) redirect('/sessions?state=invalid')
 
   const slots = await assembleSlots(supabase, client, new Date())
   const slot = isOfferedSlot(slots, new Date(parsed.data.start))
   if (!slot) redirect('/sessions?state=slot_gone')
 
   // RLS scopes the update; the client filter is belt and suspenders.
+  // The column grant (0021) admits exactly these reschedule verbs.
   const { error } = await supabase
     .from('sessions')
     .update({
       starts_at: slot.startsAt.toISOString(),
       ends_at: slot.endsAt.toISOString(),
       tz: slot.tz,
+      reschedule_note: note,
       updated_at: new Date().toISOString(),
     })
     .eq('id', ref.data.id)
@@ -106,8 +121,23 @@ export async function rescheduleSession(formData: FormData): Promise<void> {
     console.error('[sessions] reschedule failed:', error.code)
     redirect(gone ? '/sessions?state=slot_gone' : '/sessions?state=error')
   }
+
+  // The session moved and RLS proved the scope; its relative homework
+  // dates move by the same day delta (the lib audits counts only).
+  const deltaDays = Math.round(
+    (Date.parse(slot.startsAt.toISOString().slice(0, 10)) -
+      Date.parse(before.starts_at.slice(0, 10))) /
+      86400000
+  )
+  await shiftSessionHomework({
+    sessionId: ref.data.id,
+    deltaDays,
+    actorEmail: viewer.user!.email ?? '',
+  })
+
   revalidatePath('/sessions')
   revalidatePath('/home')
+  revalidatePath('/homework')
   redirect('/sessions?state=rescheduled')
 }
 

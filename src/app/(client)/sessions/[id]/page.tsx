@@ -4,6 +4,7 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
 import { RoomShell } from '@/components/RoomShell'
 import { KeystoneCard } from '@/components/KeystoneCard'
+import { MarkdownLite } from '@/components/MarkdownLite'
 
 /**
  * Client session detail (Ring 3, spec 6.4): date and attendees in mono
@@ -25,7 +26,7 @@ export default async function ClientSessionPage({
 
   const { data: session } = await supabase
     .from('sessions')
-    .select('id, starts_at, tz, kind, status')
+    .select('id, starts_at, tz, kind, status, purpose, agenda_md, moves_to_stage, workstreams:moves_workstream_id(title)')
     .eq('id', id)
     .eq('client_id', viewer.client.clientId)
     .maybeSingle()
@@ -39,7 +40,7 @@ export default async function ClientSessionPage({
       .maybeSingle(),
     supabase
       .from('action_items')
-      .select('id, title, status, due_on, client_members:assigned_client_member_id(email)')
+      .select('id, title, status, due_on, timing, client_members:assigned_client_member_id(email)')
       .eq('session_id', id)
       .order('created_at', { ascending: true }),
     supabase
@@ -63,6 +64,48 @@ export default async function ClientSessionPage({
       title="Session"
       maxWidth="max-w-3xl"
     >
+      {session.purpose || session.agenda_md || session.moves_to_stage ? (
+        <KeystoneCard feature>
+          <p className="eyebrow">The run of show</p>
+          {session.purpose ? (
+            <p className="mt-2 text-sm font-medium text-ink">{session.purpose}</p>
+          ) : null}
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {(session.workstreams as any)?.title ? (
+            <p className="mt-1 text-sm text-ink-dim">
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              This session moves {((session.workstreams as any).title as string)}
+              {session.moves_to_stage ? ` toward ${session.moves_to_stage}` : ''}.
+            </p>
+          ) : null}
+          {session.agenda_md ? (
+            <div className="mt-3">
+              <MarkdownLite text={session.agenda_md} />
+            </div>
+          ) : null}
+          {(items ?? []).filter((it) => it.timing === 'before_session' && it.status === 'open')
+            .length > 0 ? (
+            <>
+              <p className="eyebrow mt-4">Due before this session</p>
+              <ul className="mt-1 flex flex-col gap-1">
+                {(items ?? [])
+                  .filter((it) => it.timing === 'before_session' && it.status === 'open')
+                  .map((it) => (
+                    <li key={it.id} className="text-sm">
+                      <Link href={`/homework/${it.id}`} className="text-forest underline">
+                        {it.title}
+                      </Link>
+                      {it.due_on ? (
+                        <span className="text-ink-dim"> (due {it.due_on})</span>
+                      ) : null}
+                    </li>
+                  ))}
+              </ul>
+            </>
+          ) : null}
+        </KeystoneCard>
+      ) : null}
+
       {(prep ?? []).length > 0 ? (
         <KeystoneCard feature>
           <p className="eyebrow">Prep for this session</p>

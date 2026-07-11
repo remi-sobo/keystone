@@ -535,3 +535,94 @@ export async function reviewProposal(formData: FormData): Promise<void> {
   revalidatePath('/today')
   redirect(back(sessionId, 'published'))
 }
+
+// ── The run of show (V2 3B): practice-authored structure ─────────────
+// The 0021 column grant strips these columns from the authenticated
+// role, so the write rides the service role strictly after the scoped
+// check; a client session cannot touch them by construction.
+
+const RunOfShowShape = z.object({
+  sessionId: z.string().uuid(),
+  purpose: z.string().trim().max(200).optional(),
+  agenda: z.string().trim().max(8000).optional(),
+  movesWorkstreamId: z.string().uuid().optional(),
+  movesToStage: z.string().trim().max(40).optional(),
+})
+
+export async function saveRunOfShow(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const clean = (name: string) => {
+    const v = String(formData.get(name) ?? '').trim()
+    return v || undefined
+  }
+  const parsed = RunOfShowShape.safeParse({
+    sessionId: formData.get('sessionId'),
+    purpose: clean('purpose'),
+    agenda: clean('agenda'),
+    movesWorkstreamId: clean('movesWorkstreamId'),
+    movesToStage: clean('movesToStage'),
+  })
+  if (!parsed.success) redirect('/clients')
+  const d = parsed.data
+
+  const supabase = await createServerSupabase()
+  const { data: session } = await supabase
+    .from('sessions')
+    .select('id, engagement_id, practice_id')
+    .eq('id', d.sessionId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!session) redirect('/clients')
+
+  let movesWorkstream: string | null = null
+  if (d.movesWorkstreamId) {
+    const { data: ws } = await supabase
+      .from('workstreams')
+      .select('id')
+      .eq('id', d.movesWorkstreamId)
+      .eq('engagement_id', session.engagement_id)
+      .maybeSingle()
+    if (!ws) redirect(back(d.sessionId, 'ros_error'))
+    movesWorkstream = d.movesWorkstreamId
+  }
+
+  const sweepText = (text: string): string => {
+    const check = validateVoice(text)
+    if (check.ok) return text
+    void logVoiceViolation({
+      practiceId: session.practice_id,
+      source: 'run_of_show',
+      violations: check.violations,
+      rawExcerpt: text.slice(0, 400),
+      cleanedExcerpt: check.cleaned.slice(0, 400),
+    })
+    return check.cleaned
+  }
+
+  const { error } = await supabaseAdmin
+    .from('sessions')
+    .update({
+      purpose: d.purpose ? sweepText(d.purpose) : null,
+      agenda_md: d.agenda ? sweepText(d.agenda) : null,
+      moves_workstream_id: movesWorkstream,
+      moves_to_stage: movesWorkstream ? (d.movesToStage ?? null) : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', session.id)
+    .eq('practice_id', session.practice_id)
+  if (error) {
+    console.error('[run-of-show] save failed:', error.message)
+    redirect(back(d.sessionId, 'ros_error'))
+  }
+
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    action: 'session.run_of_show',
+    target: session.id,
+  })
+  revalidatePath(`/sessions/${d.sessionId}/notes`)
+  revalidatePath(`/sessions/${d.sessionId}`)
+  revalidatePath('/sessions')
+  revalidatePath('/home')
+  redirect(back(d.sessionId, 'ros_saved'))
+}

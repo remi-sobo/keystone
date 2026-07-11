@@ -2,7 +2,7 @@
 
 **Parent:** `specs/keystone-v2.md` Phase 3 epic 3B: structure per session, and the bridge between the arc and the calendar. A session's purpose should name what it moves.
 **Grounded against:** the live codebase after 4F. A session today is a time, a kind, and a status; the notes page (3A's review workspace) gives the COMPLETED side its structure already (summary, decisions, items), and prep resources attach since Ring 4. What is missing is the UPCOMING side: why this session exists, what it intends to move, what to bring, and what is due before it. Also found in recon: the client's `session.book` permission can today update ANY column on their own session rows (no column grant on `sessions`); harmless while the columns are only times, a real gap the moment practice-authored fields land. This epic closes it.
-**Status:** draft for Remi. CONFIRM gates in section 7.
+**Status:** BUILT 2026-07-10, same day as the spec. All five gates approved as recommended (Remi). Migration 0021 applied live; the reminder rides the 4F cron.
 **Date:** 2026-07-10
 
 ---

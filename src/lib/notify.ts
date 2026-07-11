@@ -22,6 +22,7 @@ export type NotificationKind =
   | 'deliverable_shipped'
   | 'approval_waiting'
   | 'message_reply'
+  | 'session_reminder'
 
 export interface NotifyRecipient {
   clientMemberId?: string

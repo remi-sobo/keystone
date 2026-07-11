@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { env } from '@/lib/env'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { appBaseUrl, emailShell, escapeHtml, sendEmail } from '@/lib/email'
-import { notify } from '@/lib/notify'
+import { clientTeamRecipients, notify, practiceTeamRecipients } from '@/lib/notify'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -80,6 +80,32 @@ export async function GET(req: NextRequest) {
   }
   await remind(dueSoon ?? [], 'homework_due', 'Due tomorrow')
   await remind(overdue ?? [], 'homework_overdue', 'Still open, due three days ago')
+
+  // 3B: the session's own reminder, one touch the day before, to both
+  // sides. The purpose line is the title when the consultant set one.
+  const { data: tomorrowSessions } = await supabaseAdmin
+    .from('sessions')
+    .select('id, practice_id, client_id, engagement_id, purpose')
+    .eq('status', 'booked')
+    .gte('starts_at', `${dayOffset(1)}T00:00:00Z`)
+    .lt('starts_at', `${dayOffset(2)}T00:00:00Z`)
+  for (const s of tomorrowSessions ?? []) {
+    const title = s.purpose ? `Tomorrow: ${s.purpose}` : 'Your session is tomorrow'
+    const base = {
+      practiceId: s.practice_id,
+      clientId: s.client_id,
+      engagementId: s.engagement_id,
+      kind: 'session_reminder' as const,
+      title,
+      dedupeKey: `session_reminder:${s.id}`,
+    }
+    await notify({ ...base, href: `/sessions/${s.id}` }, await clientTeamRecipients(s.client_id))
+    await notify(
+      { ...base, href: `/sessions/${s.id}/notes` },
+      await practiceTeamRecipients(s.practice_id)
+    )
+    reminders++
+  }
 
   // ── Pass 2: one batched email per recipient ────────────────────────
   const { data: pendingRows } = await supabaseAdmin

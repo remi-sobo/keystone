@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
@@ -56,7 +57,7 @@ export default async function SessionsPage({
   const [upcomingRes, pastRes] = await Promise.all([
     supabase
       .from('sessions')
-      .select('id, starts_at, ends_at, tz, kind, status')
+      .select('id, starts_at, ends_at, tz, kind, status, purpose')
       .eq('client_id', viewer.client.clientId)
       .eq('status', 'booked')
       .gte('ends_at', nowIso)
@@ -225,6 +226,14 @@ export default async function SessionsPage({
                     ))}
                   </p>
                 ) : null}
+                {s.purpose ? (
+                  <p className="mt-1.5 text-sm text-ink-dim">
+                    {s.purpose}{' '}
+                    <Link href={`/sessions/${s.id}`} className="text-forest underline">
+                      Run of show
+                    </Link>
+                  </p>
+                ) : null}
                 {reschedulingId === s.id ? (
                   <p className="eyebrow mt-2">Pick a new time below</p>
                 ) : null}
@@ -242,6 +251,42 @@ export default async function SessionsPage({
           <p className="mt-3 text-sm text-ink-dim">
             No open times in the next two weeks. Your consultant will share more availability.
           </p>
+        ) : reschedulingId ? (
+          <form action={rescheduleSession} className="mt-4 flex flex-col gap-5">
+            <input type="hidden" name="id" value={reschedulingId} />
+            {[...byDay.entries()].map(([day, daySlots]) => (
+              <div key={day}>
+                <p className="eyebrow">{day}</p>
+                <div className="mt-2 flex flex-wrap gap-3">
+                  {daySlots.map((s) => (
+                    <label
+                      key={s.startsAt.toISOString()}
+                      className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-3 py-1.5 text-sm text-ink"
+                    >
+                      <input type="radio" name="start" value={s.startsAt.toISOString()} required />
+                      {new Intl.DateTimeFormat('en-US', {
+                        timeZone: s.tz,
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      }).format(s.startsAt)}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <input
+              name="note"
+              maxLength={300}
+              placeholder="A word on why, for your consultant (optional)"
+              className="rounded-lg border border-ink/15 bg-paper-raised p-2 text-sm text-ink"
+            />
+            <button
+              type="submit"
+              className="self-start rounded-lg bg-forest px-4 py-2 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98]"
+            >
+              Move the session
+            </button>
+          </form>
         ) : (
           <div className="mt-4 flex flex-col gap-5">
             {[...byDay.entries()].map(([day, daySlots]) => (
@@ -249,13 +294,7 @@ export default async function SessionsPage({
                 <p className="eyebrow">{day}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {daySlots.map((s) => (
-                    <form
-                      key={s.startsAt.toISOString()}
-                      action={reschedulingId ? rescheduleSession : bookSession}
-                    >
-                      {reschedulingId ? (
-                        <input type="hidden" name="id" value={reschedulingId} />
-                      ) : null}
+                    <form key={s.startsAt.toISOString()} action={bookSession}>
                       <input type="hidden" name="start" value={s.startsAt.toISOString()} />
                       <button
                         type="submit"

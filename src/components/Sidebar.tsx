@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -89,15 +90,11 @@ export default function Sidebar({
       >
         <div className={`flex items-center py-6 ${collapsed ? 'justify-center' : 'px-6'}`}>
           {collapsed ? (
-            <span className="font-display text-2xl font-medium text-ink">
-              K<span className="text-brass">.</span>
-            </span>
+            <Image src="/logo-mark.png" alt="Keystone" width={34} height={32} />
           ) : (
             <div>
-              <div className="font-display text-2xl font-medium text-ink">
-                Keystone<span className="text-brass">.</span>
-              </div>
-              <div className="eyebrow mt-1">by {practiceName}</div>
+              <Image src="/logo-full.png" alt="Keystone" width={126} height={88} />
+              <div className="eyebrow mt-2">by {practiceName}</div>
             </div>
           )}
         </div>

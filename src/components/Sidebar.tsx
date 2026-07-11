@@ -14,6 +14,10 @@ import {
   Users,
   Briefcase,
   Settings,
+  Newspaper,
+  Landmark,
+  CircleUserRound,
+  ClipboardList,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
@@ -44,6 +48,13 @@ const ICONS: Record<string, LucideIcon> = {
   clients: Users,
   engagements: Briefcase,
   settings: Settings,
+  // One icon per room, no doubles: the digest is the weekly paper,
+  // the closeout is the structure that stands, the account is you,
+  // the team view is who owns what.
+  digests: Newspaper,
+  closeout: Landmark,
+  account: CircleUserRound,
+  team: ClipboardList,
 }
 
 const COLLAPSE_KEY = 'keystone.sidebar.collapsed'

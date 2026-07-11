@@ -15,9 +15,11 @@ import { createDeliverable, prepareDeliverableUpload } from './actions'
 export default function AddDeliverableForm({
   engagementId,
   workstreams,
+  sessions = [],
 }: {
   engagementId: string
   workstreams: Array<{ id: string; title: string }>
+  sessions?: Array<{ id: string; label: string }>
 }) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
@@ -67,6 +69,8 @@ export default function AddDeliverableForm({
         }
       }
 
+      const about = String(formData.get('about') ?? '').trim()
+      const sessionId = String(formData.get('sessionId') ?? '')
       const result = await createDeliverable({
         engagementId,
         title,
@@ -74,6 +78,8 @@ export default function AddDeliverableForm({
         url,
         storagePath,
         note: note || undefined,
+        about: about || undefined,
+        sessionId: sessionId || undefined,
         workstreamId: workstreamId || undefined,
         deliveredOn: /^\d{4}-\d{2}-\d{2}$/.test(deliveredOn) ? deliveredOn : undefined,
       })
@@ -116,7 +122,29 @@ export default function AddDeliverableForm({
           type="date"
           className="rounded-lg border border-ink/15 bg-paper px-2 py-1 text-sm"
         />
+        {sessions.length > 0 ? (
+          <select
+            name="sessionId"
+            defaultValue=""
+            className="rounded-lg border border-ink/15 bg-paper px-2 py-1 text-sm"
+          >
+            <option value="">No session</option>
+            {sessions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        ) : null}
       </div>
+
+      <textarea
+        name="about"
+        rows={3}
+        maxLength={4000}
+        placeholder="About this deliverable: what it is for and how to use it (the client reads this)"
+        className="rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink"
+      />
 
       <div className="flex flex-wrap items-center gap-4 text-sm">
         <label className="flex items-center gap-1.5">

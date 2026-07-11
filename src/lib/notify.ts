@@ -23,6 +23,7 @@ export type NotificationKind =
   | 'approval_waiting'
   | 'message_reply'
   | 'session_reminder'
+  | 'approval_decided'
 
 export interface NotifyRecipient {
   clientMemberId?: string

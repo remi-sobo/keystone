@@ -135,6 +135,8 @@ const DeliverableShape = z
     storagePath: z.string().max(500).optional(),
     note: z.string().max(2000).optional(),
     workstreamId: z.string().uuid().optional(),
+    sessionId: z.string().uuid().optional(),
+    about: z.string().max(4000).optional(),
     deliveredOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   })
   .refine((d) => (d.kind === 'file' ? !!d.storagePath : !!d.url), {
@@ -178,11 +180,24 @@ export async function createDeliverable(
     workstreamId = ws?.id ?? null
   }
 
+  let sessionId: string | null = null
+  if (d.sessionId) {
+    const { data: sess } = await supabase
+      .from('sessions')
+      .select('id')
+      .eq('id', d.sessionId)
+      .eq('engagement_id', engagement.id)
+      .maybeSingle()
+    sessionId = sess?.id ?? null
+  }
+
   const { error } = await supabase.from('deliverables').insert({
     engagement_id: engagement.id,
     practice_id: engagement.practice_id,
     client_id: engagement.client_id,
     workstream_id: workstreamId,
+    session_id: sessionId,
+    about_md: d.about?.trim() ? d.about.trim() : null,
     title: d.title,
     kind: d.kind,
     storage_path: d.kind === 'file' ? d.storagePath : null,
@@ -1711,4 +1726,207 @@ export async function closeSessionPoll(formData: FormData): Promise<void> {
   revalidatePath('/sessions')
   revalidatePath('/home')
   redirect(`/engagements/${engagementId}?state=poll_closed#scheduling`)
+}
+
+// ── Deliverable lifecycle (V2 3D) ─────────────────────────────────────
+// About and the session link edit in place; replacing a FILE keeps the
+// outgoing object as an append-only version row before the pointer
+// moves; acceptance rides the 5D approvals machinery unchanged.
+
+const AboutShape = z.object({
+  deliverableId: z.string().uuid(),
+  engagementId: z.string().uuid(),
+  about: z.string().trim().max(4000).optional(),
+  sessionId: z.string().uuid().optional(),
+})
+
+export async function updateDeliverableAbout(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const clean = (name: string) => {
+    const v = String(formData.get(name) ?? '').trim()
+    return v || undefined
+  }
+  const parsed = AboutShape.safeParse({
+    deliverableId: formData.get('deliverableId'),
+    engagementId: formData.get('engagementId'),
+    about: clean('about'),
+    sessionId: clean('sessionId'),
+  })
+  if (!parsed.success) redirect('/engagements')
+  const d = parsed.data
+
+  const supabase = await createServerSupabase()
+  const { data: row } = await supabase
+    .from('deliverables')
+    .select('id, engagement_id, practice_id')
+    .eq('id', d.deliverableId)
+    .eq('engagement_id', d.engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!row) redirect('/engagements')
+
+  let sessionId: string | null = null
+  if (d.sessionId) {
+    const { data: sess } = await supabase
+      .from('sessions')
+      .select('id')
+      .eq('id', d.sessionId)
+      .eq('engagement_id', row.engagement_id)
+      .maybeSingle()
+    sessionId = sess?.id ?? null
+  }
+
+  const { error } = await supabase
+    .from('deliverables')
+    .update({
+      about_md: d.about ? sweepHomework(row.practice_id, d.about) : null,
+      session_id: sessionId,
+    })
+    .eq('id', row.id)
+  if (error) {
+    console.error('[deliverables] about update failed:', error.message)
+    redirect(`/engagements/${d.engagementId}?state=dlv_error`)
+  }
+  revalidatePath(`/engagements/${d.engagementId}`)
+  revalidatePath('/deliverables')
+  redirect(`/engagements/${d.engagementId}?state=dlv_saved`)
+}
+
+export async function replaceDeliverableFile(
+  deliverableId: string,
+  engagementId: string,
+  storagePath: string
+): Promise<{ ok: true } | { error: string }> {
+  const viewer = await guardPractice()
+  if (
+    !z.string().uuid().safeParse(deliverableId).success ||
+    !z.string().uuid().safeParse(engagementId).success ||
+    typeof storagePath !== 'string' ||
+    storagePath.length > 500
+  ) {
+    return { error: 'invalid' }
+  }
+
+  const supabase = await createServerSupabase()
+  const { data: row } = await supabase
+    .from('deliverables')
+    .select('id, kind, storage_path, engagement_id, practice_id, client_id')
+    .eq('id', deliverableId)
+    .eq('engagement_id', engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!row || row.kind !== 'file' || !row.storage_path) return { error: 'not_found' }
+  if (!storagePath.startsWith(`${row.practice_id}/${row.client_id}/${row.engagement_id}/`)) {
+    return { error: 'invalid' }
+  }
+
+  // The outgoing object becomes history BEFORE the pointer moves;
+  // nothing is deleted, ever.
+  const { count } = await supabase
+    .from('deliverable_versions')
+    .select('id', { count: 'exact', head: true })
+    .eq('deliverable_id', row.id)
+  const { error: versionError } = await supabase.from('deliverable_versions').insert({
+    deliverable_id: row.id,
+    engagement_id: row.engagement_id,
+    practice_id: row.practice_id,
+    client_id: row.client_id,
+    version: (count ?? 0) + 1,
+    storage_path: row.storage_path,
+    replaced_by: viewer.user!.id,
+  })
+  if (versionError) {
+    console.error('[deliverables] version record failed:', versionError.message)
+    return { error: 'save_failed' }
+  }
+
+  const { error } = await supabase
+    .from('deliverables')
+    .update({ storage_path: storagePath })
+    .eq('id', row.id)
+  if (error) {
+    console.error('[deliverables] replace failed:', error.message)
+    return { error: 'save_failed' }
+  }
+
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    action: 'deliverable.replaced',
+    target: row.id,
+    detail: { version: (count ?? 0) + 1 },
+  })
+  revalidatePath(`/engagements/${engagementId}`)
+  revalidatePath('/deliverables')
+  return { ok: true }
+}
+
+const AcceptanceShape = z.object({
+  deliverableId: z.string().uuid(),
+  engagementId: z.string().uuid(),
+})
+
+export async function requestDeliverableAcceptance(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = AcceptanceShape.safeParse({
+    deliverableId: formData.get('deliverableId'),
+    engagementId: formData.get('engagementId'),
+  })
+  if (!parsed.success) redirect('/engagements')
+  const { deliverableId, engagementId } = parsed.data
+
+  const supabase = await createServerSupabase()
+  const { data: row } = await supabase
+    .from('deliverables')
+    .select('id, title, engagement_id, practice_id, client_id')
+    .eq('id', deliverableId)
+    .eq('engagement_id', engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!row) redirect('/engagements')
+
+  // The charter discipline: one live ask at a time, ever green once.
+  const { data: existing } = await supabase
+    .from('approvals')
+    .select('id')
+    .eq('subject_type', 'deliverable')
+    .eq('subject_id', row.id)
+    .in('status', ['pending', 'approved'])
+    .limit(1)
+    .maybeSingle()
+  if (existing) redirect(`/engagements/${engagementId}?state=dlv_already_asked`)
+
+  const { error } = await supabase.from('approvals').insert({
+    practice_id: row.practice_id,
+    client_id: row.client_id,
+    engagement_id: row.engagement_id,
+    subject_type: 'deliverable',
+    subject_id: row.id,
+    subject_label: `the deliverable: ${row.title}`,
+    requested_by: viewer.user!.id,
+  })
+  if (error) {
+    console.error('[deliverables] acceptance request failed:', error.message)
+    redirect(`/engagements/${engagementId}?state=dlv_error`)
+  }
+
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    action: 'deliverable.acceptance_requested',
+    target: row.id,
+  })
+  await notify(
+    {
+      practiceId: row.practice_id,
+      clientId: row.client_id,
+      engagementId: row.engagement_id,
+      kind: 'approval_waiting',
+      title: `Your acceptance is asked: ${row.title}`,
+      href: '/deliverables',
+    },
+    await clientTeamRecipients(row.client_id)
+  )
+  revalidatePath(`/engagements/${engagementId}`)
+  revalidatePath('/deliverables')
+  revalidatePath('/home')
+  redirect(`/engagements/${engagementId}?state=dlv_asked`)
 }

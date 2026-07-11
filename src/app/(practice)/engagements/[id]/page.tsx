@@ -4,6 +4,7 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import WorkstreamArc from '@/components/WorkstreamArc'
 import { RoomShell } from '@/components/RoomShell'
 import AddDeliverableForm from './AddDeliverableForm'
+import ReplaceDeliverableForm from './ReplaceDeliverableForm'
 import UploadAgreementForm from './UploadAgreementForm'
 import { MarkdownLite } from '@/components/MarkdownLite'
 import AskRecordForm from '@/components/AskRecordForm'
@@ -20,6 +21,8 @@ import {
   attachEvidence,
   findInEngagement,
   removeDeliverable,
+  requestDeliverableAcceptance,
+  updateDeliverableAbout,
   removeEvidence,
   saveOutcome,
   saveWorkstreamNote,
@@ -60,6 +63,10 @@ const STATES: Record<string, string> = {
   poll_booked: 'Booked. The poll is settled and the session is on the calendar.',
   poll_closed: 'Poll closed without booking.',
   poll_error: 'That did not save. Try again.',
+  dlv_saved: 'Saved. The client sees it on the deliverable.',
+  dlv_asked: 'Acceptance asked. The client team hears about it.',
+  dlv_already_asked: 'Acceptance is already asked or given on that one.',
+  dlv_error: 'That did not save. Try again.',
 }
 
 function fmt(dt: string, tz: string): string {
@@ -130,7 +137,7 @@ export default async function EngagementDetailPage({
       .eq('engagement_id', id),
     supabase
       .from('deliverables')
-      .select('id, title, kind, url, storage_path, note, delivered_on, workstreams(title)')
+      .select('id, title, kind, url, storage_path, note, about_md, session_id, delivered_on, workstreams(title)')
       .eq('engagement_id', id)
       .order('delivered_on', { ascending: false }),
   ])
@@ -214,6 +221,23 @@ export default async function EngagementDetailPage({
         { data: null },
         await assembleSlots(supabase, { practiceId: engagement.practice_id }, new Date()),
       ]
+
+  // 3D: acceptance states and the version history, as facts.
+  const [{ data: dlvApprovals }, { data: dlvVersions }] = await Promise.all([
+    supabase
+      .from('approvals')
+      .select('id, subject_id, status, note_md, decided_by_email, requested_at')
+      .eq('subject_type', 'deliverable')
+      .eq('engagement_id', id)
+      .order('requested_at', { ascending: false }),
+    supabase
+      .from('deliverable_versions')
+      .select('id, deliverable_id, version, replaced_at')
+      .eq('engagement_id', id)
+      .order('version', { ascending: false }),
+  ])
+  const dlvApprovalFor = (dlvId: string) => (dlvApprovals ?? []).find((a) => a.subject_id === dlvId)
+  const dlvVersionsFor = (dlvId: string) => (dlvVersions ?? []).filter((v) => v.deliverable_id === dlvId)
 
   const { data: publishedCharter } = await supabase
     .from('engagement_charters')
@@ -869,28 +893,115 @@ export default async function EngagementDetailPage({
             {(deliverables.data ?? []).map((d) => (
               <li
                 key={d.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius)] border border-ink/10 bg-paper-raised px-4 py-2.5"
+                className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised px-4 py-2.5"
               >
-                <span className="text-sm text-ink">
-                  {d.kind === 'link' && d.url ? (
-                    <a href={d.url} className="text-forest underline" target="_blank" rel="noreferrer">
-                      {d.title}
-                    </a>
-                  ) : (
-                    d.title
-                  )}{' '}
-                  <span className="text-ink-dim">
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    ({d.delivered_on}{((d.workstreams as any)?.title as string) ? `, ${(d.workstreams as any).title}` : ''})
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm text-ink">
+                    {d.kind === 'link' && d.url ? (
+                      <a href={d.url} className="text-forest underline" target="_blank" rel="noreferrer">
+                        {d.title}
+                      </a>
+                    ) : (
+                      d.title
+                    )}{' '}
+                    <span className="text-ink-dim">
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      ({d.delivered_on}{((d.workstreams as any)?.title as string) ? `, ${(d.workstreams as any).title}` : ''})
+                    </span>
                   </span>
-                </span>
-                <form action={removeDeliverable}>
-                  <input type="hidden" name="deliverableId" value={d.id} />
-                  <input type="hidden" name="engagementId" value={engagement.id} />
-                  <button type="submit" className="text-sm text-ink-dim underline hover:text-ink">
-                    Remove
-                  </button>
-                </form>
+                  <span className="flex items-center gap-3">
+                    {!dlvApprovalFor(d.id) ? (
+                      <form action={requestDeliverableAcceptance}>
+                        <input type="hidden" name="deliverableId" value={d.id} />
+                        <input type="hidden" name="engagementId" value={engagement.id} />
+                        <button type="submit" className="text-sm text-forest underline">
+                          Request acceptance
+                        </button>
+                      </form>
+                    ) : null}
+                    <form action={removeDeliverable}>
+                      <input type="hidden" name="deliverableId" value={d.id} />
+                      <input type="hidden" name="engagementId" value={engagement.id} />
+                      <button type="submit" className="text-sm text-ink-dim underline hover:text-ink">
+                        Remove
+                      </button>
+                    </form>
+                  </span>
+                </div>
+                {(() => {
+                  const a = dlvApprovalFor(d.id)
+                  if (!a) return null
+                  return (
+                    <p className="mt-1 text-sm text-ink-dim">
+                      {a.status === 'pending'
+                        ? 'Acceptance asked; with the client.'
+                        : a.status === 'approved'
+                          ? `Accepted${a.decided_by_email ? ` by ${a.decided_by_email.split('@')[0]}` : ''}.`
+                          : a.status === 'not_yet'
+                            ? `Not yet${a.note_md ? `: ${a.note_md}` : ''}`
+                            : 'Acceptance withdrawn.'}
+                    </p>
+                  )
+                })()}
+                {dlvVersionsFor(d.id).length > 0 ? (
+                  <p className="mt-1 text-xs text-ink-dim">
+                    History:{' '}
+                    {dlvVersionsFor(d.id).map((v, i) => (
+                      <span key={v.id}>
+                        {i > 0 ? '; ' : ''}
+                        <a
+                          href={`/engagements/${engagement.id}/versions/${v.id}/file`}
+                          className="underline"
+                        >
+                          version {v.version}
+                        </a>{' '}
+                        replaced {v.replaced_at.slice(0, 10)}
+                      </span>
+                    ))}
+                  </p>
+                ) : null}
+                <details className="mt-1.5">
+                  <summary className="cursor-pointer text-xs text-ink-dim">
+                    About and session link
+                  </summary>
+                  <form action={updateDeliverableAbout} className="mt-2 flex flex-col gap-2">
+                    <input type="hidden" name="deliverableId" value={d.id} />
+                    <input type="hidden" name="engagementId" value={engagement.id} />
+                    <textarea
+                      name="about"
+                      rows={3}
+                      maxLength={4000}
+                      defaultValue={d.about_md ?? ''}
+                      placeholder="What this is for and how to use it (the client reads this)"
+                      className="rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink"
+                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select
+                        name="sessionId"
+                        defaultValue={d.session_id ?? ''}
+                        className="rounded-lg border border-ink/15 bg-paper px-2 py-1 text-sm"
+                      >
+                        <option value="">No session</option>
+                        {(sessions.data ?? []).map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {fmt(s.starts_at, s.tz)}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-ink/15 px-3 py-1 text-sm text-ink transition-colors duration-200 hover:border-ink/30"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </form>
+                  {d.kind === 'file' ? (
+                    <div className="mt-2">
+                      <ReplaceDeliverableForm deliverableId={d.id} engagementId={engagement.id} />
+                    </div>
+                  ) : null}
+                </details>
               </li>
             ))}
           </ul>
@@ -898,6 +1009,7 @@ export default async function EngagementDetailPage({
         <AddDeliverableForm
           engagementId={engagement.id}
           workstreams={(ws.data ?? []).map((w) => ({ id: w.id, title: w.title }))}
+          sessions={(sessions.data ?? []).map((s) => ({ id: s.id, label: fmt(s.starts_at, s.tz) }))}
         />
       </section>
 

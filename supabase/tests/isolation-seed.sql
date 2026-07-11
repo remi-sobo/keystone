@@ -1856,4 +1856,90 @@ do $$ begin
   if not found then raise exception 'the service role must write the run of show'; end if;
 end $$;
 
+-- ── V2 3D: deliverable versions and deliberate acceptance ────────────
+-- Versions are append-only history readable by both sides; acceptance
+-- rides the 5D approvals machinery with subject_type 'deliverable',
+-- the decided-once trigger stamping the decider from the JWT.
+
+insert into deliverable_versions (id, deliverable_id, engagement_id, practice_id, client_id,
+                                  version, storage_path) values
+  ('b2000000-0000-0000-0000-0000000000f1', '80000000-0000-0000-0000-0000000000a1',
+   '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+   '20000000-0000-0000-0000-0000000000a1', 1, 'leak-test/old-version.pdf');
+
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$
+declare n int;
+begin
+  if (select count(*) from deliverable_versions) <> 1 then
+    raise exception 'member_a1 must read their deliverable history';
+  end if;
+  update deliverable_versions set storage_path = 'forged';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE 3D: a session rewrote version history'; end if;
+  delete from deliverable_versions;
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE 3D: a session deleted version history'; end if;
+end $$;
+do $$ begin
+  insert into deliverable_versions (deliverable_id, engagement_id, practice_id, client_id,
+                                    version, storage_path)
+    values ('80000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
+            '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+            9, 'client-forged.pdf');
+  raise exception 'LEAK 3D: a client member recorded a version';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$ begin
+  if (select count(*) from deliverable_versions) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 deliverable history';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from deliverable_versions) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a deliverable history';
+  end if;
+end $$;
+
+-- The practice records history and asks acceptance; the client decides
+-- once and the trigger stamps who.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$
+declare n int;
+begin
+  insert into deliverable_versions (deliverable_id, engagement_id, practice_id, client_id,
+                                    version, storage_path)
+    values ('80000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
+            '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+            2, 'leak-test/new-version.pdf');
+  update deliverable_versions set storage_path = 'practice-rewrite';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE 3D: a practice session rewrote version history'; end if;
+  insert into approvals (id, practice_id, client_id, engagement_id, subject_type, subject_id,
+                         subject_label)
+    values ('b2000000-0000-0000-0000-0000000000f2', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
+            'deliverable', '80000000-0000-0000-0000-0000000000a1', 'the deliverable: leak test');
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  update approvals set status = 'approved'
+    where id = 'b2000000-0000-0000-0000-0000000000f2';
+  if not found then raise exception 'the client must be able to accept a deliverable'; end if;
+end $$;
+reset role;
+do $$ begin
+  if (select decided_by from approvals where id = 'b2000000-0000-0000-0000-0000000000f2') is null then
+    raise exception 'HOLE 3D: the acceptance was not identity-stamped by the trigger';
+  end if;
+end $$;
+
 select 'keystone isolation matrix: all assertions passed' as result;

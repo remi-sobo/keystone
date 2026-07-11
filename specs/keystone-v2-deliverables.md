@@ -2,7 +2,7 @@
 
 **Parent:** `specs/keystone-v2.md` Phase 3 epic 3D: preview, versions, "what this is for," and acceptance. The V2 spec's own humane-data rule stands: passive per-person "viewed by" tracking is CUT, surveillance-adjacent and anxiety without value.
 **Grounded against:** the live codebase after 3B. A deliverable today is a file or link on the brass timeline with a title and a note: no purpose prose, no session link, no versions, no acceptance. Two rails already exist for this epic: the 5D approvals table listed `deliverable` among its subject types from the day it shipped (the decided-once trigger stamping identity from the JWT, the humane `not_yet` decline), and the storage discipline (path-scoped read policies, signed uploads, session-client downloads) needs no change.
-**Status:** draft for Remi. CONFIRM gates in section 7.
+**Status:** BUILT 2026-07-10, same day as the spec. All five gates approved as recommended (Remi). Migration 0022 applied live; acceptance rides the 5D approvals with zero approval schema change.
 **Date:** 2026-07-10
 
 ---

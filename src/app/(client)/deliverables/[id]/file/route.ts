@@ -10,7 +10,7 @@ import { isErrorResponse, requireClientMember } from '@/lib/auth'
  * role anywhere on this surface.
  */
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const ctx = await requireClientMember()
@@ -40,7 +40,7 @@ export async function GET(
   return new NextResponse(blob.stream(), {
     headers: {
       'Content-Type': blob.type || 'application/octet-stream',
-      'Content-Disposition': `attachment; filename="${filename.replace(/"/g, '')}"`,
+      'Content-Disposition': `${req.nextUrl.searchParams.get('view') === '1' ? 'inline' : 'attachment'}; filename="${filename.replace(/"/g, '')}"`,
       'Cache-Control': 'private, no-store',
     },
   })

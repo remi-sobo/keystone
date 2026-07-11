@@ -20,6 +20,9 @@ const STATES: Record<string, string> = {
   empty: 'Write a note first.',
   badlink: 'Links here start with http:// or https://.',
   error: 'That did not save. Try again.',
+  file_too_big: 'That file is over 10 MB. Link to it instead.',
+  file_type: 'That file type is not supported here. PDF, Word, Excel, text, or an image.',
+  file_failed: 'The file did not upload. Try again.',
 }
 
 function fmtDay(iso: string): string {
@@ -66,7 +69,7 @@ export default async function HomeworkItemPage({
   // so for a teammate this is simply empty.
   const { data: trail } = await supabase
     .from('homework_activity')
-    .select('id, kind, body_md, link_url, created_at, author_client_member_id, client_members:author_client_member_id(email)')
+    .select('id, kind, body_md, link_url, file_name, created_at, author_client_member_id, client_members:author_client_member_id(email)')
     .eq('action_item_id', item.id)
     .order('created_at', { ascending: true })
 
@@ -141,6 +144,13 @@ export default async function HomeworkItemPage({
                     </a>
                   </p>
                 ) : null}
+                {row.file_name ? (
+                  <p className="mt-1 text-sm">
+                    <a href={`/homework/${item.id}/evidence/${row.id}`} className="text-forest underline">
+                      {row.file_name}
+                    </a>
+                  </p>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -170,6 +180,15 @@ export default async function HomeworkItemPage({
                 placeholder="A link to the work, if it lives somewhere (optional)"
                 className="rounded-lg border border-ink/15 bg-paper-raised p-3 text-sm text-ink"
               />
+              <label className="flex flex-col gap-1 text-sm text-ink-dim">
+                Or attach the work itself (PDF, Word, Excel, image; up to 10 MB)
+                <input
+                  name="file"
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg"
+                  className="text-sm text-ink"
+                />
+              </label>
               <button
                 type="submit"
                 className="self-start rounded-lg bg-forest px-4 py-2 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98]"

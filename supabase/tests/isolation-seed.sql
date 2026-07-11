@@ -2191,4 +2191,80 @@ do $$ begin
 end $$;
 reset role;
 
+-- ── V2 3C-4: evidence files carry the same coachee wall ─────────────
+-- The file is only as private as the trail row that carries it: the
+-- practice reads by path, the ASSIGNED coachee through their row, and
+-- the teammate/buyer persona (member_a1c) gets nothing at either
+-- layer. Uploads are the one storage-write policy: own open item,
+-- exact scope path, nothing else.
+
+insert into homework_activity (id, action_item_id, engagement_id, practice_id, client_id,
+                               author_client_member_id, kind, body_md, file_path, file_name)
+  values ('f6000000-0000-0000-0000-0000000000f1',
+          '60000000-0000-0000-0000-0000000000a3', '30000000-0000-0000-0000-0000000000a1',
+          '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+          (select id from client_members where email = 'member_a1@client-a.test'),
+          'comment', 'evidence attached',
+          '10000000-0000-0000-0000-00000000000a/20000000-0000-0000-0000-0000000000a1/30000000-0000-0000-0000-0000000000a1/60000000-0000-0000-0000-0000000000a3/f6/evidence.pdf',
+          'evidence.pdf');
+insert into storage.buckets (id, name, public)
+  values ('homework-evidence', 'homework-evidence', false)
+  on conflict (id) do nothing;
+insert into storage.objects (bucket_id, name) values
+  ('homework-evidence', '10000000-0000-0000-0000-00000000000a/20000000-0000-0000-0000-0000000000a1/30000000-0000-0000-0000-0000000000a1/60000000-0000-0000-0000-0000000000a3/f6/evidence.pdf');
+
+set role authenticated;
+
+-- The assigned coachee reads the object and uploads under their own
+-- open item's path.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from storage.objects where bucket_id = 'homework-evidence') <> 1 then
+    raise exception 'the coachee must read their own evidence file';
+  end if;
+  insert into storage.objects (bucket_id, name) values
+    ('homework-evidence', '10000000-0000-0000-0000-00000000000a/20000000-0000-0000-0000-0000000000a1/30000000-0000-0000-0000-0000000000a1/60000000-0000-0000-0000-0000000000a3/up/mine.pdf');
+end $$;
+-- But never under an item that is not theirs (the internal a4 task).
+do $$ begin
+  insert into storage.objects (bucket_id, name) values
+    ('homework-evidence', '10000000-0000-0000-0000-00000000000a/20000000-0000-0000-0000-0000000000a1/30000000-0000-0000-0000-0000000000a1/60000000-0000-0000-0000-0000000000a4/up/forged.pdf');
+  raise exception 'HOLE 3C-4: a coachee uploaded under an item not assigned to them';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+-- The teammate/buyer persona: zero objects, no upload to the sibling's
+-- item path. The V2-4 wall, at the storage layer.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a3","email":"member_a1c@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from storage.objects where bucket_id = 'homework-evidence') <> 0 then
+    raise exception 'LEAK 3C-4: a teammate reads a coachee evidence file';
+  end if;
+end $$;
+do $$ begin
+  insert into storage.objects (bucket_id, name) values
+    ('homework-evidence', '10000000-0000-0000-0000-00000000000a/20000000-0000-0000-0000-0000000000a1/30000000-0000-0000-0000-0000000000a1/60000000-0000-0000-0000-0000000000a3/up/teammate.pdf');
+  raise exception 'HOLE 3C-4: a teammate uploaded to a coachee item';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+-- The practice reads by path; the other practice reads nothing.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from storage.objects where bucket_id = 'homework-evidence') < 2 then
+    raise exception 'the practice must read its evidence tree';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from storage.objects where bucket_id = 'homework-evidence') <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a evidence files';
+  end if;
+end $$;
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

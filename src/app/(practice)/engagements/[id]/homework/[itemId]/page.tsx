@@ -68,7 +68,7 @@ export default async function PracticeHomeworkItemPage({
   const { data: trail } = await supabase
     .from('homework_activity')
     .select(
-      'id, kind, body_md, link_url, created_at, author_client_member_id, client_members:author_client_member_id(email), practice_members:author_practice_member_id(email)'
+      'id, kind, body_md, link_url, file_name, created_at, author_client_member_id, client_members:author_client_member_id(email), practice_members:author_practice_member_id(email)'
     )
     .eq('action_item_id', itemId)
     .order('created_at', { ascending: true })
@@ -152,6 +152,16 @@ export default async function PracticeHomeworkItemPage({
                       className="text-forest underline"
                     >
                       {row.link_url}
+                    </a>
+                  </p>
+                ) : null}
+                {row.file_name ? (
+                  <p className="mt-1 text-sm">
+                    <a
+                      href={`/engagements/${id}/homework/${itemId}/evidence/${row.id}`}
+                      className="text-forest underline"
+                    >
+                      {row.file_name}
                     </a>
                   </p>
                 ) : null}

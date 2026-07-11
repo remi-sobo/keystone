@@ -82,8 +82,7 @@ function eventInput(row: SessionRow, attendees: string[]): CalendarEventInput {
     tz: row.tz,
     // The snapshotted video link (gate 4I-1); Google shows it as Where.
     location: row.location ?? undefined,
-    // The engagement's client team (gate 4I-2); the consultant is the
-    // event's organizer already.
+    // The consultant plus the engagement's client team (gate 4I-2).
     attendees: attendees.length > 0 ? attendees : undefined,
   }
 }
@@ -108,20 +107,23 @@ async function attendeeMap(practiceId: string): Promise<Map<string, string[]>> {
 async function tokenForMember(
   memberId: string,
   practiceId: string
-): Promise<{ token: string; connectionId: string } | null> {
+): Promise<{ token: string; connectionId: string; googleEmail: string | null } | null> {
   const { data: conn } = await supabaseAdmin
     .from('google_connections')
-    .select('id, access_token_enc, refresh_token_enc, token_expiry')
+    .select('id, google_email, access_token_enc, refresh_token_enc, token_expiry')
     .eq('practice_member_id', memberId)
     .eq('practice_id', practiceId)
     .maybeSingle()
   if (!conn?.refresh_token_enc) return null
+  const googleEmail = (conn.google_email as string | null) ?? null
 
   const fresh =
     conn.access_token_enc &&
     conn.token_expiry &&
     new Date(conn.token_expiry).getTime() - Date.now() > 2 * 60 * 1000
-  if (fresh) return { token: decryptToken(conn.access_token_enc as string), connectionId: conn.id }
+  if (fresh) {
+    return { token: decryptToken(conn.access_token_enc as string), connectionId: conn.id, googleEmail }
+  }
 
   const refreshed = await refreshAccessToken(decryptToken(conn.refresh_token_enc as string))
   if (!refreshed?.access_token) return null
@@ -133,7 +135,7 @@ async function tokenForMember(
       updated_at: new Date().toISOString(),
     })
     .eq('id', conn.id)
-  return { token: refreshed.access_token, connectionId: conn.id }
+  return { token: refreshed.access_token, connectionId: conn.id, googleEmail }
 }
 
 /** Replace the member's cached free/busy with Google's current answer.
@@ -244,7 +246,12 @@ export async function pushSessionById(
   if (!auth) return { ok: false, detail: 'not_connected' }
 
   const attendees = await attendeeMap(session.practice_id)
-  const outcome = await pushRow(auth.token, session, attendees.get(session.client_id) ?? [])
+  const team = attendees.get(session.client_id) ?? []
+  const outcome = await pushRow(
+    auth.token,
+    session,
+    auth.googleEmail ? [auth.googleEmail, ...team] : team
+  )
   await logAuditAction({
     actorEmail: 'calendar-push',
     action: 'calendar.push',
@@ -291,7 +298,12 @@ export async function syncMember(args: {
   let failed = 0
 
   for (const row of (rows ?? []) as unknown as SessionRow[]) {
-    const outcome = await pushRow(auth.token, row, attendees.get(row.client_id) ?? [])
+    const team = attendees.get(row.client_id) ?? []
+    const outcome = await pushRow(
+      auth.token,
+      row,
+      auth.googleEmail ? [auth.googleEmail, ...team] : team
+    )
     if (outcome === 'inserted') inserted++
     else if (outcome === 'patched') patched++
     else if (outcome === 'removed') removed++

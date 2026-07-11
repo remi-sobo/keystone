@@ -66,7 +66,7 @@ create table calendar_busy (
 
 **Assembly reads the settings.** `lib/slotAssembly.ts` fetches the practice's `scheduling_settings` row (defaults when absent), validates any requested duration against `duration_options`, and passes buffer, lead, horizon, and duration into the engine. Both surfaces keep riding this one assembler; blackouts and the real calendar arrive already folded into the busy list by the bridge function, so assembly grows no new query.
 
-**The pull is the new half of sync.** `pullCalendarBusy` (in `lib/calendarSync.ts`, service-role-after-check like its sibling) calls Google's `freebusy.query` on the primary calendar for now through 60 days out, and replaces the member's `calendar_busy` rows with the result, stamping `synced_at`. It runs:
+**The pull is the new half of sync.** `pullBusyForMember` (in `lib/calendarSync.ts`, inside the shared `syncMember` core, service-role-after-check like the push) calls Google's `freebusy.query` on the primary calendar for now through 60 days out, and replaces the member's `calendar_busy` rows with the result, stamping the connection's `busy_pulled_at`. It runs:
 
 - inside the existing Settings **Sync now** action (push and pull become one honest button),
 - after the OAuth callback completes (a fresh connection is immediately real),

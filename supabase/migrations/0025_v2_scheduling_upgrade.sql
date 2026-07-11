@@ -21,9 +21,13 @@ create table if not exists public.scheduling_settings (
   lead_hours           int not null default 24 check (lead_hours between 0 and 336),
   horizon_days         int not null default 30 check (horizon_days between 1 and 60),
   -- The durations a booker may choose (gate 4I-3); 60 is the standing
-  -- default. Narrowing the offer is a settings edit, never a migration.
-  duration_options     int[] not null default '{60,90,120}',
-  default_duration_min int not null default 60,
+  -- default. Narrowing the offer is a settings edit, never a migration;
+  -- the check pins the offer universe so no writer can invent a length.
+  duration_options     int[] not null default '{60,90,120}'
+                       check (duration_options <@ '{60,90,120}'::int[]
+                              and array_length(duration_options, 1) >= 1),
+  default_duration_min int not null default 60
+                       check (default_duration_min in (60, 90, 120)),
   -- The practice's personal meeting room link (gate 4I-1, closing V1
   -- CONFIRM 8). Snapshotted onto sessions at booking; a later edit
   -- never rewrites history.

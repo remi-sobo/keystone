@@ -91,6 +91,16 @@ verification, so a dedicated project publishes to production cleanly.
 - [ ] Add and verify the sending domain (soboconsulting.com) in Resend.
 - [ ] Mint an API key and set it in Vercel.
 
+## 4b. Vercel domain (why the app still shows keystone-blue-tau.vercel.app)
+
+- [ ] Vercel dashboard > keystone project > Settings > Domains > Add
+      `app.soboconsulting.com`, assigned to Production.
+- [ ] At the DNS host for soboconsulting.com: add the record Vercel
+      shows (a CNAME from `app` to `cname.vercel-dns.com`). The code
+      and every email link already use app.soboconsulting.com
+      (NEXT_PUBLIC_APP_URL in vercel.json); until this record exists,
+      those links point at a name that does not resolve.
+
 ## 5. Ship steps
 
 - [x] Merge branch `claude/nextjs-setup-verify-w0b2qx` to `main`: done 2026-07-09 (fast-forward, f4dc98b); production is live at keystone-blue-tau.vercel.app and waits on the env steps above.

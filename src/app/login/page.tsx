@@ -10,9 +10,9 @@ export const metadata: Metadata = { title: 'Sign in' }
  * desktop widths the door is half and half: the keystone arches on the
  * left (the one piece of art in the product, brass wedge at the crown),
  * the email-first card on the right. At 390px the art steps aside and
- * the centered card carries the room alone. Paper canvas, the wordmark
- * with the brass period, one quiet line, the dot watermark under 9
- * percent opacity. No marketing copy, no feature list.
+ * the centered card carries the room alone. Paper canvas, the full logo
+ * (arch mark over the wordmark, brass period), one quiet line, the dot
+ * watermark under 9 percent opacity. No marketing copy, no feature list.
  *
  * Two doors in the card (spec 6.4, amended 2026-07-09): the magic link
  * first and as the fail-safe, then Continue with Google behind an "or"
@@ -99,8 +99,8 @@ export default async function LoginPage({
         />
 
         <div className="relative w-full max-w-sm">
-          <h1 className="font-display text-center text-5xl font-medium text-ink">
-            Keystone<span className="text-brass">.</span>
+          <h1 className="flex justify-center">
+            <Image src="/logo-full.png" alt="Keystone" width={230} height={160} priority />
           </h1>
           <p className="mt-3 text-center text-sm text-ink-dim">Where your engagement lives</p>
 

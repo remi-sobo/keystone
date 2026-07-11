@@ -19,6 +19,8 @@ import {
   addDecision,
   addHomework,
   closeSessionPoll,
+  completeInternalTask,
+  reopenInternalTask,
   confirmPollOption,
   createSessionPoll,
   askEngagementQuestion,
@@ -64,6 +66,8 @@ const STATES: Record<string, string> = {
   slow: 'Too many messages at once. Wait a minute.',
   hw_added: 'Homework added. The assignee sees it now.',
   hw_error: 'That did not save. Check the fields and try again.',
+  internal_done: 'Checked off. Internal tasks stay between us.',
+  internal_reopened: 'Reopened.',
   poll_opened: 'Poll opened. The team sees it on their sessions page now.',
   poll_exists: 'There is already an open poll for this engagement. Close it first.',
   poll_slot_gone: 'One of those times is no longer free. Refresh and pick again.',
@@ -295,6 +299,11 @@ export default async function EngagementDetailPage({
       ? (practice.data.stage_config as string[])
       : DEFAULT_STAGES
   const open = (items.data ?? []).filter((i) => i.status === 'open')
+  // V2 4B: the three kinds of work read as three kinds of work. Client
+  // homework and our on-the-record commitments stay in Open; internal
+  // tasks get their own list and a plain check-off.
+  const openClient = open.filter((i) => i.audience !== 'practice')
+  const openInternal = open.filter((i) => i.audience === 'practice')
   const recentlyDone = (items.data ?? []).filter(
     (i) => i.status === 'done' && i.done_at && i.done_at >= twoWeeksAgo
   )
@@ -597,11 +606,11 @@ export default async function EngagementDetailPage({
           ) : null}
 
           <h3 className="font-display mt-6 text-xl font-medium text-ink">Open</h3>
-          {open.length === 0 ? (
+          {openClient.length === 0 ? (
             <p className="mt-2 text-sm text-ink-dim">Nothing open.</p>
           ) : (
             <ul className="mt-2 flex flex-col gap-1">
-              {open.map((it) => (
+              {openClient.map((it) => (
                 <li key={it.id} className="text-sm text-ink">
                   <Link
                     href={`/engagements/${id}/homework/${it.id}`}
@@ -613,8 +622,47 @@ export default async function EngagementDetailPage({
                     ({assignee(it)}
                     {it.due_on ? `, due ${it.due_on}` : ''})
                   </span>
-                  {it.audience === 'practice' ? <span className="eyebrow ml-2">internal</span> : null}
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {(it.practice_members as any)?.email ? (
+                    <span className="eyebrow ml-2">our commitment</span>
+                  ) : null}
                   {hwChip(it) ? <span className="eyebrow ml-2">{hwChip(it)}</span> : null}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <h3 className="font-display mt-6 text-xl font-medium text-ink">Internal tasks</h3>
+          <p className="mt-1 text-xs text-ink-dim">
+            Invisible to the client, by policy. Check-offs, not coaching loops.
+          </p>
+          {openInternal.length === 0 ? (
+            <p className="mt-2 text-sm text-ink-dim">Nothing internal open.</p>
+          ) : (
+            <ul className="mt-2 flex flex-col gap-1.5">
+              {openInternal.map((it) => (
+                <li key={it.id} className="flex flex-wrap items-center gap-2 text-sm text-ink">
+                  <form action={completeInternalTask}>
+                    <input type="hidden" name="itemId" value={it.id} />
+                    <input type="hidden" name="engagementId" value={id} />
+                    <button
+                      type="submit"
+                      className="rounded border border-ink/20 px-2 py-0.5 text-xs text-ink-dim hover:text-ink"
+                    >
+                      Done
+                    </button>
+                  </form>
+                  <Link
+                    href={`/engagements/${id}/homework/${it.id}`}
+                    className="text-forest underline"
+                  >
+                    {it.title}
+                  </Link>
+                  <span className="text-ink-dim">
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    ({((it.practice_members as any)?.email as string) ?? 'unassigned'}
+                    {it.due_on ? `, due ${it.due_on}` : ''})
+                  </span>
                 </li>
               ))}
             </ul>
@@ -626,14 +674,28 @@ export default async function EngagementDetailPage({
           ) : (
             <ul className="mt-2 flex flex-col gap-1">
               {recentlyDone.map((it) => (
-                <li key={it.id} className="text-sm text-ink-dim">
+                <li key={it.id} className="flex flex-wrap items-center gap-2 text-sm text-ink-dim">
                   <Link
                     href={`/engagements/${id}/homework/${it.id}`}
                     className="underline"
                   >
                     {it.title}
                   </Link>{' '}
-                  ({assignee(it)})
+                  {it.audience === 'practice' ? (
+                    <>
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      <span>({((it.practice_members as any)?.email as string) ?? 'unassigned'}, internal)</span>
+                      <form action={reopenInternalTask}>
+                        <input type="hidden" name="itemId" value={it.id} />
+                        <input type="hidden" name="engagementId" value={id} />
+                        <button type="submit" className="text-xs underline hover:text-ink">
+                          Reopen
+                        </button>
+                      </form>
+                    </>
+                  ) : (
+                    <span>({assignee(it)})</span>
+                  )}
                 </li>
               ))}
             </ul>

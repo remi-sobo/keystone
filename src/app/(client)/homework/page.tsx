@@ -34,7 +34,7 @@ export default async function HomeworkPage() {
     supabase
       .from('action_items')
       .select(
-        'id, title, body_md, status, due_on, timing, done_at, review_requested, assigned_client_member_id, client_members:assigned_client_member_id(email)'
+        'id, title, body_md, status, due_on, timing, done_at, review_requested, assigned_client_member_id, assigned_practice_member_id, client_members:assigned_client_member_id(email)'
       )
       .eq('client_id', viewer.client.clientId)
       .order('due_on', { ascending: true, nullsFirst: false }),
@@ -49,7 +49,14 @@ export default async function HomeworkPage() {
   const myId = myMembership?.id ?? null
   const open = (items ?? []).filter((i) => i.status === 'open')
   const mine = open.filter((i) => i.assigned_client_member_id === myId)
-  const team = open.filter((i) => i.assigned_client_member_id !== myId)
+  // V2 4B: what the consultant team owes YOU is its own list, read-only
+  // (ours to do, not yours to check off), never mislabeled unassigned.
+  const commitments = open.filter(
+    (i) => i.assigned_practice_member_id && i.assigned_client_member_id !== myId
+  )
+  const team = open.filter(
+    (i) => i.assigned_client_member_id !== myId && !i.assigned_practice_member_id
+  )
   const done = (items ?? [])
     .filter((i) => i.status === 'done')
     .sort((a, b) => (b.done_at ?? '').localeCompare(a.done_at ?? ''))
@@ -112,6 +119,21 @@ export default async function HomeworkPage() {
           </ul>
         )}
       </section>
+
+      {commitments.length > 0 ? (
+        <section className="mt-10">
+          <h2 className="font-display text-2xl font-medium text-ink">With your consultant team</h2>
+          <p className="mt-1 text-sm text-ink-dim">Ours to deliver. On the record so you can hold us to it.</p>
+          <ul className="mt-3 flex flex-col gap-1">
+            {commitments.map((it) => (
+              <li key={it.id} className="text-sm text-ink">
+                {it.title}
+                {it.due_on ? <span className="text-ink-dim"> (due {fmtDue(it.due_on)})</span> : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="mt-10">
         <h2 className="font-display text-2xl font-medium text-ink">The team</h2>

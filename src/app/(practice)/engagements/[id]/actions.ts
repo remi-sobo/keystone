@@ -1297,13 +1297,76 @@ async function loadPracticeItem(itemId: string, engagementId: string, practiceId
   const { data: item } = await supabase
     .from('action_items')
     .select(
-      'id, title, engagement_id, practice_id, client_id, status, review_requested, assigned_client_member_id'
+      'id, title, engagement_id, practice_id, client_id, status, review_requested, audience, assigned_client_member_id'
     )
     .eq('id', itemId)
     .eq('engagement_id', engagementId)
     .eq('practice_id', practiceId)
     .maybeSingle()
   return { supabase, item }
+}
+
+/**
+ * V2 4B: internal tasks are check-offs, not coaching loops. No trail
+ * rows, no notifications; the wall (0017) keeps every client session
+ * from ever reading the row. Refuses anything not practice-audience.
+ */
+export async function completeInternalTask(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = HomeworkMoveShape.safeParse({
+    itemId: formData.get('itemId'),
+    engagementId: formData.get('engagementId'),
+  })
+  if (!parsed.success) redirect('/engagements')
+  const { itemId, engagementId } = parsed.data
+
+  const { supabase, item } = await loadPracticeItem(itemId, engagementId, viewer.practice!.practiceId)
+  if (!item || item.audience !== 'practice' || item.status !== 'open') {
+    redirect(`/engagements/${engagementId}?state=hw_error#homework`)
+  }
+  const { error } = await supabase
+    .from('action_items')
+    .update({ status: 'done', done_at: new Date().toISOString() })
+    .eq('id', item.id)
+  if (error) {
+    console.error('[homework] internal complete failed:', error.message)
+    redirect(`/engagements/${engagementId}?state=hw_error#homework`)
+  }
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    action: 'homework.internal_done',
+    target: item.id,
+  })
+  redirect(`/engagements/${engagementId}?state=internal_done#homework`)
+}
+
+export async function reopenInternalTask(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = HomeworkMoveShape.safeParse({
+    itemId: formData.get('itemId'),
+    engagementId: formData.get('engagementId'),
+  })
+  if (!parsed.success) redirect('/engagements')
+  const { itemId, engagementId } = parsed.data
+
+  const { supabase, item } = await loadPracticeItem(itemId, engagementId, viewer.practice!.practiceId)
+  if (!item || item.audience !== 'practice' || item.status !== 'done') {
+    redirect(`/engagements/${engagementId}?state=hw_error#homework`)
+  }
+  const { error } = await supabase
+    .from('action_items')
+    .update({ status: 'open', done_at: null })
+    .eq('id', item.id)
+  if (error) {
+    console.error('[homework] internal reopen failed:', error.message)
+    redirect(`/engagements/${engagementId}?state=hw_error#homework`)
+  }
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    action: 'homework.internal_reopened',
+    target: item.id,
+  })
+  redirect(`/engagements/${engagementId}?state=internal_reopened#homework`)
 }
 
 export async function acceptHomework(formData: FormData): Promise<void> {

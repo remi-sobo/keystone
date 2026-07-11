@@ -36,14 +36,19 @@ import type { PracticeCtx } from '@/lib/auth'
 
 interface SessionRow {
   id: string
+  client_id: string
   starts_at: string
   ends_at: string
   tz: string
   kind: string
   status: string
   gcal_event_id: string | null
+  location: string | null
   clients: { name: string } | null
 }
+
+const SESSION_COLUMNS =
+  'id, client_id, starts_at, ends_at, tz, kind, status, gcal_event_id, location, clients(name)'
 
 export interface SyncResult {
   ok: boolean
@@ -66,14 +71,36 @@ function summaryFor(row: SessionRow): string {
   return `${client}: working session`
 }
 
-function eventInput(row: SessionRow): CalendarEventInput {
+function eventInput(row: SessionRow, attendees: string[]): CalendarEventInput {
   return {
     summary: summaryFor(row),
-    description: 'Scheduled in Keystone.',
+    description: row.location
+      ? `Scheduled in Keystone.\nJoin: ${row.location}`
+      : 'Scheduled in Keystone.',
     startsAt: new Date(row.starts_at),
     endsAt: new Date(row.ends_at),
     tz: row.tz,
+    // The snapshotted video link (gate 4I-1); Google shows it as Where.
+    location: row.location ?? undefined,
+    // The engagement's client team (gate 4I-2); the consultant is the
+    // event's organizer already.
+    attendees: attendees.length > 0 ? attendees : undefined,
   }
+}
+
+/** Active client-team emails per client of the practice (gate 4I-2). */
+async function attendeeMap(practiceId: string): Promise<Map<string, string[]>> {
+  const { data } = await supabaseAdmin
+    .from('client_members')
+    .select('client_id, email')
+    .eq('practice_id', practiceId)
+    .is('revoked_at', null)
+  const map = new Map<string, string[]>()
+  for (const m of data ?? []) {
+    if (!m.email) continue
+    map.set(m.client_id, [...(map.get(m.client_id) ?? []), m.email])
+  }
+  return map
 }
 
 /** A fresh access token for a member's connection, refreshing and
@@ -156,6 +183,77 @@ async function pullBusyForMember(
   return rows.length
 }
 
+/** One session to Google: insert, patch, or remove by its state. */
+async function pushRow(
+  token: string,
+  row: SessionRow,
+  attendees: string[]
+): Promise<'inserted' | 'patched' | 'removed' | 'failed' | 'noop'> {
+  if (row.status === 'booked' && !row.gcal_event_id) {
+    const r = await insertEvent(token, eventInput(row, attendees))
+    if (r.ok && r.eventId) {
+      await supabaseAdmin.from('sessions').update({ gcal_event_id: r.eventId }).eq('id', row.id)
+      return 'inserted'
+    }
+    return 'failed'
+  }
+  if (row.status === 'booked' && row.gcal_event_id) {
+    const r = await patchEvent(token, row.gcal_event_id, eventInput(row, attendees))
+    return r.ok ? 'patched' : 'failed'
+  }
+  if (row.status === 'canceled' && row.gcal_event_id) {
+    const r = await deleteEvent(token, row.gcal_event_id)
+    if (r.ok) {
+      await supabaseAdmin.from('sessions').update({ gcal_event_id: null }).eq('id', row.id)
+      return 'removed'
+    }
+    return 'failed'
+  }
+  return 'noop'
+}
+
+/**
+ * Push exactly one session, by id: the target of /api/calendar/push
+ * (HMAC-verified) and the immediate step after a practice-side booking.
+ * Callers have already proven their authority; the session id names
+ * everything else. One consultant, one calendar in v1: the practice's
+ * oldest live connection owns the events, the standing Ring 2 shape.
+ */
+export async function pushSessionById(
+  sessionId: string
+): Promise<{ ok: boolean; detail?: string }> {
+  const { data: row } = await supabaseAdmin
+    .from('sessions')
+    .select(`practice_id, ${SESSION_COLUMNS}`)
+    .eq('id', sessionId)
+    .maybeSingle()
+  if (!row) return { ok: false, detail: 'not_found' }
+  const session = row as unknown as SessionRow & { practice_id: string }
+
+  const { data: conn } = await supabaseAdmin
+    .from('google_connections')
+    .select('practice_member_id')
+    .eq('practice_id', session.practice_id)
+    .not('refresh_token_enc', 'is', null)
+    .order('created_at')
+    .limit(1)
+    .maybeSingle()
+  if (!conn) return { ok: false, detail: 'not_connected' }
+
+  const auth = await tokenForMember(conn.practice_member_id, session.practice_id)
+  if (!auth) return { ok: false, detail: 'not_connected' }
+
+  const attendees = await attendeeMap(session.practice_id)
+  const outcome = await pushRow(auth.token, session, attendees.get(session.client_id) ?? [])
+  await logAuditAction({
+    actorEmail: 'calendar-push',
+    action: 'calendar.push',
+    target: sessionId,
+    detail: { outcome },
+  })
+  return { ok: outcome !== 'failed', detail: outcome }
+}
+
 /** Push and pull for one member's connection. The core both the
  *  Settings action (via syncPracticeCalendar) and the refresh cron
  *  share; callers have already proven their authority. */
@@ -177,12 +275,15 @@ export async function syncMember(args: {
     }
   }
 
-  const { data: rows } = await supabaseAdmin
-    .from('sessions')
-    .select('id, starts_at, ends_at, tz, kind, status, gcal_event_id, clients(name)')
-    .eq('practice_id', args.practiceId)
-    .in('status', ['booked', 'canceled'])
-    .gte('ends_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+  const [{ data: rows }, attendees] = await Promise.all([
+    supabaseAdmin
+      .from('sessions')
+      .select(SESSION_COLUMNS)
+      .eq('practice_id', args.practiceId)
+      .in('status', ['booked', 'canceled'])
+      .gte('ends_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
+    attendeeMap(args.practiceId),
+  ])
 
   let inserted = 0
   let patched = 0
@@ -190,23 +291,11 @@ export async function syncMember(args: {
   let failed = 0
 
   for (const row of (rows ?? []) as unknown as SessionRow[]) {
-    if (row.status === 'booked' && !row.gcal_event_id) {
-      const r = await insertEvent(auth.token, eventInput(row))
-      if (r.ok && r.eventId) {
-        await supabaseAdmin.from('sessions').update({ gcal_event_id: r.eventId }).eq('id', row.id)
-        inserted++
-      } else failed++
-    } else if (row.status === 'booked' && row.gcal_event_id) {
-      const r = await patchEvent(auth.token, row.gcal_event_id, eventInput(row))
-      if (r.ok) patched++
-      else failed++
-    } else if (row.status === 'canceled' && row.gcal_event_id) {
-      const r = await deleteEvent(auth.token, row.gcal_event_id)
-      if (r.ok) {
-        await supabaseAdmin.from('sessions').update({ gcal_event_id: null }).eq('id', row.id)
-        removed++
-      } else failed++
-    }
+    const outcome = await pushRow(auth.token, row, attendees.get(row.client_id) ?? [])
+    if (outcome === 'inserted') inserted++
+    else if (outcome === 'patched') patched++
+    else if (outcome === 'removed') removed++
+    else if (outcome === 'failed') failed++
   }
 
   const pulled = await pullBusyForMember(args.memberId, args.practiceId, auth.token)

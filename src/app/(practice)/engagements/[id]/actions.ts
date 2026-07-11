@@ -24,6 +24,7 @@ import { clientTeamRecipients, notify } from '@/lib/notify'
 import { parseAnchorParam, resolveAnchor } from '@/lib/messageAnchors'
 import { assembleSlots } from '@/lib/slotAssembly'
 import { fetchSchedulingSettings, resolveDuration } from '@/lib/schedulingSettings'
+import { pushSessionById } from '@/lib/calendarSync'
 import { isOfferedSlot } from '@/lib/scheduling'
 
 /**
@@ -1668,7 +1669,9 @@ export async function confirmPollOption(formData: FormData): Promise<void> {
   // refuses honestly and stays on the poll. The poll's own duration is
   // exact here: the team marked candidates of THAT length, and a later
   // narrowing of the offer never rewrites what they agreed to.
+  const confirmSettings = await fetchSchedulingSettings(supabase, poll!.practice_id)
   const offered = await assembleSlots(supabase, { practiceId: poll!.practice_id }, new Date(), {
+    settings: confirmSettings,
     exactDurationMinutes: poll!.slot_minutes,
   })
   const slot = isOfferedSlot(offered, new Date(option!.starts_at))
@@ -1685,6 +1688,8 @@ export async function confirmPollOption(formData: FormData): Promise<void> {
       tz: slot!.tz,
       kind: 'working',
       status: 'booked',
+      // The video link, snapshotted (gate 4I-1).
+      location: confirmSettings.videoLink,
       created_by: viewer.user!.id,
     })
     .select('id')
@@ -1700,6 +1705,10 @@ export async function confirmPollOption(formData: FormData): Promise<void> {
     .update({ status: 'booked', session_id: session!.id, closed_at: new Date().toISOString() })
     .eq('id', poll!.id)
   if (closeError) console.error('[polls] close after booking failed:', closeError.message)
+
+  // The invite goes out with everyone on it, right now (V2 4I); a
+  // Google failure degrades to the hourly cron, never to a lost booking.
+  await pushSessionById(session!.id)
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',

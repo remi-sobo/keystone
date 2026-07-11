@@ -254,22 +254,33 @@ export interface CalendarEventInput {
   startsAt: Date
   endsAt: Date
   tz: string
+  /** The video link (or address); Google renders it as Where (V2 4I). */
+  location?: string
+  /** Attendee emails. With sendUpdates=all Google mails the invite and
+   *  the event lands on every attendee's calendar (V2 4I, gate 4I-2). */
+  attendees?: string[]
 }
 
 function eventBody(e: CalendarEventInput) {
   return {
     summary: e.summary,
     description: e.description,
+    location: e.location,
+    attendees: e.attendees?.map((email) => ({ email })),
     start: { dateTime: floatingLocal(e.startsAt, e.tz), timeZone: e.tz },
     end: { dateTime: floatingLocal(e.endsAt, e.tz), timeZone: e.tz },
   }
 }
 
+// Google notifies every attendee on insert, change, and removal; the
+// invite email IS the confirmation, Keystone sends no parallel one.
+const NOTIFY_ALL = 'sendUpdates=all'
+
 export async function insertEvent(
   accessToken: string,
   e: CalendarEventInput
 ): Promise<{ ok: boolean; eventId?: string; status: number }> {
-  const res = await fetch(`${CAL}/events`, {
+  const res = await fetch(`${CAL}/events?${NOTIFY_ALL}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(eventBody(e)),
@@ -284,7 +295,7 @@ export async function patchEvent(
   eventId: string,
   e: CalendarEventInput
 ): Promise<{ ok: boolean; status: number }> {
-  const res = await fetch(`${CAL}/events/${encodeURIComponent(eventId)}`, {
+  const res = await fetch(`${CAL}/events/${encodeURIComponent(eventId)}?${NOTIFY_ALL}`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(eventBody(e)),
@@ -296,7 +307,7 @@ export async function deleteEvent(
   accessToken: string,
   eventId: string
 ): Promise<{ ok: boolean; status: number }> {
-  const res = await fetch(`${CAL}/events/${encodeURIComponent(eventId)}`, {
+  const res = await fetch(`${CAL}/events/${encodeURIComponent(eventId)}?${NOTIFY_ALL}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${accessToken}` },
   })

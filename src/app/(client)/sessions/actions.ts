@@ -2,13 +2,25 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import { z } from 'zod'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
 import { checkRateLimits, LIMITS } from '@/lib/rateLimit'
 import { assembleSlots } from '@/lib/slotAssembly'
+import { fetchSchedulingSettings } from '@/lib/schedulingSettings'
 import { isOfferedSlot } from '@/lib/scheduling'
 import { shiftSessionHomework } from '@/lib/rescheduleShift'
+import { requestCalendarPush } from '@/lib/pushToken'
+
+/** The request's own origin, for the internal calendar push. */
+async function requestOrigin(): Promise<string> {
+  const h = await headers()
+  const host = h.get('x-forwarded-host') ?? h.get('host')
+  const proto = h.get('x-forwarded-proto') ?? 'https'
+  if (host) return `${proto}://${host}`
+  return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+}
 
 /**
  * Booking actions (client surface, PURE RLS). Every write goes through
@@ -59,29 +71,40 @@ export async function bookSession(formData: FormData): Promise<void> {
     .maybeSingle()
   if (!engagement) redirect('/sessions?state=no_engagement')
 
+  const settings = await fetchSchedulingSettings(supabase, client.practiceId)
   const slots = await assembleSlots(supabase, client, new Date(), {
+    settings,
     durationMinutes: parsed.data.duration,
   })
   const slot = isOfferedSlot(slots, new Date(parsed.data.start))
   if (!slot) redirect('/sessions?state=slot_gone')
 
-  const { error } = await supabase.from('sessions').insert({
-    engagement_id: engagement.id,
-    practice_id: client.practiceId,
-    client_id: client.clientId,
-    starts_at: slot.startsAt.toISOString(),
-    ends_at: slot.endsAt.toISOString(),
-    tz: slot.tz,
-    kind: 'working',
-    status: 'booked',
-    created_by: viewer.user!.id,
-  })
-  if (error) {
+  const { data: session, error } = await supabase
+    .from('sessions')
+    .insert({
+      engagement_id: engagement.id,
+      practice_id: client.practiceId,
+      client_id: client.clientId,
+      starts_at: slot.startsAt.toISOString(),
+      ends_at: slot.endsAt.toISOString(),
+      tz: slot.tz,
+      kind: 'working',
+      status: 'booked',
+      // The video link, snapshotted (gate 4I-1): a later settings edit
+      // never rewrites a booked session.
+      location: settings.videoLink,
+      created_by: viewer.user!.id,
+    })
+    .select('id')
+    .single()
+  if (error || !session) {
     // 23P01: the exclusion constraint caught a race on a taken slot.
-    const gone = error.code === '23P01'
-    console.error('[sessions] booking failed:', error.code)
+    const gone = error?.code === '23P01'
+    console.error('[sessions] booking failed:', error?.code)
     redirect(gone ? '/sessions?state=slot_gone' : '/sessions?state=error')
   }
+  // The invite reaches every calendar in seconds, not on the next cron.
+  await requestCalendarPush(await requestOrigin(), session!.id)
   revalidatePath('/sessions')
   revalidatePath('/home')
   redirect('/sessions?state=booked')
@@ -160,6 +183,8 @@ export async function rescheduleSession(formData: FormData): Promise<void> {
     deltaDays,
     actorEmail: viewer.user!.email ?? '',
   })
+  // Google patches the event and tells every attendee (V2 4I).
+  await requestCalendarPush(await requestOrigin(), ref.data.id)
 
   revalidatePath('/sessions')
   revalidatePath('/home')
@@ -183,6 +208,8 @@ export async function cancelSession(formData: FormData): Promise<void> {
     console.error('[sessions] cancel failed:', error.code)
     redirect('/sessions?state=error')
   }
+  // Google removes the event and tells every attendee (V2 4I).
+  await requestCalendarPush(await requestOrigin(), ref.data.id)
   revalidatePath('/sessions')
   revalidatePath('/home')
   redirect('/sessions?state=canceled')

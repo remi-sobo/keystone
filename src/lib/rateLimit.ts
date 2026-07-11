@@ -241,6 +241,14 @@ export const LIMITS = {
     max: 30,
   },
 
+  // The single-session push (V2 4I): HMAC-gated internal calls after a
+  // booking move. Keyed per session; a replay storm hits this wall.
+  CALENDAR_PUSH_PER_MIN: {
+    kind: 'calendar-push:session:min',
+    windowMs: 60 * 1000,
+    max: 6,
+  },
+
   // Invite emails (V2 1A): each send is a Resend email carrying the
   // practice's name, so both noise and spend are bounded. Per target
   // row: one send per ten minutes. Per practice: a modest hourly cap.

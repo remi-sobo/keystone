@@ -21,6 +21,8 @@ import {
   closeSessionPoll,
   completeInternalTask,
   reopenInternalTask,
+  setEngagementOwner,
+  setWorkstreamOwner,
   confirmPollOption,
   createSessionPoll,
   askEngagementQuestion,
@@ -68,6 +70,8 @@ const STATES: Record<string, string> = {
   hw_error: 'That did not save. Check the fields and try again.',
   internal_done: 'Checked off. Internal tasks stay between us.',
   internal_reopened: 'Reopened.',
+  owner_saved: 'Owner saved.',
+  owner_error: 'That did not save. Try again.',
   poll_opened: 'Poll opened. The team sees it on their sessions page now.',
   poll_exists: 'There is already an open poll for this engagement. Close it first.',
   poll_slot_gone: 'One of those times is no longer free. Refresh and pick again.',
@@ -118,7 +122,7 @@ export default async function EngagementDetailPage({
 
   const { data: engagement } = await supabase
     .from('engagements')
-    .select('id, title, status, practice_id, client_id, digest_cadence, clients(name)')
+    .select('id, title, status, practice_id, client_id, digest_cadence, owner_practice_member_id, clients(name)')
     .eq('id', id)
     .maybeSingle()
   if (!engagement) redirect('/engagements')
@@ -130,7 +134,7 @@ export default async function EngagementDetailPage({
   const [ws, practice, sessions, items, readiness, deliverables] = await Promise.all([
     supabase
       .from('workstreams')
-      .select('id, title, stage, sort, note_md, note_updated_at')
+      .select('id, title, stage, sort, note_md, note_updated_at, owner_practice_member_id')
       .eq('engagement_id', id)
       .order('sort'),
     supabase.from('practices').select('stage_config').eq('id', engagement.practice_id).maybeSingle(),
@@ -438,6 +442,30 @@ export default async function EngagementDetailPage({
         </Link>
       </p>
 
+      {/* V2 4C: who owns the relationship. Descriptive, who to ask. */}
+      <form action={setEngagementOwner} className="mb-8 flex flex-wrap items-center gap-2 text-sm">
+        <input type="hidden" name="engagementId" value={engagement.id} />
+        <label className="text-ink-dim" htmlFor="engagement-owner">
+          Engagement owner
+        </label>
+        <select
+          id="engagement-owner"
+          name="memberId"
+          defaultValue={engagement.owner_practice_member_id ?? ''}
+          className="rounded-lg border border-ink/15 bg-paper-raised px-2 py-1 text-sm text-ink"
+        >
+          <option value="">No owner yet</option>
+          {(practiceRoster ?? []).map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.email}
+            </option>
+          ))}
+        </select>
+        <button type="submit" className="text-ink-dim underline hover:text-ink">
+          Save
+        </button>
+      </form>
+
       <section className="flex flex-col gap-6">
         {(ws.data ?? []).map((w) => (
           <div key={w.id}>
@@ -457,6 +485,29 @@ export default async function EngagementDetailPage({
               />
               <button type="submit" className="text-sm text-ink-dim underline hover:text-ink">
                 Save note
+              </button>
+            </form>
+            <form action={setWorkstreamOwner} className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
+              <input type="hidden" name="engagementId" value={engagement.id} />
+              <input type="hidden" name="workstreamId" value={w.id} />
+              <label className="text-ink-dim" htmlFor={`ws-owner-${w.id}`}>
+                Owner
+              </label>
+              <select
+                id={`ws-owner-${w.id}`}
+                name="memberId"
+                defaultValue={w.owner_practice_member_id ?? ''}
+                className="rounded border border-ink/15 bg-paper-raised px-2 py-0.5 text-xs text-ink"
+              >
+                <option value="">No owner yet</option>
+                {(practiceRoster ?? []).map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.email}
+                  </option>
+                ))}
+              </select>
+              <button type="submit" className="text-ink-dim underline hover:text-ink">
+                Save
               </button>
             </form>
           </div>

@@ -35,6 +35,8 @@ export function practiceNav(): NavItem[] {
     { href: '/today', label: 'Home', icon: 'home', mobile: true },
     { href: '/clients', label: 'Clients', icon: 'clients', mobile: true },
     { href: '/engagements', label: 'Engagements', icon: 'engagements', mobile: true },
+    // Desktop rail only: the mobile bar keeps its five.
+    { href: '/team', label: 'Team', icon: 'clients' },
     // /library belongs to the client surface; authoring sits beneath it
     // (the App Router cannot give two route groups the same path).
     { href: '/library/authoring', label: 'Library', icon: 'library', mobile: true },

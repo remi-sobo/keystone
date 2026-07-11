@@ -728,6 +728,79 @@ const NoteShape = z.object({
  * engagement.write policy; client-visible on save by design, so the
  * prose rides the voice gate.
  */
+// ── Ownership (V2 4C) ────────────────────────────────────────────────
+// Descriptive, never a score: the owner is who to ask. The assignee is
+// verified against the caller's OWN practice before the write, and the
+// write itself rides keystone_can on the session client.
+
+const OwnerShape = z.object({
+  engagementId: z.string().uuid(),
+  workstreamId: z.string().uuid().optional(),
+  memberId: z.union([z.literal(''), z.string().uuid()]),
+})
+
+async function verifiedOwnerUpdate(formData: FormData): Promise<{
+  supabase: Awaited<ReturnType<typeof createServerSupabase>>
+  engagementId: string
+  workstreamId?: string
+  memberId: string | null
+} | null> {
+  const viewer = await guardPractice()
+  const parsed = OwnerShape.safeParse({
+    engagementId: formData.get('engagementId'),
+    workstreamId: formData.get('workstreamId') ?? undefined,
+    memberId: formData.get('memberId') ?? '',
+  })
+  if (!parsed.success) return null
+  const supabase = await createServerSupabase()
+  const memberId = parsed.data.memberId || null
+  if (memberId) {
+    const { data: member } = await supabase
+      .from('practice_members')
+      .select('id')
+      .eq('id', memberId)
+      .eq('practice_id', viewer.practice!.practiceId)
+      .is('revoked_at', null)
+      .maybeSingle()
+    if (!member) return null
+  }
+  return {
+    supabase,
+    engagementId: parsed.data.engagementId,
+    workstreamId: parsed.data.workstreamId,
+    memberId,
+  }
+}
+
+export async function setEngagementOwner(formData: FormData): Promise<void> {
+  const ctx = await verifiedOwnerUpdate(formData)
+  if (!ctx) redirect('/engagements')
+  const { error } = await ctx.supabase
+    .from('engagements')
+    .update({ owner_practice_member_id: ctx.memberId })
+    .eq('id', ctx.engagementId)
+  if (error) {
+    console.error('[ownership] engagement owner save failed:', error.message)
+    redirect(`/engagements/${ctx.engagementId}?state=owner_error`)
+  }
+  redirect(`/engagements/${ctx.engagementId}?state=owner_saved`)
+}
+
+export async function setWorkstreamOwner(formData: FormData): Promise<void> {
+  const ctx = await verifiedOwnerUpdate(formData)
+  if (!ctx || !ctx.workstreamId) redirect('/engagements')
+  const { error } = await ctx.supabase
+    .from('workstreams')
+    .update({ owner_practice_member_id: ctx.memberId })
+    .eq('id', ctx.workstreamId)
+    .eq('engagement_id', ctx.engagementId)
+  if (error) {
+    console.error('[ownership] workstream owner save failed:', error.message)
+    redirect(`/engagements/${ctx.engagementId}?state=owner_error`)
+  }
+  redirect(`/engagements/${ctx.engagementId}?state=owner_saved`)
+}
+
 export async function saveWorkstreamNote(formData: FormData): Promise<void> {
   const viewer = await guardPractice()
   const parsed = NoteShape.safeParse({

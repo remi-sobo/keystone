@@ -33,6 +33,11 @@ export async function logAuditAction(opts: {
   action: string
   target?: string | null
   detail?: Record<string, unknown> | null
+  /** V2 activity view: stamp the scope so the row reads back per
+   *  engagement. Optional; rows without it predate the columns or are
+   *  not engagement work (invites, calendar, library authoring). */
+  practiceId?: string | null
+  engagementId?: string | null
 }): Promise<void> {
   try {
     const { error } = await supabaseAdmin.from('audit_log').insert({
@@ -40,10 +45,41 @@ export async function logAuditAction(opts: {
       action: opts.action,
       target: opts.target ?? null,
       detail: opts.detail ?? null,
+      practice_id: opts.practiceId ?? null,
+      engagement_id: opts.engagementId ?? null,
     })
     if (error) console.error('[audit] insert failed:', error.message)
   } catch (e) {
     console.error('[audit] insert threw:', e instanceof Error ? e.message : 'unknown')
+  }
+}
+
+/**
+ * V2 activity view: the per-engagement feed. Service-role read, so the
+ * CALLER must sit behind the practice check (the enforcement model's
+ * sanctioned path); the client surface guard keeps this import off the
+ * pure-RLS side. Returns metadata only, and the surface renders even
+ * less: action and when, never detail payloads.
+ */
+export async function listEngagementAudit(
+  engagementId: string,
+  limit = 30
+): Promise<AuditEntry[]> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('audit_log')
+      .select('id, actor_email, action, target, detail, created_at')
+      .eq('engagement_id', engagementId)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    if (error) {
+      console.error('[audit] engagement feed read failed:', error.message)
+      return []
+    }
+    return (data ?? []) as AuditEntry[]
+  } catch (e) {
+    console.error('[audit] engagement feed threw:', e instanceof Error ? e.message : 'unknown')
+    return []
   }
 }
 

@@ -214,6 +214,8 @@ export async function createDeliverable(
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement.id,
+    practiceId: viewer.practice!.practiceId,
     action: 'deliverable.create',
     target: engagement.id,
     detail: { kind: d.kind },
@@ -251,7 +253,7 @@ export async function removeDeliverable(formData: FormData): Promise<void> {
   const supabase = await createServerSupabase()
   const { data: row } = await supabase
     .from('deliverables')
-    .select('id, storage_path, practice_id')
+    .select('id, storage_path, practice_id, engagement_id')
     .eq('id', parsed.data.deliverableId)
     .eq('practice_id', viewer.practice!.practiceId)
     .maybeSingle()
@@ -271,6 +273,8 @@ export async function removeDeliverable(formData: FormData): Promise<void> {
     }
     await logAuditAction({
       actorEmail: viewer.user!.email ?? '',
+      engagementId: row.engagement_id,
+      practiceId: viewer.practice!.practiceId,
       action: 'deliverable.remove',
       target: row.id,
     })
@@ -529,6 +533,8 @@ export async function createEngagementDocument(
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement.id,
+    practiceId: viewer.practice!.practiceId,
     action: 'documents.uploaded',
     target: engagement.id,
     detail: { status: d.status, visible_to_client: d.visibleToClient },
@@ -566,6 +572,8 @@ export async function setDocumentVisibility(formData: FormData): Promise<void> {
   else {
     await logAuditAction({
       actorEmail: viewer.user!.email ?? '',
+      engagementId: parsed.data.engagementId,
+      practiceId: viewer.practice!.practiceId,
       action: 'documents.visibility_changed',
       target: parsed.data.documentId,
       detail: { to: parsed.data.to },
@@ -591,7 +599,7 @@ export async function removeEngagementDocument(formData: FormData): Promise<void
   const supabase = await createServerSupabase()
   const { data: row } = await supabase
     .from('engagement_documents')
-    .select('id, storage_path')
+    .select('id, storage_path, engagement_id')
     .eq('id', parsed.data.documentId)
     .eq('practice_id', viewer.practice!.practiceId)
     .maybeSingle()
@@ -613,6 +621,8 @@ export async function removeEngagementDocument(formData: FormData): Promise<void
     }
     await logAuditAction({
       actorEmail: viewer.user!.email ?? '',
+      engagementId: row.engagement_id,
+      practiceId: viewer.practice!.practiceId,
       action: 'documents.removed',
       target: row.id,
     })
@@ -705,6 +715,8 @@ export async function addDecision(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement.id,
+    practiceId: viewer.practice!.practiceId,
     action: 'decisions.logged',
     target: engagement.id,
     detail: { workstream: d.workstreamId ?? null, supersedes: d.supersedes ?? null },
@@ -849,6 +861,8 @@ export async function saveWorkstreamNote(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement.id,
+    practiceId: viewer.practice!.practiceId,
     action: 'workstreams.note_saved',
     target: parsed.data.workstreamId,
     detail: { cleared: note === null },
@@ -967,6 +981,8 @@ export async function saveOutcome(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement.id,
+    practiceId: viewer.practice!.practiceId,
     action: o.outcomeId ? 'outcomes.updated' : 'outcomes.created',
     target: engagement.id,
   })
@@ -1043,6 +1059,8 @@ export async function attachEvidence(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement.id,
+    practiceId: viewer.practice!.practiceId,
     action: 'outcomes.evidence_attached',
     target: outcome.id,
     detail: { kind },
@@ -1068,6 +1086,8 @@ export async function removeEvidence(formData: FormData): Promise<void> {
   else {
     await logAuditAction({
       actorEmail: viewer.user!.email ?? '',
+      engagementId: engagementId.data,
+      practiceId: viewer.practice!.practiceId,
       action: 'outcomes.evidence_removed',
       target: id.data,
     })
@@ -1348,6 +1368,8 @@ export async function addHomework(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement.id,
+    practiceId: viewer.practice!.practiceId,
     action: 'homework.added',
     target: engagement.id,
     detail: { audience: d.audience, review: d.review === 'on' },
@@ -1407,6 +1429,8 @@ export async function completeInternalTask(formData: FormData): Promise<void> {
   }
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: item.engagement_id,
+    practiceId: viewer.practice!.practiceId,
     action: 'homework.internal_done',
     target: item.id,
   })
@@ -1436,6 +1460,8 @@ export async function reopenInternalTask(formData: FormData): Promise<void> {
   }
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: item.engagement_id,
+    practiceId: viewer.practice!.practiceId,
     action: 'homework.internal_reopened',
     target: item.id,
   })
@@ -1480,6 +1506,8 @@ export async function acceptHomework(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: item.engagement_id,
+    practiceId: viewer.practice!.practiceId,
     action: 'homework.accepted',
     target: item.id,
   })
@@ -1539,6 +1567,8 @@ export async function sendBackHomework(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: item.engagement_id,
+    practiceId: viewer.practice!.practiceId,
     action: 'homework.sent_back',
     target: item.id,
   })
@@ -1734,6 +1764,8 @@ export async function createSessionPoll(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement.id,
+    practiceId: viewer.practice!.practiceId,
     action: 'poll.opened',
     target: engagement.id,
     detail: { options: rows.length },
@@ -1823,6 +1855,8 @@ export async function confirmPollOption(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: poll!.engagement_id,
+    practiceId: viewer.practice!.practiceId,
     action: 'poll.booked',
     target: poll!.id,
     detail: { session: session!.id },
@@ -1866,6 +1900,8 @@ export async function closeSessionPoll(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagementId,
+    practiceId: viewer.practice!.practiceId,
     action: 'poll.closed',
     target: pollId,
   })
@@ -1998,6 +2034,8 @@ export async function replaceDeliverableFile(
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: row.engagement_id,
+    practiceId: viewer.practice!.practiceId,
     action: 'deliverable.replaced',
     target: row.id,
     detail: { version: (count ?? 0) + 1 },
@@ -2058,6 +2096,8 @@ export async function requestDeliverableAcceptance(formData: FormData): Promise<
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: row.engagement_id,
+    practiceId: viewer.practice!.practiceId,
     action: 'deliverable.acceptance_requested',
     target: row.id,
   })
@@ -2105,6 +2145,8 @@ export async function setDigestCadence(formData: FormData): Promise<void> {
   }
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: parsed.data.engagementId,
+    practiceId: viewer.practice!.practiceId,
     action: 'digest.cadence',
     target: parsed.data.engagementId,
     detail: { cadence: parsed.data.cadence },

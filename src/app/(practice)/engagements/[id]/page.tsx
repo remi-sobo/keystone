@@ -13,6 +13,7 @@ import { loopStatesByItem, LOOP_LABEL } from '@/lib/homework'
 import { anchorHref, parseAnchorParam, resolveAnchor, type AnchorType } from '@/lib/messageAnchors'
 import { readinessFacts } from '@/lib/readinessFacts'
 import { engagementHealth, replyLag, reviewStanding } from '@/lib/health'
+import { listEngagementAudit } from '@/lib/audit'
 import MarkdownEditor from '@/components/MarkdownEditor'
 import { assembleSlots } from '@/lib/slotAssembly'
 import {
@@ -168,6 +169,10 @@ export default async function EngagementDetailPage({
     .eq('engagement_id', id)
     .order('created_at', { ascending: true })
     .limit(200)
+
+  // Activity view: service-role read AFTER the practice layout check
+  // and the RLS engagement resolve above (the sanctioned path).
+  const activity = await listEngagementAudit(id, 30)
 
   // 4E: stage events feed the health read (moving, quiet weeks).
   const { data: stageEventRows } = await supabase
@@ -1572,6 +1577,29 @@ export default async function EngagementDetailPage({
           </form>
         </details>
       </section>
+
+      {/* V2 activity view: what happened here lately. Action, when,
+          who; never detail payloads. The trail starts when the scope
+          columns landed. */}
+      <details className="mt-12">
+        <summary className="cursor-pointer text-sm font-medium text-forest">
+          Activity ({activity.length})
+        </summary>
+        {activity.length === 0 ? (
+          <p className="mt-2 text-sm text-ink-dim">
+            Nothing recorded yet. The trail starts with actions taken after July 2026.
+          </p>
+        ) : (
+          <ul className="mt-2 flex flex-col gap-1">
+            {activity.map((a) => (
+              <li key={a.id} className="text-sm text-ink-dim">
+                <span className="font-mono text-xs">{a.action}</span>, {fmt2(a.created_at)}, by{' '}
+                {a.actor_email}
+              </li>
+            ))}
+          </ul>
+        )}
+      </details>
     </RoomShell>
   )
 }

@@ -99,6 +99,8 @@ export async function saveCharterDraft(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement.id,
+    practiceId: viewer.practice!.practiceId,
     action: 'charter.draft_saved',
     target: engagement.id,
   })
@@ -180,6 +182,8 @@ export async function publishCharter(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement.id,
+    practiceId: viewer.practice!.practiceId,
     action: 'charter.published',
     target: engagement.id,
     detail: { version: draft.version, superseded: current?.version ?? null },
@@ -234,6 +238,8 @@ export async function requestCharterSignoff(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement.id,
+    practiceId: viewer.practice!.practiceId,
     action: 'charter.signoff_requested',
     target: engagement.id,
     detail: { version: current.version },

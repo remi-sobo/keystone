@@ -58,4 +58,15 @@ test('the matrix proves the closeout walls', () => {
   expect(seed).toContain('a published closeout must reach the client team')
   expect(seed).toContain('LEAK cross-client: member_b reads client_a closeout')
   expect(seed).toContain('HOLE 5A: a closeout was deleted')
+  expect(seed).toContain(
+    'LEAK cross-client same practice: member_a2 reads client_a1 closeout'
+  )
+})
+
+test('post-publish edits show themselves: updated_at surfaces on both rooms', () => {
+  const client = read('src/app/(client)/closeout/page.tsx')
+  expect(client).toContain('sections last edited')
+  expect(client).toContain('edited since this sign-off')
+  const practice = read('src/app/(practice)/engagements/[id]/closeout/page.tsx')
+  expect(practice).toContain('sections last edited')
 })

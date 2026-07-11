@@ -2301,6 +2301,13 @@ do $$ begin
   end if;
 end $$;
 select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$ begin
+  if (select count(*) from closeouts) <> 0 then
+    raise exception 'LEAK cross-client same practice: member_a2 reads client_a1 closeout';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
   '{"sub":"00000000-0000-0000-0000-0000000000b1","email":"member_b@client-b.test"}', false);
 do $$ begin
   if (select count(*) from closeouts) <> 0 then
@@ -2356,6 +2363,13 @@ do $$ declare n int; begin
   if n <> 0 then raise exception 'HOLE 5C: a client member edited the case study'; end if;
 end $$;
 select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$ begin
+  if (select count(*) from case_studies) <> 0 then
+    raise exception 'LEAK cross-client same practice: member_a2 reads client_a1 case study';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
   '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
 do $$ begin
   if (select count(*) from case_studies) <> 0 then
@@ -2395,6 +2409,13 @@ select set_config('request.jwt.claims',
 do $$ begin
   if (select count(*) from change_orders) <> 1 then
     raise exception 'a change order is a shared page for the whole client team';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$ begin
+  if (select count(*) from change_orders) <> 0 then
+    raise exception 'LEAK cross-client same practice: member_a2 reads client_a1 change orders';
   end if;
 end $$;
 select set_config('request.jwt.claims',

@@ -40,6 +40,24 @@ async function scopedEngagement(engagementId: string, practiceId: string) {
   return { supabase, engagement: data }
 }
 
+/**
+ * Re-consent law (review finding, 2026-07-11): the approval covers the
+ * TEXT the client read, not the row. Any content change withdraws a
+ * pending ask (the charter's withdraw precedent, service role after
+ * the scoped check) and drops status back to draft, so the client
+ * stops seeing the row and a fresh ask is required before anything
+ * is publishable. An already-approved row stays as history: it
+ * covers the old text, and the surfaces say so.
+ */
+async function withdrawPendingAsk(caseStudyId: string): Promise<void> {
+  await supabaseAdmin
+    .from('approvals')
+    .update({ status: 'withdrawn' })
+    .eq('subject_type', 'case_study')
+    .eq('subject_id', caseStudyId)
+    .eq('status', 'pending')
+}
+
 function sweep(practiceId: string, text: string, source: string): string {
   const check = validateVoice(text)
   if (check.ok) return text
@@ -202,8 +220,16 @@ export async function decideCaseStudyProposal(formData: FormData): Promise<void>
   if (!payload?.title) redirect(`${back}?state=proposal_gone`)
 
   // The one human accept: the draft graduates to the editable row,
-  // riding the session client under keystone_can.
+  // riding the session client under keystone_can. New content means
+  // any prior consent no longer covers it: withdraw a pending ask and
+  // land as a draft needing a fresh approval.
   const supabase = await createServerSupabase()
+  const { data: existingRow } = await supabase
+    .from('case_studies')
+    .select('id')
+    .eq('engagement_id', engagement.id)
+    .maybeSingle()
+  if (existingRow) await withdrawPendingAsk(existingRow.id)
   const { error } = await supabase.from('case_studies').upsert(
     {
       engagement_id: engagement.id,
@@ -211,6 +237,7 @@ export async function decideCaseStudyProposal(formData: FormData): Promise<void>
       client_id: engagement.client_id,
       title: payload.title,
       body_md: payload.body_md ?? '',
+      status: 'draft',
       proposal_id: proposal.id,
       created_by: viewer.user!.id,
       updated_at: new Date().toISOString(),
@@ -261,7 +288,15 @@ export async function saveCaseStudy(formData: FormData): Promise<void> {
   const back = `/engagements/${engagement.id}/case-study`
 
   // The quote is captured by hand from the client's own words, never
-  // model-written; it is swept like everything else.
+  // model-written; it is swept like everything else. An edit changes
+  // the text consent covered: withdraw a pending ask and drop to
+  // draft, so approval always matches what the client actually read.
+  const { data: existingRow } = await supabase
+    .from('case_studies')
+    .select('id')
+    .eq('engagement_id', engagement.id)
+    .maybeSingle()
+  if (existingRow) await withdrawPendingAsk(existingRow.id)
   const { error } = await supabase.from('case_studies').upsert(
     {
       engagement_id: engagement.id,
@@ -270,6 +305,7 @@ export async function saveCaseStudy(formData: FormData): Promise<void> {
       title: sweep(engagement.practice_id, parsed.data.title, 'case_study'),
       body_md: sweep(engagement.practice_id, parsed.data.body, 'case_study'),
       quote_md: parsed.data.quote.trim() || null,
+      status: 'draft',
       created_by: viewer.user!.id,
       updated_at: new Date().toISOString(),
     },
@@ -299,15 +335,21 @@ export async function requestCaseStudyApproval(formData: FormData): Promise<void
     .maybeSingle()
   if (!row) redirect(`${back}?state=nothing_saved`)
 
-  const { data: existing } = await supabase
+  const { data: latest } = await supabase
     .from('approvals')
-    .select('id')
+    .select('id, status')
     .eq('subject_type', 'case_study')
     .eq('subject_id', row.id)
-    .in('status', ['pending', 'approved'])
+    .order('requested_at', { ascending: false })
     .limit(1)
     .maybeSingle()
-  if (existing) redirect(`${back}?state=already_asked`)
+  // A live ask stands; an approval of the UNCHANGED text stands. An
+  // edited study (status back at draft) may ask again: the old
+  // approval covers the old text only.
+  if (latest?.status === 'pending') redirect(`${back}?state=already_asked`)
+  if (latest?.status === 'approved' && row.status === 'client_review') {
+    redirect(`${back}?state=already_asked`)
+  }
 
   const { error: statusError } = await supabase
     .from('case_studies')

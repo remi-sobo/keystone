@@ -173,11 +173,16 @@ export default async function CaseStudyPage({
           </form>
 
           <div className="mt-6 border-t border-ink/10 pt-4">
-            {approval?.status === 'approved' ? (
+            {approval?.status === 'approved' && caseStudy.status === 'client_review' ? (
               <p className="text-sm text-ink">
                 Approved by {approval.decided_by_email ?? 'the client'}
                 {approval.decided_at ? ` on ${approval.decided_at.slice(0, 10)}` : ''}. The approval
                 record is what makes it publishable; copy the text above wherever it goes.
+              </p>
+            ) : approval?.status === 'approved' ? (
+              <p className="text-sm text-ink">
+                Edited since the approval: the approval on record covers the OLD text only. Ask
+                again before anything goes public.
               </p>
             ) : approval?.status === 'pending' ? (
               <p className="text-sm text-ink">Approval pending with the client.</p>
@@ -191,7 +196,8 @@ export default async function CaseStudyPage({
                 Not asked yet. Nothing becomes public without their approval on the record.
               </p>
             )}
-            {!approval || approval.status === 'not_yet' ? (
+            {approval?.status !== 'pending' &&
+            !(approval?.status === 'approved' && caseStudy.status === 'client_review') ? (
               <form action={requestCaseStudyApproval} className="mt-3">
                 <input type="hidden" name="engagementId" value={engagement.id} />
                 <button

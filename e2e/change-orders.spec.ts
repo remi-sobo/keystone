@@ -51,4 +51,7 @@ test('the matrix proves the change-order walls', () => {
   expect(seed).toContain('LEAK cross-client: member_b reads client_a change orders')
   expect(seed).toContain('HOLE 5E: a client member decided a change order')
   expect(seed).toContain('HOLE 5E: a change order was deleted')
+  expect(seed).toContain(
+    'LEAK cross-client same practice: member_a2 reads client_a1 change orders'
+  )
 })

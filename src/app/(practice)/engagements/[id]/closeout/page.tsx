@@ -255,7 +255,13 @@ export default async function CloseoutEditorPage({
             {closeout?.status === 'published' ? (
               <>
                 <p className="text-sm text-ink">
-                  Published {closeout.published_at ? closeout.published_at.slice(0, 10) : ''}.{' '}
+                  Published {closeout.published_at ? closeout.published_at.slice(0, 10) : ''}
+                  {closeout.updated_at &&
+                  closeout.published_at &&
+                  closeout.updated_at > closeout.published_at
+                    ? `; sections last edited ${closeout.updated_at.slice(0, 10)}`
+                    : ''}
+                  .{' '}
                   {signoff?.status === 'approved'
                     ? `Signed off by ${signoff.decided_by_email ?? 'the client'}.`
                     : signoff?.status === 'pending'

@@ -167,8 +167,27 @@ export default async function ClientCloseoutPage({
         </p>
       ) : null}
 
+      <p className="mt-8 text-xs text-ink-dim">
+        Published {closeout.published_at ? closeout.published_at.slice(0, 10) : ''}
+        {closeout.updated_at &&
+        closeout.published_at &&
+        closeout.updated_at.slice(0, 10) !== closeout.published_at.slice(0, 10)
+          ? `; sections last edited ${closeout.updated_at.slice(0, 10)}`
+          : ''}
+        .
+      </p>
+
       <section className="mt-10 border-t border-ink/10 pt-6">
         <h2 className="font-display text-2xl font-medium text-ink">The sign-off</h2>
+        {signoff?.status === 'approved' &&
+        signoff.decided_at &&
+        closeout.updated_at &&
+        closeout.updated_at > signoff.decided_at ? (
+          <p className="mt-2 text-sm text-ink">
+            The sections have been edited since this sign-off; what you signed is the earlier
+            text.
+          </p>
+        ) : null}
         {signoff?.status === 'pending' ? (
           <>
             <p className="mt-2 text-sm text-ink">

@@ -834,6 +834,16 @@ async function verifiedOwnerUpdate(formData: FormData): Promise<{
   })
   if (!parsed.success) return null
   const supabase = await createServerSupabase()
+  // The target must be the caller's own engagement, checked explicitly
+  // like every sibling write here (RLS would filter a forged id to a
+  // zero-row no-op, which would misreport as saved).
+  const { data: engagement } = await supabase
+    .from('engagements')
+    .select('id')
+    .eq('id', parsed.data.engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!engagement) return null
   const memberId = parsed.data.memberId || null
   if (memberId) {
     const { data: member } = await supabase

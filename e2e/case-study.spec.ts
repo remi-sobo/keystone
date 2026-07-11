@@ -69,9 +69,14 @@ test('the draft is inert and the quote is never model-written', () => {
   // The payload carries title and body only; no quote field anywhere
   // near the model path.
   expect(actions).toContain('payload: { title: draft.title, body_md: draft.body_md }')
-  // Approval rides 5D, decided once.
+  // Approval rides 5D; consent covers the TEXT, not the row: every
+  // content write withdraws a pending ask and drops to draft, and an
+  // unchanged approved study cannot be re-asked.
   expect(actions).toContain("subject_type: 'case_study'")
-  expect(actions).toContain(".in('status', ['pending', 'approved'])")
+  expect(actions).toContain('withdrawPendingAsk')
+  const writes = actions.match(/status: 'draft',/g)?.length ?? 0
+  expect(writes, 'both content writes force status back to draft').toBeGreaterThanOrEqual(2)
+  expect(actions).toContain("latest?.status === 'approved' && row.status === 'client_review'")
 })
 
 test('0032 widens the proposal kinds and the matrix walls the review', () => {
@@ -84,4 +89,5 @@ test('0032 widens the proposal kinds and the matrix walls the review', () => {
   expect(seed).toContain('LEAK 5C: a client member reads a draft case study')
   expect(seed).toContain('HOLE 5C: a client member edited the case study')
   expect(seed).toContain('LEAK cross-practice: owner_b reads practice_a case study')
+  expect(seed).toContain('LEAK cross-client same practice: member_a2 reads client_a1 case study')
 })

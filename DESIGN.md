@@ -32,7 +32,7 @@ Fluid tokens: `--text-page: clamp(1.9rem, 3.2vw, 2.6rem)` at 1.05 leading with n
 ## The left sidebar (the room's spine)
 
 - 264px fixed on desktop, collapsible to a 72px icon rail; state persisted per user. Background `--color-paper-deep`, a 1px warm hairline on its right edge, no shadow.
-- Top: the wordmark, `Keystone` in Cormorant with a brass period. When SOBO is the practice, a small "by Sobo Consulting" mono micro-line beneath.
+- Top: the full logo image (`/logo-full.png`, the green arch mark over the navy wordmark with the brass period); the mark alone (`/logo-mark.png`) on the collapsed rail. When SOBO is the practice, a small "by Sobo Consulting" mono micro-line beneath.
 - Nav items: lucide icon plus Jakarta label at 0.92rem. Active state is NOT a filled pill: a 3px brass tick on the left edge, forest text, a whisper of `--color-paper-raised` fill. Hover raises the fill only.
 - Client surface nav: Home, Sessions, Homework, Deliverables, Library, Messages. Practice surface adds Clients, Engagements, Library (authoring), Settings.
 - Bottom: the signed-in person, a client name badge (client surface), a quiet "Message Remi" shortcut on the client side.
@@ -43,7 +43,7 @@ The sidebar does not shrink on mobile, it transforms: a bottom tab bar, five ite
 
 ## Signature screens
 
-- **Login** (the actual front door; the fee's first impression). Full-bleed paper canvas, the Keystone wordmark in Cormorant with the brass period, one quiet Jakarta line beneath ("Where your engagement lives"), the email-first sign-in card on paper-raised with a hairline border, the logo dot-row watermark under 9% opacity behind. No marketing copy, no feature list, no stock imagery. "by Sobo Consulting" in mono in the footer. Auth-flow shape quarried from the Team Esface login; the skin is this system.
+- **Login** (the actual front door; the fee's first impression). Full-bleed paper canvas, the full Keystone logo image (`/logo-full.png`), one quiet Jakarta line beneath ("Where your engagement lives"), the email-first sign-in card on paper-raised with a hairline border, the logo dot-row watermark under 9% opacity behind. No marketing copy, no feature list, no stock imagery. "by Sobo Consulting" in mono in the footer. Auth-flow shape quarried from the Team Esface login; the skin is this system.
 - **Client Home, the progress view** (the screen the $25k lives on). Engagement title in Cormorant. One row per workstream: name, then the five-stage arc as five connected segments; completed stages filled sage, the current stage stroked forest with the slow breathing pulse (2.4s, opacity only), future stages hairline. A brass keystone-shaped tick on any stage completed this week. Right rail: next session card, homework due, latest deliverable. The screen answers "where are we" in five seconds without jargon.
 - **Session detail.** Date and attendees in mono eyebrow, decisions as a Cormorant-led block, action items as the work-spine card, the transcript folded behind a disclosure, prep resources surfaced above upcoming sessions.
 - **Deliverables.** A vertical timeline down a brass hairline, newest first; each artifact a paper-raised card with kind icon, workstream tag in mono, delivered date. An unrolling of receipts for the fee, dense and proud.

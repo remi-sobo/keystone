@@ -7,8 +7,17 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import { getViewer } from '@/lib/membership'
 import { checkRateLimits, LIMITS } from '@/lib/rateLimit'
 import { assembleSlots } from '@/lib/slotAssembly'
+import { fetchSchedulingSettings } from '@/lib/schedulingSettings'
 import { isOfferedSlot } from '@/lib/scheduling'
 import { shiftSessionHomework } from '@/lib/rescheduleShift'
+import { requestCalendarPush } from '@/lib/pushToken'
+
+/** The canonical origin for the internal calendar push. Never derived
+ *  from request headers: the POST carries a signed token, and a forged
+ *  Host header must not choose where it lands. */
+async function requestOrigin(): Promise<string> {
+  return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+}
 
 /**
  * Booking actions (client surface, PURE RLS). Every write goes through
@@ -19,7 +28,12 @@ import { shiftSessionHomework } from '@/lib/rescheduleShift'
  * requested start must match a server-recomputed offered slot.
  */
 
-const BookShape = z.object({ start: z.string().datetime() })
+const BookShape = z.object({
+  start: z.string().datetime(),
+  // The chosen session length (V2 4I). Optional: absent falls to the
+  // practice default; anything outside the offer collapses to it too.
+  duration: z.coerce.number().int().min(15).max(240).optional(),
+})
 const SessionRef = z.object({ id: z.string().uuid() })
 
 async function guard() {
@@ -35,7 +49,10 @@ async function guard() {
 
 export async function bookSession(formData: FormData): Promise<void> {
   const viewer = await guard()
-  const parsed = BookShape.safeParse({ start: formData.get('start') })
+  const parsed = BookShape.safeParse({
+    start: formData.get('start'),
+    duration: formData.get('duration') ?? undefined,
+  })
   if (!parsed.success) redirect('/sessions?state=invalid')
 
   const supabase = await createServerSupabase()
@@ -51,27 +68,40 @@ export async function bookSession(formData: FormData): Promise<void> {
     .maybeSingle()
   if (!engagement) redirect('/sessions?state=no_engagement')
 
-  const slots = await assembleSlots(supabase, client, new Date())
+  const settings = await fetchSchedulingSettings(supabase, client.practiceId)
+  const slots = await assembleSlots(supabase, client, new Date(), {
+    settings,
+    durationMinutes: parsed.data.duration,
+  })
   const slot = isOfferedSlot(slots, new Date(parsed.data.start))
   if (!slot) redirect('/sessions?state=slot_gone')
 
-  const { error } = await supabase.from('sessions').insert({
-    engagement_id: engagement.id,
-    practice_id: client.practiceId,
-    client_id: client.clientId,
-    starts_at: slot.startsAt.toISOString(),
-    ends_at: slot.endsAt.toISOString(),
-    tz: slot.tz,
-    kind: 'working',
-    status: 'booked',
-    created_by: viewer.user!.id,
-  })
-  if (error) {
+  const { data: session, error } = await supabase
+    .from('sessions')
+    .insert({
+      engagement_id: engagement.id,
+      practice_id: client.practiceId,
+      client_id: client.clientId,
+      starts_at: slot.startsAt.toISOString(),
+      ends_at: slot.endsAt.toISOString(),
+      tz: slot.tz,
+      kind: 'working',
+      status: 'booked',
+      // The video link, snapshotted (gate 4I-1): a later settings edit
+      // never rewrites a booked session.
+      location: settings.videoLink,
+      created_by: viewer.user!.id,
+    })
+    .select('id')
+    .single()
+  if (error || !session) {
     // 23P01: the exclusion constraint caught a race on a taken slot.
-    const gone = error.code === '23P01'
-    console.error('[sessions] booking failed:', error.code)
+    const gone = error?.code === '23P01'
+    console.error('[sessions] booking failed:', error?.code)
     redirect(gone ? '/sessions?state=slot_gone' : '/sessions?state=error')
   }
+  // The invite reaches every calendar in seconds, not on the next cron.
+  await requestCalendarPush(await requestOrigin(), session!.id)
   revalidatePath('/sessions')
   revalidatePath('/home')
   redirect('/sessions?state=booked')
@@ -80,7 +110,10 @@ export async function bookSession(formData: FormData): Promise<void> {
 export async function rescheduleSession(formData: FormData): Promise<void> {
   const viewer = await guard()
   const ref = SessionRef.safeParse({ id: formData.get('id') })
-  const parsed = BookShape.safeParse({ start: formData.get('start') })
+  const parsed = BookShape.safeParse({
+    start: formData.get('start'),
+    duration: formData.get('duration') ?? undefined,
+  })
   if (!ref.success || !parsed.success) redirect('/sessions?state=invalid')
 
   const note = String(formData.get('note') ?? '').trim().slice(0, 300) || null
@@ -91,14 +124,27 @@ export async function rescheduleSession(formData: FormData): Promise<void> {
   // The old date first, so the homework delta is honest (gate 3B-2).
   const { data: before } = await supabase
     .from('sessions')
-    .select('starts_at')
+    .select('starts_at, ends_at')
     .eq('id', ref.data.id)
     .eq('client_id', client.clientId)
     .eq('status', 'booked')
     .maybeSingle()
   if (!before) redirect('/sessions?state=invalid')
 
-  const slots = await assembleSlots(supabase, client, new Date())
+  // The session keeps its own length unless the booker chose another;
+  // an already-booked length stays honest even off the current offer.
+  const currentLen = Math.round(
+    (Date.parse(before!.ends_at) - Date.parse(before!.starts_at)) / 60000
+  )
+  const requested = parsed.data.duration ?? currentLen
+  const slots = await assembleSlots(
+    supabase,
+    client,
+    new Date(),
+    requested === currentLen
+      ? { exactDurationMinutes: currentLen }
+      : { durationMinutes: requested }
+  )
   const slot = isOfferedSlot(slots, new Date(parsed.data.start))
   if (!slot) redirect('/sessions?state=slot_gone')
 
@@ -134,6 +180,8 @@ export async function rescheduleSession(formData: FormData): Promise<void> {
     deltaDays,
     actorEmail: viewer.user!.email ?? '',
   })
+  // Google patches the event and tells every attendee (V2 4I).
+  await requestCalendarPush(await requestOrigin(), ref.data.id)
 
   revalidatePath('/sessions')
   revalidatePath('/home')
@@ -157,6 +205,8 @@ export async function cancelSession(formData: FormData): Promise<void> {
     console.error('[sessions] cancel failed:', error.code)
     redirect('/sessions?state=error')
   }
+  // Google removes the event and tells every attendee (V2 4I).
+  await requestCalendarPush(await requestOrigin(), ref.data.id)
   revalidatePath('/sessions')
   revalidatePath('/home')
   redirect('/sessions?state=canceled')

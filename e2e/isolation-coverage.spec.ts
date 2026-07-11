@@ -48,6 +48,7 @@ const SERVICE_ROLE_ONLY_TABLES: ReadonlyArray<string> = [
   'voice_violations',   // voice drift log, model excerpts only (SECURITY.md 5)
   'google_connections', // encrypted OAuth tokens; deny-all, calendar routes only (SECURITY.md 7)
   'qa_exchanges',       // Q&A accountability copy; no session reads it (SECURITY.md 5, V2 2E)
+  'calendar_busy',      // cached Google free/busy; deny-all, read via keystone_busy_intervals only (SECURITY.md 7, V2 4I)
 ]
 
 function readAllMigrations(): string {

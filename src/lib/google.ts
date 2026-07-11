@@ -219,6 +219,35 @@ export function floatingLocal(d: Date, tz: string): string {
   return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}`
 }
 
+/**
+ * The primary calendar's busy intervals in a window (V2 4I). Free/busy
+ * only: no titles, no attendees, no ids ever leave Google. Returns null
+ * on failure so a stale cache is never silently replaced with nothing.
+ */
+export async function fetchFreeBusy(
+  accessToken: string,
+  timeMin: Date,
+  timeMax: Date
+): Promise<Array<{ start: string; end: string }> | null> {
+  const res = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      timeMin: timeMin.toISOString(),
+      timeMax: timeMax.toISOString(),
+      items: [{ id: 'primary' }],
+    }),
+  })
+  if (!res.ok) {
+    console.error('[google] freebusy failed:', res.status)
+    return null
+  }
+  const data = (await res.json()) as {
+    calendars?: { primary?: { busy?: Array<{ start: string; end: string }> } }
+  }
+  return data.calendars?.primary?.busy ?? []
+}
+
 export interface CalendarEventInput {
   summary: string
   description?: string

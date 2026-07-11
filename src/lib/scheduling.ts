@@ -97,6 +97,8 @@ function overlaps(aStart: Date, aEnd: Date, b: BusyInterval): boolean {
  * @param slotMinutes slot length
  * @param leadMinutes minimum notice before a slot may start
  * @param cap       maximum slots returned
+ * @param bufferMinutes padding around every busy interval (V2 4I), so a
+ *                  slot never lands back to back with a real meeting
  */
 export function computeSlots(
   windows: AvailabilityWindow[],
@@ -105,10 +107,18 @@ export function computeSlots(
   days = 14,
   slotMinutes = 60,
   leadMinutes = 24 * 60,
-  cap = 60
+  cap = 60,
+  bufferMinutes = 0
 ): Slot[] {
   const slots: Slot[] = []
   const cutoff = new Date(from.getTime() + leadMinutes * 60000)
+  const padded =
+    bufferMinutes > 0
+      ? busy.map((b) => ({
+          startsAt: new Date(b.startsAt.getTime() - bufferMinutes * 60000),
+          endsAt: new Date(b.endsAt.getTime() + bufferMinutes * 60000),
+        }))
+      : busy
 
   for (let i = 0; i < days && slots.length < cap; i++) {
     // Noon anchor keeps the day identity stable across DST boundaries.
@@ -124,7 +134,7 @@ export function computeSlots(
         const startsAt = zonedInstant(wall.y, wall.m, wall.d, startMin, w.tz)
         const endsAt = new Date(startsAt.getTime() + slotMinutes * 60000)
         if (startsAt < cutoff) continue
-        if (busy.some((b) => overlaps(startsAt, endsAt, b))) continue
+        if (padded.some((b) => overlaps(startsAt, endsAt, b))) continue
         slots.push({ startsAt, endsAt, tz: w.tz })
       }
     }

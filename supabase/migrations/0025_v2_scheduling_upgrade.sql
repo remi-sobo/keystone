@@ -65,6 +65,12 @@ create index if not exists calendar_busy_practice_idx
 create index if not exists calendar_busy_member_idx
   on public.calendar_busy (practice_member_id);
 
+-- The Settings card states the last pull in plain words; the stamp
+-- lives on the deny-all connection row (service role only, like the
+-- tokens beside it).
+alter table public.google_connections
+  add column if not exists busy_pulled_at timestamptz;
+
 -- ---------------------------------------------------------------------
 -- RLS
 -- ---------------------------------------------------------------------

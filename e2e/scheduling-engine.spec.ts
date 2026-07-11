@@ -5,6 +5,7 @@ import {
   wallClockOf,
   isOfferedSlot,
 } from '../src/lib/scheduling'
+import { resolveDuration } from '../src/lib/schedulingSettings'
 
 /**
  * Unit tests for the pure slot engine (no DB, no browser). The
@@ -83,6 +84,58 @@ test('lead time suppresses too-soon slots', () => {
   expect(slots[0].startsAt.toISOString()).toBe(
     zonedInstant(2026, 7, 27, 9 * 60, LA).toISOString()
   )
+})
+
+test('the buffer pads busy intervals on both sides (V2 4I)', () => {
+  // Window: Mondays 9:00 to 13:00 LA. Busy 10:00 to 11:00 with a 15
+  // minute buffer kills 9:00 (ends 10:00, inside the pad) and 11:00
+  // (starts inside the pad); 12:00 survives.
+  const windows = [{ weekday: 1, startMin: 9 * 60, endMin: 13 * 60, tz: LA }]
+  const from = new Date('2026-07-19T12:00:00Z') // Sunday
+  const busy = [
+    {
+      startsAt: zonedInstant(2026, 7, 20, 10 * 60, LA),
+      endsAt: zonedInstant(2026, 7, 20, 11 * 60, LA),
+    },
+  ]
+  const unbuffered = computeSlots(windows, busy, from, 2, 60, 0, 60, 0)
+  const buffered = computeSlots(windows, busy, from, 2, 60, 0, 60, 15)
+  const iso = (slots: typeof buffered) => slots.map((s) => s.startsAt.toISOString())
+
+  expect(iso(unbuffered)).toContain(zonedInstant(2026, 7, 20, 9 * 60, LA).toISOString())
+  expect(iso(unbuffered)).toContain(zonedInstant(2026, 7, 20, 11 * 60, LA).toISOString())
+  expect(iso(buffered)).not.toContain(zonedInstant(2026, 7, 20, 9 * 60, LA).toISOString())
+  expect(iso(buffered)).not.toContain(zonedInstant(2026, 7, 20, 11 * 60, LA).toISOString())
+  expect(iso(buffered)).toContain(zonedInstant(2026, 7, 20, 12 * 60, LA).toISOString())
+})
+
+test('90 and 120 minute slots stay inside the window (V2 4I)', () => {
+  // Window: Mondays 9:00 to 12:00 LA (180 minutes).
+  const windows = [{ weekday: 1, startMin: 9 * 60, endMin: 12 * 60, tz: LA }]
+  const from = new Date('2026-07-19T12:00:00Z')
+  const ninety = computeSlots(windows, [], from, 2, 90, 0)
+  expect(ninety.map((s) => s.startsAt.toISOString())).toEqual([
+    zonedInstant(2026, 7, 20, 9 * 60, LA).toISOString(),
+    zonedInstant(2026, 7, 20, 10 * 60 + 30, LA).toISOString(),
+  ])
+  for (const s of ninety) {
+    expect(s.endsAt.getTime() - s.startsAt.getTime()).toBe(90 * 60000)
+  }
+  const twoHours = computeSlots(windows, [], from, 2, 120, 0)
+  expect(twoHours.map((s) => s.startsAt.toISOString())).toEqual([
+    zonedInstant(2026, 7, 20, 9 * 60, LA).toISOString(),
+  ])
+})
+
+test('resolveDuration collapses anything outside the offer (V2 4I)', () => {
+  const settings = { durationOptions: [60, 90, 120], defaultDurationMin: 60 }
+  expect(resolveDuration(settings, 90)).toBe(90)
+  expect(resolveDuration(settings, 45)).toBe(60) // not offered
+  expect(resolveDuration(settings, null)).toBe(60)
+  expect(resolveDuration(settings, undefined)).toBe(60)
+  // A default that fell out of the offer collapses to the shortest.
+  expect(resolveDuration({ durationOptions: [90, 120], defaultDurationMin: 60 }, 45)).toBe(90)
+  expect(resolveDuration({ durationOptions: [], defaultDurationMin: 60 }, 90)).toBe(60)
 })
 
 test('isOfferedSlot admits exact offers only', () => {

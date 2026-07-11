@@ -2001,3 +2001,97 @@ export async function setDigestCadence(formData: FormData): Promise<void> {
   revalidatePath(`/engagements/${parsed.data.engagementId}`)
   redirect(`/engagements/${parsed.data.engagementId}?state=cadence_saved#digests`)
 }
+
+// ── Readiness evidence (V2 4D) ────────────────────────────────────────
+// Judgments get receipts. The table sits behind the lens wall
+// (practice-only read); the writes ride engagement.write through the
+// session client, and every ref is validated against the engagement's
+// OWN artifacts before a link exists.
+
+const ReadinessEvidenceShape = z.object({
+  engagementId: z.string().uuid(),
+  pillar: z.enum(['philosophy', 'system', 'execution']),
+  ref: z
+    .string()
+    .regex(/^(session|action_item|decision|deliverable):[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  note: z.string().trim().max(300).optional(),
+})
+
+const READINESS_REF_TABLES = {
+  session: 'sessions',
+  action_item: 'action_items',
+  decision: 'decisions',
+  deliverable: 'deliverables',
+} as const
+
+export async function addReadinessEvidence(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = ReadinessEvidenceShape.safeParse({
+    engagementId: formData.get('engagementId'),
+    pillar: formData.get('pillar'),
+    ref: formData.get('ref'),
+    note: String(formData.get('note') ?? '').trim() || undefined,
+  })
+  if (!parsed.success) redirect('/engagements')
+  const d = parsed.data
+  const [kind, refId] = d.ref.split(':') as [keyof typeof READINESS_REF_TABLES, string]
+
+  const supabase = await createServerSupabase()
+  const { data: engagement } = await supabase
+    .from('engagements')
+    .select('id, practice_id, client_id')
+    .eq('id', d.engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!engagement) redirect('/engagements')
+
+  const { data: artifact } = await supabase
+    .from(READINESS_REF_TABLES[kind])
+    .select('id')
+    .eq('id', refId)
+    .eq('engagement_id', engagement.id)
+    .maybeSingle()
+  if (!artifact) redirect(`/engagements/${engagement.id}?state=readiness_error#readiness`)
+
+  const { error } = await supabase.from('readiness_evidence').insert({
+    engagement_id: engagement.id,
+    practice_id: engagement.practice_id,
+    client_id: engagement.client_id,
+    pillar: d.pillar,
+    kind,
+    ref_id: refId,
+    note: d.note ?? null,
+    added_by: viewer.user!.id,
+  })
+  if (error) {
+    console.error('[readiness] evidence link failed:', error.message)
+    redirect(`/engagements/${engagement.id}?state=readiness_error#readiness`)
+  }
+  revalidatePath(`/engagements/${engagement.id}`)
+  redirect(`/engagements/${engagement.id}?state=readiness_linked#readiness`)
+}
+
+const ReadinessRemoveShape = z.object({
+  evidenceId: z.string().uuid(),
+  engagementId: z.string().uuid(),
+})
+
+export async function removeReadinessEvidence(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = ReadinessRemoveShape.safeParse({
+    evidenceId: formData.get('evidenceId'),
+    engagementId: formData.get('engagementId'),
+  })
+  if (!parsed.success) redirect('/engagements')
+
+  const supabase = await createServerSupabase()
+  const { error } = await supabase
+    .from('readiness_evidence')
+    .delete()
+    .eq('id', parsed.data.evidenceId)
+    .eq('engagement_id', parsed.data.engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+  if (error) console.error('[readiness] evidence remove failed:', error.message)
+  revalidatePath(`/engagements/${parsed.data.engagementId}`)
+  redirect(`/engagements/${parsed.data.engagementId}?state=readiness_removed#readiness`)
+}

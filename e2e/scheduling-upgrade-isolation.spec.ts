@@ -4,7 +4,7 @@ import path from 'path'
 
 /**
  * V2 4I (specs/keystone-v2-scheduling-upgrade.md): the scheduling
- * upgrade. Pins the 0025 shape (scheduling_settings both sides read and
+ * upgrade. Pins the 0026 shape (scheduling_settings both sides read and
  * practice writes; scheduling_blackouts practice-only; calendar_busy
  * deny-all like the token store; the bridge function unioning all three
  * busy sources behind the same membership check) and the live matrix's
@@ -14,10 +14,10 @@ import path from 'path'
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf-8')
 const norm = (s: string) => s.replace(/\s+/g, ' ').toLowerCase()
 
-const mig = norm(read('supabase/migrations/0025_v2_scheduling_upgrade.sql'))
+const mig = norm(read('supabase/migrations/0026_v2_scheduling_upgrade.sql'))
 const seed = read('supabase/tests/isolation-seed.sql')
 
-test('0025: three scoped tables, every one behind RLS', () => {
+test('0026: three scoped tables, every one behind RLS', () => {
   for (const t of ['scheduling_settings', 'scheduling_blackouts', 'calendar_busy']) {
     expect(mig).toMatch(
       new RegExp(`create table if not exists public\\.${t}[\\s\\S]*?practice_id\\s+uuid not null`)
@@ -29,7 +29,7 @@ test('0025: three scoped tables, every one behind RLS', () => {
   expect(mig).toContain('check (buffer_min between 0 and 120)')
 })
 
-test('0025: settings read by both sides, written by the practice, never deleted', () => {
+test('0026: settings read by both sides, written by the practice, never deleted', () => {
   expect(mig).toMatch(
     /scheduling_settings_read[\s\S]*?is_practice_member\(practice_id\)\s+or private\.is_client_member_of_practice\(practice_id\)/
   )
@@ -38,7 +38,7 @@ test('0025: settings read by both sides, written by the practice, never deleted'
   expect(mig).not.toMatch(/create policy \S+ on public\.scheduling_settings\s+for delete/)
 })
 
-test('0025: blackouts are practice-only rows (gate 4I-5)', () => {
+test('0026: blackouts are practice-only rows (gate 4I-5)', () => {
   expect(mig).toMatch(/scheduling_blackouts_read[\s\S]*?is_practice_member\(practice_id\)/)
   // The read policy never widens to client members.
   expect(mig).not.toMatch(/scheduling_blackouts_read[\s\S]{0,200}?is_client_member_of_practice/)
@@ -47,7 +47,7 @@ test('0025: blackouts are practice-only rows (gate 4I-5)', () => {
   expect(mig).not.toMatch(/create policy \S+ on public\.scheduling_blackouts\s+for update/)
 })
 
-test('0025: calendar_busy is deny-all; the bridge is the only read', () => {
+test('0026: calendar_busy is deny-all; the bridge is the only read', () => {
   // RLS on, zero policies: no create policy statement names the table.
   expect(mig).not.toMatch(/create policy \S+ on public\.calendar_busy/)
   // The widened bridge unions all three sources, keeps the bare shape,

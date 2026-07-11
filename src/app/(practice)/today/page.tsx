@@ -4,6 +4,7 @@ import { RoomShell } from '@/components/RoomShell'
 import { KeystoneCard } from '@/components/KeystoneCard'
 import { decideDigest, markAllNotificationsRead } from './actions'
 import { loopStatesByItem } from '@/lib/homework'
+import { buildActionQueue } from '@/lib/actionQueue'
 
 /**
  * Practice Home, the Monday screen (Ring 3.5, spec 5.2): one view
@@ -50,24 +51,17 @@ export default async function PracticeHomePage({
   const now = Date.now()
   const nowIso = new Date(now).toISOString()
   const weekOut = new Date(now + 7 * 24 * 60 * 60 * 1000).toISOString()
-  const twoWeeksAgo = new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString()
   const stallCutoff = new Date(now - STALL_DAYS * 24 * 60 * 60 * 1000).toISOString()
 
-  const [sessions, reviewItems, workstreams, events, doneItems, recentSessions, lastMessages] =
+  const [sessions, workstreams, events, doneItems, recentSessions, lastMessages] =
     await Promise.all([
       supabase
         .from('sessions')
-        .select('id, starts_at, tz, kind, engagement_id, clients(name)')
+        .select('id, starts_at, tz, kind, engagement_id, purpose, agenda_md, clients(name)')
         .eq('status', 'booked')
         .gte('starts_at', nowIso)
         .lt('starts_at', weekOut)
         .order('starts_at'),
-      supabase
-        .from('action_items')
-        .select('id, title, done_at, clients(name), client_members:assigned_client_member_id(email)')
-        .eq('status', 'done')
-        .gte('done_at', twoWeeksAgo)
-        .order('done_at', { ascending: false }),
       supabase
         .from('workstreams')
         .select('id, title, stage, engagement_id, created_at, clients(name)')
@@ -114,6 +108,23 @@ export default async function PracticeHomePage({
     .order('created_at', { ascending: false })
     .limit(20)
 
+  // 4A signals the cards never had: past sessions that named a move
+  // whose stage has not changed, and overdue internal follow-ups.
+  const [{ data: heldMoves }, { data: overdueInternal }] = await Promise.all([
+    supabase
+      .from('sessions')
+      .select('id, engagement_id, moves_to_stage, clients(name), workstreams:moves_workstream_id(title, stage)')
+      .not('moves_workstream_id', 'is', null)
+      .lt('starts_at', nowIso)
+      .in('status', ['booked', 'held']),
+    supabase
+      .from('action_items')
+      .select('id, engagement_id, title, due_on')
+      .eq('audience', 'practice')
+      .eq('status', 'open')
+      .lt('due_on', nowIso.slice(0, 10)),
+  ])
+
   const { data: digestQueue } = await supabase
     .from('ai_proposals')
     .select('id, payload, model_used, created_at, clients(name)')
@@ -128,7 +139,6 @@ export default async function PracticeHomePage({
     if (!latestByThread.has(m.thread_id)) latestByThread.set(m.thread_id, m)
   }
   const unanswered = [...latestByThread.values()].filter((m) => m.author_side === 'client')
-  const ageDays = (iso: string) => Math.floor((now - new Date(iso).getTime()) / (24 * 60 * 60 * 1000))
 
   // A workstream stalls when it is older than the window and neither it
   // nor its engagement moved: no stage event on the workstream, no
@@ -148,8 +158,50 @@ export default async function PracticeHomePage({
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const clientOf = (row: any) => ((row.clients as any)?.name as string) ?? ''
-  const emailOf = (row: any) =>
-    ((row.client_members as any)?.email as string)?.split('@')[0] ?? 'unassigned'
+  const queue = buildActionQueue({
+    now,
+    unansweredThreads: unanswered.map((m) => ({
+      engagementId: m.engagement_id,
+      clientName: clientOf(m),
+      lastAt: m.created_at,
+    })),
+    submittedItems: submitted.map((it) => ({
+      id: it.id,
+      engagementId: it.engagement_id,
+      title: it.title,
+      clientName: clientOf(it),
+    })),
+    digestDrafts: (digestQueue ?? []).map((p) => ({
+      clientName: clientOf(p),
+      weekOf: ((p.payload as any)?.week_of as string) ?? '',
+    })),
+    upcomingSessions: (sessions.data ?? []).map((s) => ({
+      id: s.id,
+      startsAt: s.starts_at,
+      tz: s.tz,
+      clientName: clientOf(s),
+      purpose: s.purpose ?? null,
+      agendaMd: s.agenda_md ?? null,
+    })),
+    heldMoves: (heldMoves ?? []).map((s) => ({
+      engagementId: s.engagement_id,
+      workstreamTitle: ((s.workstreams as any)?.title as string) ?? 'a workstream',
+      movesToStage: s.moves_to_stage ?? '',
+      currentStage: ((s.workstreams as any)?.stage as string) ?? '',
+      clientName: clientOf(s),
+    })),
+    overdueInternal: (overdueInternal ?? []).map((it) => ({
+      id: it.id,
+      engagementId: it.engagement_id,
+      title: it.title,
+      dueOn: it.due_on as string,
+    })),
+    stalled: stalled.map((w) => ({
+      engagementId: w.engagement_id,
+      title: w.title,
+      clientName: clientOf(w),
+    })),
+  })
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   return (
@@ -160,27 +212,31 @@ export default async function PracticeHomePage({
         </p>
       ) : null}
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        <KeystoneCard>
-          <p className="eyebrow">Sessions this week</p>
-          {(sessions.data ?? []).length === 0 ? (
-            <p className="mt-3 text-sm text-ink-dim">Nothing on the calendar this week.</p>
-          ) : (
-            <ul className="mt-3 flex flex-col gap-2">
-              {(sessions.data ?? []).map((s) => (
-                <li key={s.id} className="text-sm">
-                  <Link href={`/sessions/${s.id}/notes`} className="text-forest underline">
-                    {fmt(s.starts_at, s.tz)}
-                  </Link>{' '}
-                  <span className="text-ink-dim">
-                    {clientOf(s)}, {s.kind}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </KeystoneCard>
+      <section aria-label="What needs you today" className="mb-10">
+        <p className="eyebrow">What needs you today</p>
+        {queue.length === 0 ? (
+          <p className="mt-3 text-sm text-ink-dim">Nothing needs you today. The room is quiet.</p>
+        ) : (
+          <div className="mt-3 flex flex-col gap-5">
+            {queue.map((g) => (
+              <div key={g.group}>
+                <p className="font-mono text-xs uppercase tracking-wide text-ink-dim">{g.title}</p>
+                <ul className="mt-1.5 flex flex-col gap-1.5">
+                  {g.items.map((item, i) => (
+                    <li key={i} className="text-sm text-ink">
+                      <Link href={item.href} className="text-forest underline">
+                        {item.line}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
+      <div className="grid gap-8 lg:grid-cols-2">
         <KeystoneCard>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="eyebrow">New for you</p>
@@ -207,41 +263,7 @@ export default async function PracticeHomePage({
           )}
         </KeystoneCard>
 
-        <KeystoneCard>
-          <p className="eyebrow">Homework awaiting your review</p>
-          {submitted.length === 0 ? (
-            <p className="mt-3 text-sm text-ink-dim">No submissions waiting.</p>
-          ) : (
-            <ul className="mt-3 flex flex-col gap-2">
-              {submitted.map((it) => (
-                <li key={it.id} className="text-sm text-ink">
-                  <Link
-                    href={`/engagements/${it.engagement_id}/homework/${it.id}`}
-                    className="text-forest underline"
-                  >
-                    {it.title}
-                  </Link>{' '}
-                  <span className="text-ink-dim">
-                    ({clientOf(it)}, {emailOf(it)})
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="eyebrow mt-4">Recently done</p>
-          {(reviewItems.data ?? []).length === 0 ? (
-            <p className="mt-2 text-sm text-ink-dim">Nothing in the last two weeks.</p>
-          ) : (
-            <ul className="mt-2 flex flex-col gap-1">
-              {(reviewItems.data ?? []).slice(0, 6).map((it) => (
-                <li key={it.id} className="text-sm text-ink-dim">
-                  {it.title} ({clientOf(it)}, {emailOf(it)})
-                </li>
-              ))}
-            </ul>
-          )}
-        </KeystoneCard>
-
+        <div id="digest-queue">
         <KeystoneCard>
           <p className="eyebrow">Digest queue</p>
           {(digestQueue ?? []).length === 0 ? (
@@ -290,50 +312,30 @@ export default async function PracticeHomePage({
             </div>
           )}
         </KeystoneCard>
-
-        <KeystoneCard>
-          <p className="eyebrow">Messages</p>
-          {unanswered.length === 0 ? (
-            <p className="mt-3 text-sm text-ink-dim">Every thread has your reply as the last word.</p>
-          ) : (
-            <ul className="mt-3 flex flex-col gap-2">
-              {unanswered.map((m) => (
-                <li key={m.thread_id} className="text-sm">
-                  <Link
-                    href={`/engagements/${m.engagement_id}#messages`}
-                    className="text-forest underline"
-                  >
-                    {clientOf(m)} is waiting
-                  </Link>{' '}
-                  <span className="text-ink-dim">
-                    {ageDays(m.created_at) === 0
-                      ? '(today)'
-                      : `(${ageDays(m.created_at)}d without a reply)`}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </KeystoneCard>
+        </div>
       </div>
 
       <section className="mt-8">
-        <p className="eyebrow">Holding steady</p>
-        {stalled.length === 0 ? (
-          <p className="mt-3 text-sm text-ink-dim">
-            Every workstream has moved inside the last three weeks.
-          </p>
+        <p className="eyebrow">This week</p>
+        {(sessions.data ?? []).length === 0 ? (
+          <p className="mt-2 text-sm text-ink-dim">Nothing on the calendar this week.</p>
         ) : (
-          <ul className="mt-3 flex flex-col gap-2">
-            {stalled.map((w) => (
-              <li key={w.id} className="text-sm text-ink">
-                {w.title} <span className="text-ink-dim">({clientOf(w)})</span> has not moved in
-                three weeks. Worth a look before the next session.
+          <ul className="mt-2 flex flex-col gap-1">
+            {(sessions.data ?? []).map((s) => (
+              <li key={s.id} className="text-sm">
+                <Link href={`/sessions/${s.id}/notes`} className="text-forest underline">
+                  {fmt(s.starts_at, s.tz)}
+                </Link>{' '}
+                <span className="text-ink-dim">
+                  {clientOf(s)}, {s.kind}
+                  {s.purpose ? `: ${s.purpose}` : ''}
+                </span>
               </li>
             ))}
           </ul>
         )}
       </section>
+
     </RoomShell>
   )
 }

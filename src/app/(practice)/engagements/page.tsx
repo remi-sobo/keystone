@@ -3,6 +3,7 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import WorkstreamArc from '@/components/WorkstreamArc'
 import { RoomShell } from '@/components/RoomShell'
 import { KeystoneCard } from '@/components/KeystoneCard'
+import { engagementHealth, replyLag, reviewStanding } from '@/lib/health'
 import { newDraft } from './drafts/actions'
 
 const DEFAULT_STAGES = ['diagnose', 'design', 'build', 'train', 'stabilize']
@@ -25,11 +26,17 @@ export default async function EngagementsPage({
 }) {
   const { note } = await searchParams
   const supabase = await createServerSupabase()
+  // Per-request wall clock is intended: health is derived as of THIS
+  // render, never stored (gate 4E-1).
+  // eslint-disable-next-line react-hooks/purity
+  const now = Date.now()
+  const nowIso = new Date(now).toISOString()
+  const twoWeeksAgoDate = new Date(now - 14 * 86400000).toISOString().slice(0, 10)
   const [{ data: engagements }, { data: practice }, { data: upcoming }, { data: drafts }] =
     await Promise.all([
       supabase
         .from('engagements')
-        .select('id, title, status, clients(name), workstreams(id, title, stage, sort)')
+        .select('id, title, status, digest_cadence, clients(name), workstreams(id, title, stage, sort)')
         .order('created_at', { ascending: true }),
       supabase.from('practices').select('stage_config').limit(1).maybeSingle(),
       supabase
@@ -37,7 +44,7 @@ export default async function EngagementsPage({
         .select('id, engagement_id, starts_at, tz, kind')
         .eq('status', 'booked')
 
-        .gte('starts_at', new Date().toISOString())
+        .gte('starts_at', nowIso)
         .order('starts_at', { ascending: true }),
       supabase
         .from('engagement_drafts')
@@ -46,10 +53,113 @@ export default async function EngagementsPage({
         .order('updated_at', { ascending: false }),
     ])
 
+  // 4E: the health signals, read from tables the practice session
+  // already reads in full under standing RLS. No new walls, no writes.
+  const [stageEvents, pastSessions, doneItems, openReview, hwTrail, msgs, polls, marks, roster, sent] =
+    await Promise.all([
+      supabase
+        .from('workstream_stage_events')
+        .select('engagement_id, at')
+        .order('at', { ascending: false })
+        .limit(1000),
+      supabase
+        .from('sessions')
+        .select('engagement_id, starts_at')
+        .in('status', ['booked', 'held'])
+        .lt('starts_at', nowIso)
+        .order('starts_at', { ascending: false })
+        .limit(1000),
+      supabase
+        .from('action_items')
+        .select('engagement_id, due_on, done_at')
+        .eq('status', 'done')
+        .not('done_at', 'is', null)
+        .order('done_at', { ascending: false })
+        .limit(1000),
+      supabase
+        .from('action_items')
+        .select('id, engagement_id, due_on')
+        .eq('status', 'open')
+        .eq('review_requested', true),
+      supabase.from('homework_activity').select('action_item_id, kind, created_at'),
+      supabase
+        .from('messages')
+        .select('thread_id, engagement_id, author_side, created_at')
+        .order('created_at', { ascending: false })
+        .limit(500),
+      supabase
+        .from('session_polls')
+        .select('id, engagement_id, client_id, created_at')
+        .eq('status', 'open'),
+      supabase.from('session_poll_marks').select('poll_id, client_member_id'),
+      supabase.from('client_members').select('client_id').is('revoked_at', null),
+      supabase
+        .from('digests')
+        .select('engagement_id')
+        .eq('status', 'sent')
+        .gte('week_of', twoWeeksAgoDate),
+    ])
+
   const stages =
     Array.isArray(practice?.stage_config) && practice.stage_config.length > 0
       ? (practice.stage_config as string[])
       : DEFAULT_STAGES
+
+  const teamSizeByClient = new Map<string, number>()
+  for (const r of roster.data ?? []) {
+    teamSizeByClient.set(r.client_id, (teamSizeByClient.get(r.client_id) ?? 0) + 1)
+  }
+  const healthOf = (e: {
+    id: string
+    digest_cadence?: string | null
+    clients?: unknown
+    workstreams?: Array<{ stage: string }> | null
+  }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const clientName = ((e.clients as any)?.name as string) || 'the client'
+    const poll = (polls.data ?? []).find((p) => p.engagement_id === e.id)
+    const markers = poll
+      ? new Set((marks.data ?? []).filter((m) => m.poll_id === poll.id).map((m) => m.client_member_id))
+      : null
+    return engagementHealth({
+      now,
+      clientName,
+      finalStage: stages[stages.length - 1],
+      workstreamStages: (e.workstreams ?? []).map((w) => w.stage),
+      stageEventAts: (stageEvents.data ?? []).filter((s) => s.engagement_id === e.id).map((s) => s.at),
+      pastSessionAts: (pastSessions.data ?? [])
+        .filter((s) => s.engagement_id === e.id)
+        .map((s) => s.starts_at),
+      itemsDone: (doneItems.data ?? [])
+        .filter((it) => it.engagement_id === e.id)
+        .map((it) => ({ dueOn: it.due_on, doneAt: it.done_at as string })),
+      ...reviewStanding(
+        (openReview.data ?? [])
+          .filter((it) => it.engagement_id === e.id)
+          .map((it) => ({ id: it.id, dueOn: it.due_on })),
+        hwTrail.data ?? [],
+        now
+      ),
+      ...replyLag(
+        (msgs.data ?? [])
+          .filter((m) => m.engagement_id === e.id)
+          .map((m) => ({ threadId: m.thread_id, authorSide: m.author_side, createdAt: m.created_at })),
+        now
+      ),
+      openPoll:
+        poll && markers
+          ? {
+              openedDaysAgo: Math.floor((now - Date.parse(poll.created_at)) / 86400000),
+              marks: markers.size,
+              teamSize: teamSizeByClient.get(poll.client_id) ?? 0,
+            }
+          : null,
+      digest: {
+        cadence: (e.digest_cadence as 'weekly' | 'biweekly' | 'off') ?? 'weekly',
+        sentInLastTwoWeeks: (sent.data ?? []).filter((d) => d.engagement_id === e.id).length,
+      },
+    })
+  }
 
   const openDrafts = (drafts ?? []).filter((d) => d.status === 'draft')
   const publishedDrafts = (drafts ?? []).filter((d) => d.status === 'published')
@@ -130,7 +240,9 @@ export default async function EngagementsPage({
         <p className="text-ink-dim">No engagements yet.</p>
       ) : (
         <div className="flex flex-col gap-8">
-          {engagements.map((e) => (
+          {engagements.map((e) => {
+            const health = healthOf(e)
+            return (
             <KeystoneCard key={e.id}>
               <div className="flex items-baseline justify-between gap-4">
                 <h2 className="font-display text-2xl font-medium text-ink">
@@ -143,6 +255,10 @@ export default async function EngagementsPage({
                   {((e.clients as any)?.name as string) ?? ''}
                 </span>
               </div>
+              <p className="mt-2 text-sm font-medium text-ink">{health.phrase}</p>
+              {health.lines[0] ? (
+                <p className="text-sm text-ink-dim">{health.lines[0]}</p>
+              ) : null}
               <div className="mt-6 flex flex-col gap-6">
                 {(e.workstreams ?? [])
                   .sort((a, b) => a.sort - b.sort)
@@ -179,7 +295,8 @@ export default async function EngagementsPage({
                 </div>
               ) : null}
             </KeystoneCard>
-          ))}
+            )
+          })}
         </div>
       )}
     </RoomShell>

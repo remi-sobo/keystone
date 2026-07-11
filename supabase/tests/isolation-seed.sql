@@ -2154,4 +2154,58 @@ end $$;
 
 reset role;
 
+-- ── V2 4D: readiness evidence behind the lens wall ───────────────────
+-- The receipts inherit the readiness wall: practice-only read, so the
+-- SAME-client member reads zero rows even though client_id rides the
+-- table. Links are removable, never editable.
+
+insert into readiness_evidence (id, engagement_id, practice_id, client_id, pillar, kind, ref_id) values
+  ('d4000000-0000-0000-0000-0000000000f1', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   'execution', 'action_item', '60000000-0000-0000-0000-0000000000a1');
+
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from readiness_evidence) <> 0 then
+    raise exception 'LEAK 4D: a client member reads readiness evidence (the lens wall)';
+  end if;
+end $$;
+do $$ begin
+  insert into readiness_evidence (engagement_id, practice_id, client_id, pillar, kind, ref_id)
+    values ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1', 'system', 'action_item',
+            '60000000-0000-0000-0000-0000000000a1');
+  raise exception 'LEAK 4D: a client member linked readiness evidence';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from readiness_evidence) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a readiness evidence';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$
+declare n int;
+begin
+  if (select count(*) from readiness_evidence) <> 1 then
+    raise exception 'the practice must read its readiness evidence';
+  end if;
+  insert into readiness_evidence (engagement_id, practice_id, client_id, pillar, kind, ref_id)
+    values ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1', 'system', 'decision',
+            (select id from decisions limit 1));
+  update readiness_evidence set note = 'edited link';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE 4D: an evidence link was edited (removed, never edited)'; end if;
+  delete from readiness_evidence where id = 'd4000000-0000-0000-0000-0000000000f1';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'the practice must be able to remove a mistaken evidence link'; end if;
+end $$;
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

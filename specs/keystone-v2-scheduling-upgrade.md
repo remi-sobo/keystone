@@ -19,7 +19,7 @@ The 3H poll keeps its shape (practice opens from its own offered slots, members 
 
 No new scheduling product is being built; Ring 2 and 3H are being finished.
 
-## 2. Schema (migration 0025)
+## 2. Schema (migration 0026; specced as 0025, renumbered after the parallel 4D epic took that number live)
 
 ```sql
 create table scheduling_settings (
@@ -28,8 +28,9 @@ create table scheduling_settings (
   buffer_min int not null default 15 check (buffer_min between 0 and 120),
   lead_hours int not null default 24 check (lead_hours between 0 and 336),
   horizon_days int not null default 30 check (horizon_days between 1 and 60),
-  duration_options int[] not null default '{60,90,120}',
-  default_duration_min int not null default 60,
+  duration_options int[] not null default '{60,90,120}'
+    check (duration_options <@ '{60,90,120}'::int[] and array_length(duration_options, 1) >= 1),
+  default_duration_min int not null default 60 check (default_duration_min in (60, 90, 120)),
   video_link text,
   updated_at timestamptz not null default now()
 );

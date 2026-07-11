@@ -1,4 +1,5 @@
 -- V2 4I: the scheduling upgrade (specs/keystone-v2-scheduling-upgrade.md).
+-- Numbered 0026: the spec said 0025, taken live by 4D mid-build.
 --
 -- Three tables. scheduling_settings holds the practice's boundaries
 -- (buffer, notice, horizon, duration offer, the video link); both sides

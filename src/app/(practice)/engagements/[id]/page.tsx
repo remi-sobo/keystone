@@ -11,6 +11,9 @@ import AskRecordForm from '@/components/AskRecordForm'
 import FindRecordForm from '@/components/FindRecordForm'
 import { loopStatesByItem, LOOP_LABEL } from '@/lib/homework'
 import { anchorHref, parseAnchorParam, resolveAnchor, type AnchorType } from '@/lib/messageAnchors'
+import { readinessFacts } from '@/lib/readinessFacts'
+import { engagementHealth, replyLag, reviewStanding } from '@/lib/health'
+import MarkdownEditor from '@/components/MarkdownEditor'
 import { assembleSlots } from '@/lib/slotAssembly'
 import { fetchSchedulingSettings, resolveDuration } from '@/lib/schedulingSettings'
 import {
@@ -22,7 +25,9 @@ import {
   askEngagementQuestion,
   attachEvidence,
   findInEngagement,
+  addReadinessEvidence,
   removeDeliverable,
+  removeReadinessEvidence,
   requestDeliverableAcceptance,
   setDigestCadence,
   updateDeliverableAbout,
@@ -72,6 +77,9 @@ const STATES: Record<string, string> = {
   dlv_error: 'That did not save. Try again.',
   cadence_saved: 'Cadence saved. The Friday cron honors it before drafting.',
   cadence_error: 'That did not save. Try again.',
+  readiness_linked: 'Evidence linked. The panel stays yours.',
+  readiness_removed: 'Evidence link removed. The artifact is untouched.',
+  readiness_error: 'That did not save. Try again.',
 }
 
 function fmt(dt: string, tz: string): string {
@@ -149,9 +157,17 @@ export default async function EngagementDetailPage({
 
   const { data: messages } = await supabase
     .from('messages')
-    .select('id, author_side, body, created_at, read_at, anchor_type, anchor_id, anchor_label')
+    .select('id, thread_id, author_side, body, created_at, read_at, anchor_type, anchor_id, anchor_label')
     .eq('engagement_id', id)
     .order('created_at', { ascending: true })
+    .limit(200)
+
+  // 4E: stage events feed the health read (moving, quiet weeks).
+  const { data: stageEventRows } = await supabase
+    .from('workstream_stage_events')
+    .select('at')
+    .eq('engagement_id', id)
+    .order('at', { ascending: false })
     .limit(200)
 
   // 3E: an Ask-about-this link handed the reply box an anchor.
@@ -300,14 +316,102 @@ export default async function EngagementDetailPage({
     (i) => i.review_requested && loopStates.get(i.id) === 'submitted'
   )
   const readinessByPillar = new Map((readiness.data ?? []).map((r) => [r.pillar, r]))
+
+  // 4D: the receipts, behind the same lens wall as the panel.
+  const { data: readinessEvidenceRows } = await supabase
+    .from('readiness_evidence')
+    .select('id, pillar, kind, ref_id, note, created_at')
+    .eq('engagement_id', id)
+    .order('created_at', { ascending: true })
+  const evidenceFor = (pillar: string) =>
+    (readinessEvidenceRows ?? []).filter((ev) => ev.pillar === pillar)
+  const artifactLabel = (kind: string, refId: string): string => {
+    if (kind === 'session') {
+      const s = (sessions.data ?? []).find((x) => x.id === refId)
+      return s ? fmt(s.starts_at, s.tz) : 'a session'
+    }
+    if (kind === 'action_item') {
+      const it = (items.data ?? []).find((x) => x.id === refId)
+      return it?.title ?? 'a homework item'
+    }
+    if (kind === 'decision') {
+      const dc = (decisions ?? []).find((x) => x.id === refId)
+      return dc?.title ?? 'a decision'
+    }
+    const dl = (deliverables.data ?? []).find((x) => x.id === refId)
+    return dl?.title ?? 'a deliverable'
+  }
+  // Execution reads its facts straight from data this page already
+  // holds; history in prose, never a grade (lib/readinessFacts.ts).
+  // eslint-disable-next-line react-hooks/purity
+  const factsNow = Date.now()
+  const executionFacts = readinessFacts({
+    now: factsNow,
+    windowDays: 30,
+    sessions: (sessions.data ?? []).map((s) => ({ startsAt: s.starts_at, status: s.status })),
+    items: (items.data ?? []).map((it) => ({
+      status: it.status,
+      dueOn: it.due_on,
+      doneAt: it.done_at,
+    })),
+    trail: (hwTrail ?? []).map((t) => ({ kind: t.kind, createdAt: t.created_at })),
+  })
+  // 4E: the health read, derived from rows this page already holds
+  // plus the stage events. One phrase, facts in prose, never stored.
+  const pollMarkers = new Set((pollMarks ?? []).map((m) => m.client_member_id))
+  const health = engagementHealth({
+    now: factsNow,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    clientName: (((engagement.clients as any)?.name as string) || 'the client'),
+    finalStage: stages[stages.length - 1],
+    workstreamStages: (ws.data ?? []).map((w) => w.stage),
+    stageEventAts: (stageEventRows ?? []).map((e) => e.at),
+    pastSessionAts: (sessions.data ?? [])
+      .filter((s) => ['booked', 'held'].includes(s.status) && Date.parse(s.starts_at) < factsNow)
+      .map((s) => s.starts_at),
+    itemsDone: (items.data ?? [])
+      .filter((it) => it.status === 'done' && it.done_at)
+      .map((it) => ({ dueOn: it.due_on, doneAt: it.done_at as string })),
+    ...reviewStanding(
+      open.filter((i) => i.review_requested).map((i) => ({ id: i.id, dueOn: i.due_on })),
+      hwTrail ?? [],
+      factsNow
+    ),
+    ...replyLag(
+      (messages ?? []).map((m) => ({
+        threadId: m.thread_id,
+        authorSide: m.author_side,
+        createdAt: m.created_at,
+      })),
+      factsNow
+    ),
+    openPoll: openPoll
+      ? {
+          openedDaysAgo: Math.floor((factsNow - Date.parse(openPoll.created_at)) / 86400000),
+          marks: pollMarkers.size,
+          teamSize: (clientRoster ?? []).length,
+        }
+      : null,
+    digest: {
+      cadence: (engagement.digest_cadence as 'weekly' | 'biweekly' | 'off') ?? 'weekly',
+      sentInLastTwoWeeks: (sentDigests ?? []).filter(
+        (d) => d.week_of >= new Date(factsNow - 14 * 86400000).toISOString().slice(0, 10)
+      ).length,
+    },
+  })
+  const reflectionSeed = PILLARS.map(
+    (pillar) => `## ${pillar[0].toUpperCase()}${pillar.slice(1)}\n${readinessByPillar.get(pillar)?.note_md ?? ''}`
+  ).join('\n\n')
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const assignee = (it: any) => (it.client_members as any)?.email ?? 'unassigned'
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   return (
     <RoomShell
+      // The phrase sits in the eyebrow, quietly (4E): a reading, not a
+      // gauge.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      eyebrow={((engagement.clients as any)?.name as string) ?? ''}
+      eyebrow={`${((engagement.clients as any)?.name as string) ?? ''}, ${health.phrase}`}
       title={engagement.title}
       maxWidth="max-w-4xl"
     >
@@ -316,6 +420,8 @@ export default async function EngagementDetailPage({
           {STATES[state]}
         </p>
       ) : null}
+
+      <p className="mb-6 text-sm text-ink-dim">{health.lines.join('; ')}.</p>
 
       <p className="mb-6 text-sm text-ink-dim">
         {publishedCharter
@@ -1256,35 +1362,135 @@ export default async function EngagementDetailPage({
           Philosophy, system, execution: what evidence exists, what is still soft. Prose, never a
           score. The client does not see this panel.
         </p>
-        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <div className="mt-4 grid gap-4 lg:grid-cols-3" id="readiness">
           {PILLARS.map((pillar) => {
             const marker = readinessByPillar.get(pillar)
+            const pillarEvidence = evidenceFor(pillar)
             return (
-              <form
+              <div
                 key={pillar}
-                action={saveReadiness}
                 className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised p-4"
               >
-                <input type="hidden" name="engagementId" value={engagement.id} />
-                <input type="hidden" name="pillar" value={pillar} />
                 <p className="eyebrow">{pillar}</p>
-                <textarea
-                  name="note"
-                  rows={5}
-                  defaultValue={marker?.note_md ?? ''}
-                  placeholder="What the evidence says."
-                  className="mt-2 w-full rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink"
-                />
-                <button
-                  type="submit"
-                  className="mt-2 rounded-lg border border-forest px-3 py-1.5 text-sm text-forest transition-colors duration-200 hover:bg-forest hover:text-paper active:scale-[0.98]"
-                >
-                  Save
-                </button>
-              </form>
+                {pillar === 'execution' && executionFacts.length > 0 ? (
+                  <p className="mt-1 text-xs text-ink-dim">{executionFacts.join('; ')}.</p>
+                ) : null}
+                <form action={saveReadiness}>
+                  <input type="hidden" name="engagementId" value={engagement.id} />
+                  <input type="hidden" name="pillar" value={pillar} />
+                  <textarea
+                    name="note"
+                    rows={5}
+                    defaultValue={marker?.note_md ?? ''}
+                    placeholder="What the evidence says."
+                    className="mt-2 w-full rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink"
+                  />
+                  <button
+                    type="submit"
+                    className="mt-2 rounded-lg border border-forest px-3 py-1.5 text-sm text-forest transition-colors duration-200 hover:bg-forest hover:text-paper active:scale-[0.98]"
+                  >
+                    Save
+                  </button>
+                </form>
+                {pillarEvidence.length > 0 ? (
+                  <ul className="mt-3 flex flex-col gap-1 border-t border-ink/10 pt-2">
+                    {pillarEvidence.map((ev) => (
+                      <li key={ev.id} className="flex flex-wrap items-center gap-2 text-xs text-ink">
+                        <span className="font-mono uppercase text-ink-dim">{ev.kind}</span>
+                        <span className="min-w-0 flex-1">
+                          {artifactLabel(ev.kind, ev.ref_id)}
+                          {ev.note ? <span className="text-ink-dim"> ({ev.note})</span> : null}
+                        </span>
+                        <form action={removeReadinessEvidence}>
+                          <input type="hidden" name="evidenceId" value={ev.id} />
+                          <input type="hidden" name="engagementId" value={engagement.id} />
+                          <button type="submit" className="text-ink-dim underline hover:text-ink">
+                            Remove
+                          </button>
+                        </form>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                <form action={addReadinessEvidence} className="mt-2 flex flex-col gap-1.5">
+                  <input type="hidden" name="engagementId" value={engagement.id} />
+                  <input type="hidden" name="pillar" value={pillar} />
+                  <select
+                    name="ref"
+                    required
+                    defaultValue=""
+                    className="rounded-lg border border-ink/15 bg-paper px-2 py-1 text-xs"
+                  >
+                    <option value="" disabled>
+                      Link evidence
+                    </option>
+                    <optgroup label="Sessions">
+                      {(sessions.data ?? [])
+                        .filter((sx) => sx.status !== 'canceled')
+                        .map((sx) => (
+                          <option key={sx.id} value={`session:${sx.id}`}>
+                            {fmt(sx.starts_at, sx.tz)}
+                          </option>
+                        ))}
+                    </optgroup>
+                    <optgroup label="Homework">
+                      {(items.data ?? []).map((it) => (
+                        <option key={it.id} value={`action_item:${it.id}`}>
+                          {it.title.slice(0, 50)}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Decisions">
+                      {(decisions ?? []).map((dc) => (
+                        <option key={dc.id} value={`decision:${dc.id}`}>
+                          {dc.title.slice(0, 50)}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Deliverables">
+                      {(deliverables.data ?? []).map((dl) => (
+                        <option key={dl.id} value={`deliverable:${dl.id}`}>
+                          {dl.title.slice(0, 50)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      name="note"
+                      maxLength={300}
+                      placeholder="Why this counts (optional)"
+                      className="min-w-0 flex-1 rounded-lg border border-ink/15 bg-paper p-1.5 text-xs text-ink"
+                    />
+                    <button type="submit" className="text-xs text-ink-dim underline hover:text-ink">
+                      Link
+                    </button>
+                  </div>
+                </form>
+              </div>
             )
           })}
         </div>
+
+        <details className="mt-6">
+          <summary className="cursor-pointer text-sm font-medium text-forest">
+            Share as a reflection
+          </summary>
+          <p className="mt-2 text-sm text-ink-dim">
+            This sends into the message thread like any reply, where the team can answer. The
+            panel itself stays yours; rewrite the seed for their eyes before sending.
+          </p>
+          <form action={replyMessage} className="mt-3 flex flex-col gap-2">
+            <input type="hidden" name="engagementId" value={engagement.id} />
+            <MarkdownEditor name="body" defaultValue={reflectionSeed} rows={10} />
+            <button
+              type="submit"
+              className="self-start rounded-lg bg-forest px-4 py-2 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98]"
+            >
+              Send the reflection
+            </button>
+          </form>
+        </details>
       </section>
     </RoomShell>
   )

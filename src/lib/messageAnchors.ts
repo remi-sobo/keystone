@@ -17,6 +17,7 @@ export const ANCHOR_TYPES = [
   'deliverable',
   'workstream',
   'decision',
+  'digest',
 ] as const
 export type AnchorType = (typeof ANCHOR_TYPES)[number]
 
@@ -48,7 +49,17 @@ export async function resolveAnchor(
   id: string
 ): Promise<ResolvedAnchor | null> {
   let label: string | null = null
-  if (type === 'session') {
+  if (type === 'digest') {
+    // The client's session sees only SENT rows (the 0024 policy), so a
+    // client can never anchor a digest that never reached anyone.
+    const { data } = await supabase
+      .from('digests')
+      .select('id, week_of')
+      .eq('id', id)
+      .eq('engagement_id', engagementId)
+      .maybeSingle()
+    if (data) label = `the digest for the week of ${data.week_of}`
+  } else if (type === 'session') {
     const { data } = await supabase
       .from('sessions')
       .select('id, starts_at, purpose')
@@ -96,6 +107,8 @@ export function anchorHref(
         return '/decisions'
       case 'workstream':
         return '/home'
+      case 'digest':
+        return '/digests'
     }
   }
   switch (type) {

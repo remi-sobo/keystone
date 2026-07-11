@@ -23,6 +23,7 @@ import {
   findInEngagement,
   removeDeliverable,
   requestDeliverableAcceptance,
+  setDigestCadence,
   updateDeliverableAbout,
   removeEvidence,
   saveOutcome,
@@ -68,6 +69,8 @@ const STATES: Record<string, string> = {
   dlv_asked: 'Acceptance asked. The client team hears about it.',
   dlv_already_asked: 'Acceptance is already asked or given on that one.',
   dlv_error: 'That did not save. Try again.',
+  cadence_saved: 'Cadence saved. The Friday cron honors it before drafting.',
+  cadence_error: 'That did not save. Try again.',
 }
 
 function fmt(dt: string, tz: string): string {
@@ -103,7 +106,7 @@ export default async function EngagementDetailPage({
 
   const { data: engagement } = await supabase
     .from('engagements')
-    .select('id, title, status, practice_id, client_id, clients(name)')
+    .select('id, title, status, practice_id, client_id, digest_cadence, clients(name)')
     .eq('id', id)
     .maybeSingle()
   if (!engagement) redirect('/engagements')
@@ -245,6 +248,14 @@ export default async function EngagementDetailPage({
   ])
   const dlvApprovalFor = (dlvId: string) => (dlvApprovals ?? []).find((a) => a.subject_id === dlvId)
   const dlvVersionsFor = (dlvId: string) => (dlvVersions ?? []).filter((v) => v.deliverable_id === dlvId)
+
+  // 3G: the archive fold reads what was sent, newest first.
+  const { data: sentDigests } = await supabase
+    .from('digests')
+    .select('id, week_of, subject, draft_md, sent_at')
+    .eq('engagement_id', id)
+    .eq('status', 'sent')
+    .order('week_of', { ascending: false })
 
   const { data: publishedCharter } = await supabase
     .from('engagement_charters')
@@ -1091,6 +1102,49 @@ export default async function EngagementDetailPage({
           </ul>
         )}
         <UploadAgreementForm engagementId={engagement.id} />
+      </section>
+
+      <section id="digests" className="mt-12">
+        <h2 className="font-display text-2xl font-medium text-ink">Digests</h2>
+        <p className="mt-1 text-sm text-ink-dim">
+          The archive of what was sent, and how often the Friday cron drafts for this engagement.
+        </p>
+        <form action={setDigestCadence} className="mt-3 flex flex-wrap items-center gap-2">
+          <input type="hidden" name="engagementId" value={engagement.id} />
+          <select
+            name="cadence"
+            defaultValue={engagement.digest_cadence ?? 'weekly'}
+            className="rounded-lg border border-ink/15 bg-paper-raised px-2 py-1 text-sm"
+          >
+            <option value="weekly">Weekly</option>
+            <option value="biweekly">Every two weeks</option>
+            <option value="off">Off for now</option>
+          </select>
+          <button
+            type="submit"
+            className="rounded-lg border border-forest px-3 py-1.5 text-sm text-forest transition-colors duration-200 hover:bg-forest hover:text-paper active:scale-[0.98]"
+          >
+            Save cadence
+          </button>
+        </form>
+        {(sentDigests ?? []).length === 0 ? (
+          <p className="mt-3 text-sm text-ink-dim">Nothing sent yet. Sent digests collect here.</p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-2">
+            {(sentDigests ?? []).map((dg) => (
+              <li key={dg.id}>
+                <details className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised px-4 py-2.5">
+                  <summary className="cursor-pointer text-sm text-ink">
+                    {dg.subject} <span className="text-ink-dim">(week of {dg.week_of})</span>
+                  </summary>
+                  <div className="mt-2 border-t border-ink/10 pt-2">
+                    <MarkdownLite text={dg.draft_md} />
+                  </div>
+                </details>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section id="messages" className="mt-12">

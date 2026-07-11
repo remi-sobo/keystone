@@ -1976,4 +1976,71 @@ exception when insufficient_privilege then null; -- the column grant held
 end $$;
 reset role;
 
+-- ── V2 3G: the digest archive ────────────────────────────────────────
+-- The client reads SENT digests only: the record of what reached
+-- inboxes contains only what was sent. Approved-but-unsent stays
+-- practice-only; session writes stay impossible for everyone.
+
+insert into digests (id, engagement_id, practice_id, client_id, week_of, subject, draft_md, status, sent_at) values
+  ('c3000000-0000-0000-0000-0000000000f1', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   '2026-06-15', 'leak-test digest, sent', 'the sent body', 'sent', now()),
+  ('c3000000-0000-0000-0000-0000000000f2', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   '2026-06-22', 'leak-test digest, approved only', 'the unsent body', 'approved', null);
+
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$
+declare n int;
+begin
+  if (select count(*) from digests) <> 1 then
+    raise exception 'member_a1 must read exactly the SENT digest';
+  end if;
+  if (select count(*) from digests where status = 'approved') <> 0 then
+    raise exception 'LEAK 3G: a client member reads an approved-but-unsent digest';
+  end if;
+  update digests set draft_md = 'rewritten';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE 3G: a session rewrote a digest'; end if;
+end $$;
+-- The digest anchor: a client anchors the SENT digest in the thread.
+do $$
+declare tid uuid;
+begin
+  select id into tid from message_threads
+    where engagement_id = '30000000-0000-0000-0000-0000000000a1' limit 1;
+  insert into messages (thread_id, engagement_id, practice_id, client_id,
+                        author_user_id, author_side, body,
+                        anchor_type, anchor_id, anchor_label)
+    values (tid, '30000000-0000-0000-0000-0000000000a1',
+            '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+            '00000000-0000-0000-0000-0000000000a1', 'client', 'a question about the week',
+            'digest', 'c3000000-0000-0000-0000-0000000000f1', 'the digest for the week of 2026-06-29');
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$ begin
+  if (select count(*) from digests) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 digests';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from digests
+      where practice_id = '10000000-0000-0000-0000-00000000000a') <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a digests';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from digests) <> 3 then
+    raise exception 'the practice must read all its digests, sent and approved';
+  end if;
+end $$;
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

@@ -2,7 +2,7 @@
 
 **Parent:** `specs/keystone-v2.md` Phase 3 epic 3G, the last of the phase: a persistent in-app digest archive and per-recipient digest modes, with cadence per engagement.
 **Grounded against:** the live codebase after 3E. The digest engine is whole since Ring 6: the Friday cron drafts from the week's real rows, the /today queue approves, the approval writes a `digests` row and sends one branded email per client member. What is missing is memory and reach: the client meets the digest ONLY in their inbox (`digests` has no client read by design, until now), there is no archive on either side, and the cron drafts weekly for every engagement regardless of season. Also open here: 3E deferred digest anchors "until 3G gives digests a client surface"; this epic closes that loop.
-**Status:** draft for Remi. CONFIRM gates in section 7.
+**Status:** BUILT 2026-07-10, same day as the spec. All five gates approved as recommended (Remi). Migration 0024 applied live. PHASE 3 CLOSES with this epic.
 **Date:** 2026-07-10
 
 ---

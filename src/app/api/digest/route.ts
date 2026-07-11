@@ -57,16 +57,36 @@ export async function GET(req: NextRequest) {
 
   const { data: engagements, error } = await supabaseAdmin
     .from('engagements')
-    .select('id, title, practice_id, client_id, clients(name)')
+    .select('id, title, practice_id, client_id, digest_cadence, clients(name)')
     .eq('status', 'active')
   if (error) {
     console.error('[digest] engagement scan failed:', error.message)
     return NextResponse.json({ error: 'scan_failed' }, { status: 500 })
   }
 
-  const out = { drafted: 0, empty: 0, existing: 0, failed: 0 }
+  const out = { drafted: 0, empty: 0, existing: 0, failed: 0, skipped_cadence: 0 }
 
   for (const e of engagements ?? []) {
+    // 3G: cadence first, BEFORE any model call. Off engagements cost
+    // nothing; biweekly skips while the last sent digest is fresh.
+    if (e.digest_cadence === 'off') {
+      out.skipped_cadence++
+      continue
+    }
+    if (e.digest_cadence === 'biweekly') {
+      const { data: recent } = await supabaseAdmin
+        .from('digests')
+        .select('id')
+        .eq('engagement_id', e.id)
+        .eq('status', 'sent')
+        .gte('week_of', new Date(now.getTime() - 13 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10))
+        .limit(1)
+        .maybeSingle()
+      if (recent) {
+        out.skipped_cadence++
+        continue
+      }
+    }
     // One draft per engagement per week: an undecided or accepted
     // proposal for this week, or a sent digest, means skip.
     const [{ data: existingProposals }, { data: existingDigest }] = await Promise.all([

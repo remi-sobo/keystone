@@ -21,6 +21,8 @@ export function clientNav(): NavItem[] {
     { href: '/homework', label: 'Homework', icon: 'homework', mobile: true },
     { href: '/deliverables', label: 'Deliverables', icon: 'deliverables', mobile: true },
     { href: '/library', label: 'Library', icon: 'library' },
+    // Desktop rail only, like Account: the archive is a reading page.
+    { href: '/digests', label: 'Digests', icon: 'library' },
     { href: '/messages', label: 'Messages', icon: 'messages', mobile: true },
     // Desktop rail only: the mobile bar holds its five; phones reach
     // Account through the quiet line at the bottom of Home.

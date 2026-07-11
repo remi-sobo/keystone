@@ -129,6 +129,18 @@ export default async function ClientHomePage() {
         : Promise.resolve({ count: 0 } as { count: number | null }),
     ])
 
+  // 3G: a digest sent in the last week gets a quiet line up top.
+  // eslint-disable-next-line react-hooks/purity
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  const { data: recentDigest } = await supabase
+    .from('digests')
+    .select('id, week_of')
+    .eq('client_id', viewer.client.clientId)
+    .gte('sent_at', weekAgo)
+    .order('week_of', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
   const { data: myOpenItems } = myMembership
     ? await supabase
         .from('action_items')
@@ -232,6 +244,7 @@ export default async function ClientHomePage() {
     >
       {(() => {
         const hasMoves =
+          recentDigest != null ||
           (pendingApprovals ?? []).length > 0 ||
           (myOpenItems ?? []).length > 0 ||
           (prepCount ?? 0) > 0 ||
@@ -241,6 +254,14 @@ export default async function ClientHomePage() {
             <p className="eyebrow">Your next moves</p>
             {hasMoves ? (
               <ul className="mt-2 flex flex-col gap-1.5">
+                {recentDigest ? (
+                  <li className="text-sm text-ink">
+                    This week&apos;s digest is in.{' '}
+                    <Link href="/digests" className="text-forest underline">
+                      Read it
+                    </Link>
+                  </li>
+                ) : null}
                 {(pendingApprovals ?? []).map((a) => (
                   <li key={a.id} className="text-sm text-ink">
                     Your sign-off is waited on: {a.subject_label}.{' '}

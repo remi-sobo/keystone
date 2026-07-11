@@ -1941,3 +1941,38 @@ export async function requestDeliverableAcceptance(formData: FormData): Promise<
   revalidatePath('/home')
   redirect(`/engagements/${engagementId}?state=dlv_asked`)
 }
+
+// ── Digest cadence (V2 3G) ────────────────────────────────────────────
+
+const CadenceShape = z.object({
+  engagementId: z.string().uuid(),
+  cadence: z.enum(['weekly', 'biweekly', 'off']),
+})
+
+export async function setDigestCadence(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = CadenceShape.safeParse({
+    engagementId: formData.get('engagementId'),
+    cadence: formData.get('cadence'),
+  })
+  if (!parsed.success) redirect('/engagements')
+
+  const supabase = await createServerSupabase()
+  const { error } = await supabase
+    .from('engagements')
+    .update({ digest_cadence: parsed.data.cadence })
+    .eq('id', parsed.data.engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+  if (error) {
+    console.error('[digest] cadence save failed:', error.message)
+    redirect(`/engagements/${parsed.data.engagementId}?state=cadence_error#digests`)
+  }
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    action: 'digest.cadence',
+    target: parsed.data.engagementId,
+    detail: { cadence: parsed.data.cadence },
+  })
+  revalidatePath(`/engagements/${parsed.data.engagementId}`)
+  redirect(`/engagements/${parsed.data.engagementId}?state=cadence_saved#digests`)
+}

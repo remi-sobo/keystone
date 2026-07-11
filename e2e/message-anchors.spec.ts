@@ -48,7 +48,12 @@ test('the pure helpers: parsing is strict, hrefs are side-appropriate', () => {
     type: 'deliverable',
     id: '8ad0a26e-0000-4000-8000-000000000001',
   })
-  expect(parseAnchorParam('digest:8ad0a26e-0000-4000-8000-000000000001')).toBeNull()
+  // 3G opened the digest anchor once digests got a client surface.
+  expect(parseAnchorParam('digest:8ad0a26e-0000-4000-8000-000000000001')).toEqual({
+    type: 'digest',
+    id: '8ad0a26e-0000-4000-8000-000000000001',
+  })
+  expect(parseAnchorParam('transcript:8ad0a26e-0000-4000-8000-000000000001')).toBeNull()
   expect(parseAnchorParam('deliverable:not-a-uuid')).toBeNull()
   expect(parseAnchorParam('')).toBeNull()
   expect(anchorHref('client', 'action_item', 'x', 'e')).toBe('/homework/x')

@@ -26,7 +26,13 @@ async function guardPractice() {
 
 const ResourceShape = z.object({
   title: z.string().min(1).max(200),
-  kind: z.enum(['guide', 'framework', 'template']),
+  // 4H: the knowledge-base kinds join the catalog.
+  kind: z.enum([
+    'guide', 'framework', 'template',
+    'sop', 'agenda_template', 'homework_template',
+    'deliverable_template', 'prompt_recipe', 'diagnostic',
+  ]),
+  audience: z.enum(['client', 'practice']),
   tags: z.string().max(500),
   body: z.string().max(50000),
 })
@@ -53,6 +59,7 @@ export async function createResource(formData: FormData): Promise<void> {
   const parsed = ResourceShape.safeParse({
     title: formData.get('title'),
     kind: formData.get('kind'),
+    audience: formData.get('audience') ?? 'client',
     tags: formData.get('tags') ?? '',
     body: formData.get('body') ?? '',
   })
@@ -64,6 +71,7 @@ export async function createResource(formData: FormData): Promise<void> {
     practice_id: practiceId,
     title: parsed.data.title,
     kind: parsed.data.kind,
+    audience: parsed.data.audience,
     tags: parseTags(parsed.data.tags),
     body_md: await sweepBody(practiceId, parsed.data.body),
     created_by: viewer.user!.id,
@@ -85,6 +93,7 @@ export async function updateResource(formData: FormData): Promise<void> {
     resourceId: formData.get('resourceId'),
     title: formData.get('title'),
     kind: formData.get('kind'),
+    audience: formData.get('audience') ?? 'client',
     tags: formData.get('tags') ?? '',
     body: formData.get('body') ?? '',
   })
@@ -98,6 +107,7 @@ export async function updateResource(formData: FormData): Promise<void> {
       {
         title: parsed.data.title,
         kind: parsed.data.kind,
+        audience: parsed.data.audience,
         tags: parseTags(parsed.data.tags),
         body_md: await sweepBody(practiceId, parsed.data.body),
         updated_at: new Date().toISOString(),

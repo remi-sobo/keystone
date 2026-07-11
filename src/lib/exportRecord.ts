@@ -53,6 +53,7 @@ export interface ExportCounts {
   messages: number
   documents: number
   library: number
+  closeout: number
   files: number
 }
 
@@ -361,6 +362,35 @@ export function renderLibrary(rows: LibraryRow[]): string {
   return parts.join('\n')
 }
 
+interface CloseoutRow {
+  risks_md: string | null
+  ownership_md: string | null
+  maintenance_md: string | null
+  training_md: string | null
+  breaks_md: string | null
+  next_md: string | null
+  published_at: string | null
+}
+
+export function renderCloseout(row: CloseoutRow | null): string {
+  if (!row) return '# The closeout\n\nNo closeout has been published yet.\n'
+  const sections: Array<[string, string | null]> = [
+    ['What to do if it breaks', row.breaks_md],
+    ['Who owns what', row.ownership_md],
+    ['The maintenance rhythm', row.maintenance_md],
+    ['Training completed', row.training_md],
+    ['Open risks', row.risks_md],
+    ['What comes next', row.next_md],
+  ]
+  const parts = [
+    `# The closeout${row.published_at ? `\n\nPublished ${day(row.published_at)}.` : ''}\n`,
+  ]
+  for (const [title, body] of sections) {
+    if (body) parts.push(`## ${title}\n\n${body.trim()}\n`)
+  }
+  return parts.join('\n')
+}
+
 interface WorkstreamRow {
   title: string
   stage: string
@@ -382,6 +412,7 @@ export function renderReadme(
     `deliverables.md and deliverables/: what shipped (${counts.deliverables})`,
     `digests.md: sent digests (${counts.digests})`,
     `messages.md: the message thread (${counts.messages})`,
+    `closeout.md: the closeout${counts.closeout ? '' : ' (not yet published)'}`,
     `documents/: engagement documents (${counts.documents})`,
     `library.md and library/: shared resources (${counts.library})`,
   ]
@@ -452,6 +483,7 @@ export async function buildArchiveZip(
     messages,
     documents,
     library,
+    closeout,
   ] = await Promise.all([
     supabase
       .from('workstreams')
@@ -549,6 +581,13 @@ export async function buildArchiveZip(
       .eq('visible_to_client', true)
       .limit(100),
     supabase.from('resources').select('id, title, kind, body_md, storage_path').limit(300),
+    // The published closeout only, on either side: drafts stay in the room.
+    supabase
+      .from('closeouts')
+      .select('risks_md, ownership_md, maintenance_md, training_md, breaks_md, next_md, published_at')
+      .eq('engagement_id', engagementId)
+      .eq('status', 'published')
+      .maybeSingle(),
   ])
 
   const queryFailed = [
@@ -566,6 +605,7 @@ export async function buildArchiveZip(
     messages,
     documents,
     library,
+    closeout,
   ].some((r) => r.error)
   if (queryFailed) return { ok: false, error: 'failed' }
 
@@ -657,6 +697,7 @@ export async function buildArchiveZip(
     messages: (messages.data ?? []).length,
     documents: (documents.data ?? []).length,
     library: libraryRows.length,
+    closeout: closeout.data ? 1 : 0,
     files: binaries.length,
   }
 
@@ -673,6 +714,7 @@ export async function buildArchiveZip(
     { path: 'deliverables.md', text: renderDeliverables(deliverableRows) },
     { path: 'digests.md', text: renderDigests(digests.data ?? []) },
     { path: 'messages.md', text: renderMessages(messages.data ?? [], meta) },
+    { path: 'closeout.md', text: renderCloseout(closeout.data ?? null) },
     { path: 'library.md', text: renderLibrary(libraryRows) },
   ]
 

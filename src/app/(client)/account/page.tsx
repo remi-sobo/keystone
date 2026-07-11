@@ -75,7 +75,7 @@ export default async function AccountPage({
           consultant&apos;s working notes are never in it.
         </p>
         <a
-          href="/account/export"
+          href="/export"
           className="mt-4 inline-block rounded-lg border border-forest px-4 py-2 text-sm text-forest transition-colors duration-200 hover:bg-forest hover:text-paper active:scale-[0.98]"
         >
           Download your record

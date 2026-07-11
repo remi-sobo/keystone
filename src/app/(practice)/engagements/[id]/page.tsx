@@ -13,12 +13,18 @@ import { loopStatesByItem, LOOP_LABEL } from '@/lib/homework'
 import { anchorHref, parseAnchorParam, resolveAnchor, type AnchorType } from '@/lib/messageAnchors'
 import { readinessFacts } from '@/lib/readinessFacts'
 import { engagementHealth, replyLag, reviewStanding } from '@/lib/health'
+import { listEngagementAudit } from '@/lib/audit'
 import MarkdownEditor from '@/components/MarkdownEditor'
 import { assembleSlots } from '@/lib/slotAssembly'
 import {
   addDecision,
   addHomework,
   closeSessionPoll,
+  completeInternalTask,
+  reopenInternalTask,
+  decideChangeOrder,
+  setEngagementOwner,
+  setWorkstreamOwner,
   confirmPollOption,
   createSessionPoll,
   askEngagementQuestion,
@@ -64,6 +70,13 @@ const STATES: Record<string, string> = {
   slow: 'Too many messages at once. Wait a minute.',
   hw_added: 'Homework added. The assignee sees it now.',
   hw_error: 'That did not save. Check the fields and try again.',
+  internal_done: 'Checked off. Internal tasks stay between us.',
+  internal_reopened: 'Reopened.',
+  owner_saved: 'Owner saved.',
+  owner_error: 'That did not save. Try again.',
+  co_decided: 'Decided, in writing. The client team hears about it.',
+  co_gone: 'That change order was already decided.',
+  co_error: 'That did not save. Try again.',
   poll_opened: 'Poll opened. The team sees it on their sessions page now.',
   poll_exists: 'There is already an open poll for this engagement. Close it first.',
   poll_slot_gone: 'One of those times is no longer free. Refresh and pick again.',
@@ -114,7 +127,7 @@ export default async function EngagementDetailPage({
 
   const { data: engagement } = await supabase
     .from('engagements')
-    .select('id, title, status, practice_id, client_id, digest_cadence, clients(name)')
+    .select('id, title, status, practice_id, client_id, digest_cadence, owner_practice_member_id, clients(name)')
     .eq('id', id)
     .maybeSingle()
   if (!engagement) redirect('/engagements')
@@ -126,7 +139,7 @@ export default async function EngagementDetailPage({
   const [ws, practice, sessions, items, readiness, deliverables] = await Promise.all([
     supabase
       .from('workstreams')
-      .select('id, title, stage, sort, note_md, note_updated_at')
+      .select('id, title, stage, sort, note_md, note_updated_at, owner_practice_member_id')
       .eq('engagement_id', id)
       .order('sort'),
     supabase.from('practices').select('stage_config').eq('id', engagement.practice_id).maybeSingle(),
@@ -160,6 +173,17 @@ export default async function EngagementDetailPage({
     .eq('engagement_id', id)
     .order('created_at', { ascending: true })
     .limit(200)
+
+  // Activity view: service-role read AFTER the practice layout check
+  // and the RLS engagement resolve above (the sanctioned path).
+  const activity = await listEngagementAudit(id, 30)
+
+  // 5E: the shared page of asks that sit outside the walls.
+  const { data: changeOrders } = await supabase
+    .from('change_orders')
+    .select('id, title, description_md, status, response_md, created_at, client_members:requested_by_client_member_id(email)')
+    .eq('engagement_id', id)
+    .order('created_at', { ascending: false })
 
   // 4E: stage events feed the health read (moving, quiet weeks).
   const { data: stageEventRows } = await supabase
@@ -295,6 +319,11 @@ export default async function EngagementDetailPage({
       ? (practice.data.stage_config as string[])
       : DEFAULT_STAGES
   const open = (items.data ?? []).filter((i) => i.status === 'open')
+  // V2 4B: the three kinds of work read as three kinds of work. Client
+  // homework and our on-the-record commitments stay in Open; internal
+  // tasks get their own list and a plain check-off.
+  const openClient = open.filter((i) => i.audience !== 'practice')
+  const openInternal = open.filter((i) => i.audience === 'practice')
   const recentlyDone = (items.data ?? []).filter(
     (i) => i.status === 'done' && i.done_at && i.done_at >= twoWeeksAgo
   )
@@ -428,13 +457,40 @@ export default async function EngagementDetailPage({
           {publishedCharter ? 'Open the charter' : 'Draft the charter'}
         </Link>
         {'  '}
+        <Link href={`/engagements/${engagement.id}/closeout`} className="ml-2 underline hover:text-ink">
+          The closeout room
+        </Link>
         <a
           href={`/engagements/${engagement.id}/export`}
-          className="ml-3 underline hover:text-ink"
+          className="ml-2 underline hover:text-ink"
         >
           Export the record
         </a>
       </p>
+
+      {/* V2 4C: who owns the relationship. Descriptive, who to ask. */}
+      <form action={setEngagementOwner} className="mb-8 flex flex-wrap items-center gap-2 text-sm">
+        <input type="hidden" name="engagementId" value={engagement.id} />
+        <label className="text-ink-dim" htmlFor="engagement-owner">
+          Engagement owner
+        </label>
+        <select
+          id="engagement-owner"
+          name="memberId"
+          defaultValue={engagement.owner_practice_member_id ?? ''}
+          className="rounded-lg border border-ink/15 bg-paper-raised px-2 py-1 text-sm text-ink"
+        >
+          <option value="">No owner yet</option>
+          {(practiceRoster ?? []).map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.email}
+            </option>
+          ))}
+        </select>
+        <button type="submit" className="text-ink-dim underline hover:text-ink">
+          Save
+        </button>
+      </form>
 
       <section className="flex flex-col gap-6">
         {(ws.data ?? []).map((w) => (
@@ -455,6 +511,29 @@ export default async function EngagementDetailPage({
               />
               <button type="submit" className="text-sm text-ink-dim underline hover:text-ink">
                 Save note
+              </button>
+            </form>
+            <form action={setWorkstreamOwner} className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
+              <input type="hidden" name="engagementId" value={engagement.id} />
+              <input type="hidden" name="workstreamId" value={w.id} />
+              <label className="text-ink-dim" htmlFor={`ws-owner-${w.id}`}>
+                Owner
+              </label>
+              <select
+                id={`ws-owner-${w.id}`}
+                name="memberId"
+                defaultValue={w.owner_practice_member_id ?? ''}
+                className="rounded border border-ink/15 bg-paper-raised px-2 py-0.5 text-xs text-ink"
+              >
+                <option value="">No owner yet</option>
+                {(practiceRoster ?? []).map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.email}
+                  </option>
+                ))}
+              </select>
+              <button type="submit" className="text-ink-dim underline hover:text-ink">
+                Save
               </button>
             </form>
           </div>
@@ -604,11 +683,11 @@ export default async function EngagementDetailPage({
           ) : null}
 
           <h3 className="font-display mt-6 text-xl font-medium text-ink">Open</h3>
-          {open.length === 0 ? (
+          {openClient.length === 0 ? (
             <p className="mt-2 text-sm text-ink-dim">Nothing open.</p>
           ) : (
             <ul className="mt-2 flex flex-col gap-1">
-              {open.map((it) => (
+              {openClient.map((it) => (
                 <li key={it.id} className="text-sm text-ink">
                   <Link
                     href={`/engagements/${id}/homework/${it.id}`}
@@ -620,8 +699,47 @@ export default async function EngagementDetailPage({
                     ({assignee(it)}
                     {it.due_on ? `, due ${it.due_on}` : ''})
                   </span>
-                  {it.audience === 'practice' ? <span className="eyebrow ml-2">internal</span> : null}
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {(it.practice_members as any)?.email ? (
+                    <span className="eyebrow ml-2">our commitment</span>
+                  ) : null}
                   {hwChip(it) ? <span className="eyebrow ml-2">{hwChip(it)}</span> : null}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <h3 className="font-display mt-6 text-xl font-medium text-ink">Internal tasks</h3>
+          <p className="mt-1 text-xs text-ink-dim">
+            Invisible to the client, by policy. Check-offs, not coaching loops.
+          </p>
+          {openInternal.length === 0 ? (
+            <p className="mt-2 text-sm text-ink-dim">Nothing internal open.</p>
+          ) : (
+            <ul className="mt-2 flex flex-col gap-1.5">
+              {openInternal.map((it) => (
+                <li key={it.id} className="flex flex-wrap items-center gap-2 text-sm text-ink">
+                  <form action={completeInternalTask}>
+                    <input type="hidden" name="itemId" value={it.id} />
+                    <input type="hidden" name="engagementId" value={id} />
+                    <button
+                      type="submit"
+                      className="rounded border border-ink/20 px-2 py-0.5 text-xs text-ink-dim hover:text-ink"
+                    >
+                      Done
+                    </button>
+                  </form>
+                  <Link
+                    href={`/engagements/${id}/homework/${it.id}`}
+                    className="text-forest underline"
+                  >
+                    {it.title}
+                  </Link>
+                  <span className="text-ink-dim">
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    ({((it.practice_members as any)?.email as string) ?? 'unassigned'}
+                    {it.due_on ? `, due ${it.due_on}` : ''})
+                  </span>
                 </li>
               ))}
             </ul>
@@ -633,14 +751,28 @@ export default async function EngagementDetailPage({
           ) : (
             <ul className="mt-2 flex flex-col gap-1">
               {recentlyDone.map((it) => (
-                <li key={it.id} className="text-sm text-ink-dim">
+                <li key={it.id} className="flex flex-wrap items-center gap-2 text-sm text-ink-dim">
                   <Link
                     href={`/engagements/${id}/homework/${it.id}`}
                     className="underline"
                   >
                     {it.title}
                   </Link>{' '}
-                  ({assignee(it)})
+                  {it.audience === 'practice' ? (
+                    <>
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      <span>({((it.practice_members as any)?.email as string) ?? 'unassigned'}, internal)</span>
+                      <form action={reopenInternalTask}>
+                        <input type="hidden" name="itemId" value={it.id} />
+                        <input type="hidden" name="engagementId" value={id} />
+                        <button type="submit" className="text-xs underline hover:text-ink">
+                          Reopen
+                        </button>
+                      </form>
+                    </>
+                  ) : (
+                    <span>({assignee(it)})</span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -1466,6 +1598,100 @@ export default async function EngagementDetailPage({
           </form>
         </details>
       </section>
+
+      {/* V2 5E: change orders. The ask and the answer, one page. */}
+      <section id="change-orders" className="mt-12">
+        <h2 className="font-display text-2xl font-medium text-ink">Change orders</h2>
+        <p className="mt-1 text-sm text-ink-dim">
+          Asks that sit outside the charter. The answer goes on the record in writing; no numbers
+          here, the fee conversation stays a conversation.
+        </p>
+        {(changeOrders ?? []).length === 0 ? (
+          <p className="mt-3 text-sm text-ink-dim">Nothing asked. The boundary is holding.</p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-3">
+            {(changeOrders ?? []).map((co) => (
+              <li key={co.id} className="rounded-lg border border-ink/10 bg-paper-raised px-4 py-3">
+                <p className="text-sm font-medium text-ink">
+                  {co.title} <span className="eyebrow ml-2">{co.status}</span>
+                </p>
+                {co.description_md ? (
+                  <p className="mt-1 text-sm text-ink-dim">{co.description_md}</p>
+                ) : null}
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                {((co.client_members as any)?.email as string) ? (
+                  <p className="mt-1 text-xs text-ink-dim">
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    asked by {((co.client_members as any)?.email as string)}
+                  </p>
+                ) : null}
+                {co.status === 'open' ? (
+                  <form action={decideChangeOrder} className="mt-3 flex flex-col gap-2">
+                    <input type="hidden" name="engagementId" value={engagement.id} />
+                    <input type="hidden" name="changeOrderId" value={co.id} />
+                    <textarea
+                      name="response"
+                      required
+                      rows={2}
+                      maxLength={4000}
+                      placeholder="The answer, in writing. If it is outside the walls, say where it lives instead."
+                      className="rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink"
+                    />
+                    <div className="flex gap-3">
+                      <button
+                        type="submit"
+                        name="decision"
+                        value="agreed"
+                        className="rounded-lg bg-forest px-3 py-1.5 text-sm font-medium text-paper hover:bg-forest-deep"
+                      >
+                        Agree
+                      </button>
+                      <button
+                        type="submit"
+                        name="decision"
+                        value="declined"
+                        className="rounded-lg border border-ink/20 px-3 py-1.5 text-sm text-ink-dim hover:text-ink"
+                      >
+                        Decline, with the reason
+                      </button>
+                    </div>
+                  </form>
+                ) : co.response_md ? (
+                  <p className="mt-2 text-sm text-ink">Answer: {co.response_md}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-3 text-xs text-ink-dim">
+          The case study room and the closeout room live on their own pages:{' '}
+          <a className="underline" href={`/engagements/${engagement.id}/case-study`}>case study</a>,{' '}
+          <a className="underline" href={`/engagements/${engagement.id}/closeout`}>closeout</a>.
+        </p>
+      </section>
+
+      {/* V2 activity view: what happened here lately. Action, when,
+          who; never detail payloads. The trail starts when the scope
+          columns landed. */}
+      <details className="mt-12">
+        <summary className="cursor-pointer text-sm font-medium text-forest">
+          Activity ({activity.length})
+        </summary>
+        {activity.length === 0 ? (
+          <p className="mt-2 text-sm text-ink-dim">
+            Nothing recorded yet. The trail starts with actions taken after July 2026.
+          </p>
+        ) : (
+          <ul className="mt-2 flex flex-col gap-1">
+            {activity.map((a) => (
+              <li key={a.id} className="text-sm text-ink-dim">
+                <span className="font-mono text-xs">{a.action}</span>, {fmt2(a.created_at)}, by{' '}
+                {a.actor_email}
+              </li>
+            ))}
+          </ul>
+        )}
+      </details>
     </RoomShell>
   )
 }

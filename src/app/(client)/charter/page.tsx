@@ -5,7 +5,7 @@ import { getViewer } from '@/lib/membership'
 import { RoomShell } from '@/components/RoomShell'
 import { KeystoneCard } from '@/components/KeystoneCard'
 import { MarkdownLite } from '@/components/MarkdownLite'
-import { decideApproval } from './actions'
+import { decideApproval, requestChangeOrder } from './actions'
 
 /**
  * The charter, client side (V2 2A): the shared agreement that governs
@@ -19,6 +19,9 @@ const STATES: Record<string, string> = {
   noted: 'Noted. Your consultant will pick it up from here.',
   invalid: 'That did not parse. Try again.',
   error: 'That did not save. It may already be decided; refresh and see.',
+  co_asked: 'Asked. It goes on the record and your consultant answers in writing.',
+  co_invalid: 'Give the ask a title.',
+  co_error: 'That did not save. Try again.',
 }
 
 function fmtDay(iso: string | null): string {
@@ -44,6 +47,13 @@ export default async function ClientCharterPage({
 
   const published = (versions ?? []).find((v) => v.status === 'published')
   const superseded = (versions ?? []).filter((v) => v.status === 'superseded')
+
+  // V2 5E: the shared page of asks that sit outside the walls.
+  const { data: changeOrders } = await supabase
+    .from('change_orders')
+    .select('id, title, description_md, status, response_md, created_at')
+    .eq('client_id', viewer.client.clientId)
+    .order('created_at', { ascending: false })
 
   const { data: signoff } = published
     ? await supabase
@@ -160,6 +170,59 @@ export default async function ClientCharterPage({
           your home.
         </p>
       )}
+
+      <section className="mt-12 border-t border-ink/10 pt-6">
+        <h2 className="font-display text-2xl font-medium text-ink">Outside the lines</h2>
+        <p className="mt-1 text-sm text-ink-dim">
+          When you want something that sits outside the scope of the charter, ask for it here.
+          The ask and the answer both go on the record, so the boundary stays honest in both
+          directions.
+        </p>
+
+        {(changeOrders ?? []).length > 0 ? (
+          <ul className="mt-4 flex flex-col gap-3">
+            {(changeOrders ?? []).map((co) => (
+              <li key={co.id} className="rounded-lg border border-ink/10 bg-paper-raised px-4 py-3">
+                <p className="text-sm font-medium text-ink">
+                  {co.title}{' '}
+                  <span className="eyebrow ml-2">
+                    {co.status === 'open' ? 'with your consultant' : co.status}
+                  </span>
+                </p>
+                {co.description_md ? (
+                  <p className="mt-1 text-sm text-ink-dim">{co.description_md}</p>
+                ) : null}
+                {co.response_md ? (
+                  <p className="mt-2 text-sm text-ink">Answer: {co.response_md}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        <form action={requestChangeOrder} className="mt-4 flex flex-col gap-3">
+          <input
+            name="title"
+            required
+            maxLength={200}
+            placeholder="What you are asking for, in one line"
+            className="rounded-lg border border-ink/15 bg-paper-raised p-2 text-sm text-ink"
+          />
+          <textarea
+            name="description"
+            rows={2}
+            maxLength={4000}
+            placeholder="Why it matters and what it would change (optional)"
+            className="rounded-lg border border-ink/15 bg-paper-raised p-2 text-sm text-ink"
+          />
+          <button
+            type="submit"
+            className="self-start rounded-lg border border-sage px-4 py-2 text-sm text-forest transition-colors duration-200 hover:bg-sage hover:text-paper active:scale-[0.98]"
+          >
+            Ask for it
+          </button>
+        </form>
+      </section>
     </RoomShell>
   )
 }

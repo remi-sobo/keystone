@@ -23,7 +23,7 @@ import {
 
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), 'utf-8')
 const LIB = 'src/lib/exportRecord.ts'
-const CLIENT_ROUTE = 'src/app/(client)/account/export/route.ts'
+const CLIENT_ROUTE = 'src/app/(client)/export/route.ts'
 const PRACTICE_ROUTE = 'src/app/(practice)/engagements/[id]/export/route.ts'
 
 // The pure helpers.
@@ -102,7 +102,7 @@ test('the README states what is inside, what never ships, and what failed', () =
       exportedOn: '2026-08-01',
     },
     [{ title: 'Build the system', stage: 'design', note_md: null }],
-    { charters: 1, decisions: 17, outcomes: 8, sessions: 6, homework: 12, deliverables: 3, digests: 2, messages: 40, documents: 1, library: 12, files: 5 },
+    { charters: 1, decisions: 17, outcomes: 8, sessions: 6, homework: 12, deliverables: 3, digests: 2, messages: 40, documents: 1, library: 12, closeout: 0, files: 5 },
     ['deliverables/deck.pdf (Pitch deck)']
   )
   expect(md).toContain('It belongs to SafeSpace.')
@@ -150,18 +150,20 @@ test('the lib holds no service role and no schema change (no migration in this e
   expect(src).not.toMatch(/create table/i)
 })
 
-test('both export routes are guarded, rate-limited, and audited metadata-only', () => {
+test('both export routes are guarded and rate-limited; only the practice side audits', () => {
   const client = read(CLIENT_ROUTE)
   expect(client).toContain('requireClientMember')
   expect(client).toContain('LIMITS.EXPORT_PER_HOUR')
   expect(client).toContain('LIMITS.EXPORT_PER_DAY')
-  expect(client).toContain('logAuditAction')
-  expect(client).toContain('...result.counts')
+  // The activity-view rule: a client action never feeds the practice's
+  // activity fold, so the client surface never imports lib/audit.
+  expect(client).not.toContain('lib/audit')
   const practice = read(PRACTICE_ROUTE)
   expect(practice).toContain('requirePracticeMember')
   expect(practice).toContain(".eq('practice_id', ctx.practiceId)")
   expect(practice).toContain('LIMITS.EXPORT_PER_HOUR')
   expect(practice).toContain('logAuditAction')
+  expect(practice).toContain('...result.counts')
 })
 
 test('homework activity is queried only for the client side', () => {

@@ -3,15 +3,15 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import { isErrorResponse, requireClientMember } from '@/lib/auth'
 import { enforceRateLimits, LIMITS } from '@/lib/rateLimit'
 import { buildArchiveZip, safeName } from '@/lib/exportRecord'
-import { logAuditAction } from '@/lib/audit'
 
 /**
  * The client's export (V2 5B): the engagement record as a zip they
  * keep. Pure RLS end to end: the archive is assembled on THIS SESSION,
  * so its scope is exactly what this member can already read, and the
- * storage policies serve every byte. The audit record rides the lib
- * chokepoint after membership passed (the qaExchange precedent), and
- * it carries metadata only: counts and bytes, never contents.
+ * storage policies serve every byte. Deliberately NOT audited: the
+ * export is the client's right, and a client action never feeds the
+ * practice's activity fold (the activity-view rule); the rate limit
+ * is the only meter.
  */
 export async function GET() {
   const ctx = await requireClientMember()
@@ -54,13 +54,6 @@ export async function GET() {
     const status = result.error === 'too_large' ? 413 : 502
     return NextResponse.json({ error: result.error }, { status })
   }
-
-  void logAuditAction({
-    actorEmail: ctx.email,
-    action: 'export.record',
-    target: engagement.id,
-    detail: { side: 'client', bytes: result.bytes, ...result.counts },
-  })
 
   const filename = `${safeName(clientName, 'client')}-engagement-record-${exportedOn}.zip`
   return new NextResponse(new Uint8Array(result.zip), {

@@ -3,6 +3,7 @@
 **Parent:** `specs/keystone-v2.md` Phase 5 epic 5B, pulled forward out of Phase 5 on 2026-07-11. The trigger is contractual, not aesthetic: the revised SafeSpace agreement (Susan's Jul 11 review, `docs/seed/safespace-agreement-v2-draft.md` section 7) guarantees export "in commonly used formats, at any time and after the engagement ends, regardless of whether ongoing support services continue," and its 30-day termination clause means handover must be possible from early in the engagement. The V2 spec already called portability the thesis made literal; the agreement makes it owed.
 **Grounded against:** the live codebase after Phase 4's 4A/4D/4E (migrations 0001 through 0025). The corpus discipline this spec reuses is 2E's: `lib/qaCorpus.ts` builds the record on the CALLER'S OWN session under RLS, so scope is enforced by the walls that already exist, and raw transcripts stay out by query (SECURITY.md 4.2).
 **Status:** BUILT 2026-07-11, same day as the spec; all four gates approved as recommended (Remi, "recommendations approved"). No migration, as expected: `src/lib/exportRecord.ts`, the two routes, both surface blocks, `LIMITS.EXPORT_*`, and `e2e/export-gate.spec.ts`.
+**Merge note (2026-07-11):** a parallel session built 5B the same day inside its Phase 5 run: a single-markdown paper export with self-taken gates. The merge kept THIS build, whose gates Remi decided in conversation, and absorbed the paper build's two good calls: the client route lives at `/export` (the closeout room links it) and the published closeout ships in the archive as `closeout.md`. The Phase 5 gate `e2e/export-record.spec.ts` and this spec's `e2e/export-gate.spec.ts` both hold against the one lib.
 **Date:** 2026-07-11
 
 ---
@@ -30,6 +31,7 @@ safespace-engagement-record-2026-07-11/
   deliverables/        the actual files, latest version, original names
   digests.md           sent digests (0024 visibility)
   messages.md          the thread, authored and dated, anchors as plain labels
+  closeout.md          the published closeout (merge note above)
   documents/           engagement documents shared with the client (the agreement)
   library.md + library/  client-visible resources and their attachments (gate 5B-1)
 ```
@@ -42,7 +44,7 @@ Markdown bodies come straight from the record (they are already markdown); files
 
 **Practice:** an "Export the record" action on the engagement page header area, same archive shape, membership checked server-side first. Closeout (5A) will link to it; nothing here waits for 5A.
 
-**Both:** the export event is audited (metadata only: engagement, side, artifact counts, byte size; never contents) and rate-limited (new `LIMITS.EXPORT`, low: this is a heavy read, and a client exporting twice a day is a signal, not a workload).
+**Both:** rate-limited (new `LIMITS.EXPORT`, low: this is a heavy read). The practice export is audited (metadata only: engagement, artifact counts, byte size; never contents); the client export is deliberately not, per the activity-view rule adopted in the merge: a client exercising their export right never feeds the practice's activity fold.
 
 ## 4. What this hands the later epics
 

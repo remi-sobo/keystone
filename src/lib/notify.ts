@@ -24,6 +24,9 @@ export type NotificationKind =
   | 'message_reply'
   | 'session_reminder'
   | 'approval_decided'
+  | 'closeout_published'
+  | 'change_order_requested'
+  | 'change_order_decided'
 
 export interface NotifyRecipient {
   clientMemberId?: string

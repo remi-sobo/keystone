@@ -214,6 +214,8 @@ export async function createDeliverable(
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement.id,
+    practiceId: viewer.practice!.practiceId,
     action: 'deliverable.create',
     target: engagement.id,
     detail: { kind: d.kind },
@@ -251,7 +253,7 @@ export async function removeDeliverable(formData: FormData): Promise<void> {
   const supabase = await createServerSupabase()
   const { data: row } = await supabase
     .from('deliverables')
-    .select('id, storage_path, practice_id')
+    .select('id, storage_path, practice_id, engagement_id')
     .eq('id', parsed.data.deliverableId)
     .eq('practice_id', viewer.practice!.practiceId)
     .maybeSingle()
@@ -271,6 +273,8 @@ export async function removeDeliverable(formData: FormData): Promise<void> {
     }
     await logAuditAction({
       actorEmail: viewer.user!.email ?? '',
+      engagementId: row.engagement_id,
+      practiceId: viewer.practice!.practiceId,
       action: 'deliverable.remove',
       target: row.id,
     })
@@ -529,6 +533,8 @@ export async function createEngagementDocument(
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement.id,
+    practiceId: viewer.practice!.practiceId,
     action: 'documents.uploaded',
     target: engagement.id,
     detail: { status: d.status, visible_to_client: d.visibleToClient },
@@ -566,6 +572,8 @@ export async function setDocumentVisibility(formData: FormData): Promise<void> {
   else {
     await logAuditAction({
       actorEmail: viewer.user!.email ?? '',
+      engagementId: parsed.data.engagementId,
+      practiceId: viewer.practice!.practiceId,
       action: 'documents.visibility_changed',
       target: parsed.data.documentId,
       detail: { to: parsed.data.to },
@@ -591,7 +599,7 @@ export async function removeEngagementDocument(formData: FormData): Promise<void
   const supabase = await createServerSupabase()
   const { data: row } = await supabase
     .from('engagement_documents')
-    .select('id, storage_path')
+    .select('id, storage_path, engagement_id')
     .eq('id', parsed.data.documentId)
     .eq('practice_id', viewer.practice!.practiceId)
     .maybeSingle()
@@ -613,6 +621,8 @@ export async function removeEngagementDocument(formData: FormData): Promise<void
     }
     await logAuditAction({
       actorEmail: viewer.user!.email ?? '',
+      engagementId: row.engagement_id,
+      practiceId: viewer.practice!.practiceId,
       action: 'documents.removed',
       target: row.id,
     })
@@ -705,6 +715,8 @@ export async function addDecision(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement.id,
+    practiceId: viewer.practice!.practiceId,
     action: 'decisions.logged',
     target: engagement.id,
     detail: { workstream: d.workstreamId ?? null, supersedes: d.supersedes ?? null },
@@ -728,6 +740,148 @@ const NoteShape = z.object({
  * engagement.write policy; client-visible on save by design, so the
  * prose rides the voice gate.
  */
+// ── Change orders (V2 5E) ────────────────────────────────────────
+// Only the practice decides, in writing; the row keeps the ask and
+// the answer together. No numbers pass through here, by design.
+
+const ChangeOrderDecideShape = z.object({
+  engagementId: z.string().uuid(),
+  changeOrderId: z.string().uuid(),
+  decision: z.enum(['agreed', 'declined']),
+  response: z.string().trim().min(1).max(4000),
+})
+
+export async function decideChangeOrder(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = ChangeOrderDecideShape.safeParse({
+    engagementId: formData.get('engagementId'),
+    changeOrderId: formData.get('changeOrderId'),
+    decision: formData.get('decision'),
+    response: formData.get('response'),
+  })
+  if (!parsed.success) redirect('/engagements')
+
+  const supabase = await createServerSupabase()
+  const { data: row } = await supabase
+    .from('change_orders')
+    .select('id, title, engagement_id, practice_id, client_id, status')
+    .eq('id', parsed.data.changeOrderId)
+    .eq('engagement_id', parsed.data.engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!row || row.status !== 'open') {
+    redirect(`/engagements/${parsed.data.engagementId}?state=co_gone#change-orders`)
+  }
+
+  const response = sweepHomework(row.practice_id, parsed.data.response)
+  const { error } = await supabase
+    .from('change_orders')
+    .update({
+      status: parsed.data.decision,
+      response_md: response,
+      decided_at: new Date().toISOString(),
+    })
+    .eq('id', row.id)
+  if (error) {
+    console.error('[change-orders] decide failed:', error.message)
+    redirect(`/engagements/${row.engagement_id}?state=co_error#change-orders`)
+  }
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    action: 'change_order.decided',
+    target: row.id,
+    detail: { decision: parsed.data.decision },
+    engagementId: row.engagement_id,
+    practiceId: row.practice_id,
+  })
+  await notify(
+    {
+      practiceId: row.practice_id,
+      clientId: row.client_id,
+      engagementId: row.engagement_id,
+      kind: 'change_order_decided',
+      title: `Change order ${parsed.data.decision}: ${row.title}`,
+      href: '/charter',
+    },
+    await clientTeamRecipients(row.client_id)
+  )
+  revalidatePath(`/engagements/${row.engagement_id}`)
+  redirect(`/engagements/${row.engagement_id}?state=co_decided#change-orders`)
+}
+
+// ── Ownership (V2 4C) ────────────────────────────────────────────────
+// Descriptive, never a score: the owner is who to ask. The assignee is
+// verified against the caller's OWN practice before the write, and the
+// write itself rides keystone_can on the session client.
+
+const OwnerShape = z.object({
+  engagementId: z.string().uuid(),
+  workstreamId: z.string().uuid().optional(),
+  memberId: z.union([z.literal(''), z.string().uuid()]),
+})
+
+async function verifiedOwnerUpdate(formData: FormData): Promise<{
+  supabase: Awaited<ReturnType<typeof createServerSupabase>>
+  engagementId: string
+  workstreamId?: string
+  memberId: string | null
+} | null> {
+  const viewer = await guardPractice()
+  const parsed = OwnerShape.safeParse({
+    engagementId: formData.get('engagementId'),
+    workstreamId: formData.get('workstreamId') ?? undefined,
+    memberId: formData.get('memberId') ?? '',
+  })
+  if (!parsed.success) return null
+  const supabase = await createServerSupabase()
+  const memberId = parsed.data.memberId || null
+  if (memberId) {
+    const { data: member } = await supabase
+      .from('practice_members')
+      .select('id')
+      .eq('id', memberId)
+      .eq('practice_id', viewer.practice!.practiceId)
+      .is('revoked_at', null)
+      .maybeSingle()
+    if (!member) return null
+  }
+  return {
+    supabase,
+    engagementId: parsed.data.engagementId,
+    workstreamId: parsed.data.workstreamId,
+    memberId,
+  }
+}
+
+export async function setEngagementOwner(formData: FormData): Promise<void> {
+  const ctx = await verifiedOwnerUpdate(formData)
+  if (!ctx) redirect('/engagements')
+  const { error } = await ctx.supabase
+    .from('engagements')
+    .update({ owner_practice_member_id: ctx.memberId })
+    .eq('id', ctx.engagementId)
+  if (error) {
+    console.error('[ownership] engagement owner save failed:', error.message)
+    redirect(`/engagements/${ctx.engagementId}?state=owner_error`)
+  }
+  redirect(`/engagements/${ctx.engagementId}?state=owner_saved`)
+}
+
+export async function setWorkstreamOwner(formData: FormData): Promise<void> {
+  const ctx = await verifiedOwnerUpdate(formData)
+  if (!ctx || !ctx.workstreamId) redirect('/engagements')
+  const { error } = await ctx.supabase
+    .from('workstreams')
+    .update({ owner_practice_member_id: ctx.memberId })
+    .eq('id', ctx.workstreamId)
+    .eq('engagement_id', ctx.engagementId)
+  if (error) {
+    console.error('[ownership] workstream owner save failed:', error.message)
+    redirect(`/engagements/${ctx.engagementId}?state=owner_error`)
+  }
+  redirect(`/engagements/${ctx.engagementId}?state=owner_saved`)
+}
+
 export async function saveWorkstreamNote(formData: FormData): Promise<void> {
   const viewer = await guardPractice()
   const parsed = NoteShape.safeParse({
@@ -776,6 +930,8 @@ export async function saveWorkstreamNote(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement.id,
+    practiceId: viewer.practice!.practiceId,
     action: 'workstreams.note_saved',
     target: parsed.data.workstreamId,
     detail: { cleared: note === null },
@@ -894,6 +1050,8 @@ export async function saveOutcome(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement.id,
+    practiceId: viewer.practice!.practiceId,
     action: o.outcomeId ? 'outcomes.updated' : 'outcomes.created',
     target: engagement.id,
   })
@@ -970,6 +1128,8 @@ export async function attachEvidence(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement.id,
+    practiceId: viewer.practice!.practiceId,
     action: 'outcomes.evidence_attached',
     target: outcome.id,
     detail: { kind },
@@ -995,6 +1155,8 @@ export async function removeEvidence(formData: FormData): Promise<void> {
   else {
     await logAuditAction({
       actorEmail: viewer.user!.email ?? '',
+      engagementId: engagementId.data,
+      practiceId: viewer.practice!.practiceId,
       action: 'outcomes.evidence_removed',
       target: id.data,
     })
@@ -1275,6 +1437,8 @@ export async function addHomework(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement.id,
+    practiceId: viewer.practice!.practiceId,
     action: 'homework.added',
     target: engagement.id,
     detail: { audience: d.audience, review: d.review === 'on' },
@@ -1297,13 +1461,80 @@ async function loadPracticeItem(itemId: string, engagementId: string, practiceId
   const { data: item } = await supabase
     .from('action_items')
     .select(
-      'id, title, engagement_id, practice_id, client_id, status, review_requested, assigned_client_member_id'
+      'id, title, engagement_id, practice_id, client_id, status, review_requested, audience, assigned_client_member_id'
     )
     .eq('id', itemId)
     .eq('engagement_id', engagementId)
     .eq('practice_id', practiceId)
     .maybeSingle()
   return { supabase, item }
+}
+
+/**
+ * V2 4B: internal tasks are check-offs, not coaching loops. No trail
+ * rows, no notifications; the wall (0017) keeps every client session
+ * from ever reading the row. Refuses anything not practice-audience.
+ */
+export async function completeInternalTask(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = HomeworkMoveShape.safeParse({
+    itemId: formData.get('itemId'),
+    engagementId: formData.get('engagementId'),
+  })
+  if (!parsed.success) redirect('/engagements')
+  const { itemId, engagementId } = parsed.data
+
+  const { supabase, item } = await loadPracticeItem(itemId, engagementId, viewer.practice!.practiceId)
+  if (!item || item.audience !== 'practice' || item.status !== 'open') {
+    redirect(`/engagements/${engagementId}?state=hw_error#homework`)
+  }
+  const { error } = await supabase
+    .from('action_items')
+    .update({ status: 'done', done_at: new Date().toISOString() })
+    .eq('id', item.id)
+  if (error) {
+    console.error('[homework] internal complete failed:', error.message)
+    redirect(`/engagements/${engagementId}?state=hw_error#homework`)
+  }
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    engagementId: item.engagement_id,
+    practiceId: viewer.practice!.practiceId,
+    action: 'homework.internal_done',
+    target: item.id,
+  })
+  redirect(`/engagements/${engagementId}?state=internal_done#homework`)
+}
+
+export async function reopenInternalTask(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = HomeworkMoveShape.safeParse({
+    itemId: formData.get('itemId'),
+    engagementId: formData.get('engagementId'),
+  })
+  if (!parsed.success) redirect('/engagements')
+  const { itemId, engagementId } = parsed.data
+
+  const { supabase, item } = await loadPracticeItem(itemId, engagementId, viewer.practice!.practiceId)
+  if (!item || item.audience !== 'practice' || item.status !== 'done') {
+    redirect(`/engagements/${engagementId}?state=hw_error#homework`)
+  }
+  const { error } = await supabase
+    .from('action_items')
+    .update({ status: 'open', done_at: null })
+    .eq('id', item.id)
+  if (error) {
+    console.error('[homework] internal reopen failed:', error.message)
+    redirect(`/engagements/${engagementId}?state=hw_error#homework`)
+  }
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    engagementId: item.engagement_id,
+    practiceId: viewer.practice!.practiceId,
+    action: 'homework.internal_reopened',
+    target: item.id,
+  })
+  redirect(`/engagements/${engagementId}?state=internal_reopened#homework`)
 }
 
 export async function acceptHomework(formData: FormData): Promise<void> {
@@ -1344,6 +1575,8 @@ export async function acceptHomework(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: item.engagement_id,
+    practiceId: viewer.practice!.practiceId,
     action: 'homework.accepted',
     target: item.id,
   })
@@ -1403,6 +1636,8 @@ export async function sendBackHomework(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: item.engagement_id,
+    practiceId: viewer.practice!.practiceId,
     action: 'homework.sent_back',
     target: item.id,
   })
@@ -1598,6 +1833,8 @@ export async function createSessionPoll(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement.id,
+    practiceId: viewer.practice!.practiceId,
     action: 'poll.opened',
     target: engagement.id,
     detail: { options: rows.length },
@@ -1687,6 +1924,8 @@ export async function confirmPollOption(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: poll!.engagement_id,
+    practiceId: viewer.practice!.practiceId,
     action: 'poll.booked',
     target: poll!.id,
     detail: { session: session!.id },
@@ -1730,6 +1969,8 @@ export async function closeSessionPoll(formData: FormData): Promise<void> {
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: engagementId,
+    practiceId: viewer.practice!.practiceId,
     action: 'poll.closed',
     target: pollId,
   })
@@ -1862,6 +2103,8 @@ export async function replaceDeliverableFile(
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: row.engagement_id,
+    practiceId: viewer.practice!.practiceId,
     action: 'deliverable.replaced',
     target: row.id,
     detail: { version: (count ?? 0) + 1 },
@@ -1922,6 +2165,8 @@ export async function requestDeliverableAcceptance(formData: FormData): Promise<
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: row.engagement_id,
+    practiceId: viewer.practice!.practiceId,
     action: 'deliverable.acceptance_requested',
     target: row.id,
   })
@@ -1969,6 +2214,8 @@ export async function setDigestCadence(formData: FormData): Promise<void> {
   }
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
+    engagementId: parsed.data.engagementId,
+    practiceId: viewer.practice!.practiceId,
     action: 'digest.cadence',
     target: parsed.data.engagementId,
     detail: { cadence: parsed.data.cadence },

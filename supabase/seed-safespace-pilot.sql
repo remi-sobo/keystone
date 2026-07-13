@@ -268,6 +268,14 @@ from p
 where not exists (
   select 1 from resources r, p
   where r.practice_id = p.id and r.title = 'Planned deliverables: the SafeSpace ledger'
+)
+-- Once the ledger graduated to planned deliverable rows (migration
+-- 0035, seed-planned-deliverables.sql), the placeholder never comes
+-- back.
+and not exists (
+  select 1 from deliverables d
+  where d.client_id = (select id from clients where name = 'SafeSpace')
+    and d.status = 'planned'
 );
 
 -- 7. Resource library starters (seed doc section 9, SOBO IP) ----------

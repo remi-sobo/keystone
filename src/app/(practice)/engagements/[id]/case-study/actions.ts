@@ -107,6 +107,7 @@ export async function draftCaseStudy(formData: FormData): Promise<void> {
       .from('deliverables')
       .select('title, about_md, delivered_on')
       .eq('engagement_id', engagement.id)
+      .eq('status', 'shipped')
       .order('delivered_on'),
     supabase
       .from('closeouts')

@@ -72,6 +72,7 @@ export default async function CloseoutEditorPage({
         .from('deliverables')
         .select('id, title, delivered_on')
         .eq('engagement_id', id)
+        .eq('status', 'shipped')
         .order('delivered_on', { ascending: false }),
       supabase.from('workstreams').select('id, title, stage').eq('engagement_id', id).order('sort'),
       supabase.from('practices').select('stage_config').eq('id', engagement.practice_id).maybeSingle(),

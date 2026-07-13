@@ -101,6 +101,7 @@ export async function searchRecord(
         .from('deliverables')
         .select('title, note, delivered_on')
         .eq('engagement_id', engagementId)
+        .eq('status', 'shipped')
         .or(`title.ilike.${quoted},note.ilike.${quoted}`)
         .limit(PER_KIND_CAP),
       supabase

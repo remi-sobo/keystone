@@ -173,6 +173,7 @@ export default async function ClientProfilePage({
     supabase
       .from('deliverables')
       .select('id', { count: 'exact', head: true })
+      .eq('status', 'shipped')
       .in('engagement_id', ids),
     supabase.from('decisions').select('id', { count: 'exact', head: true }).in('engagement_id', ids),
     supabase.from('messages').select('id', { count: 'exact', head: true }).in('engagement_id', ids),

@@ -554,6 +554,7 @@ export async function buildArchiveZip(
       .from('deliverables')
       .select('id, title, kind, url, note, about_md, delivered_on, storage_path')
       .eq('engagement_id', engagementId)
+      .eq('status', 'shipped')
       .order('delivered_on')
       .limit(500),
     supabase

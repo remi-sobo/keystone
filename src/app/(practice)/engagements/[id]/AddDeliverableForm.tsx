@@ -16,21 +16,27 @@ export default function AddDeliverableForm({
   engagementId,
   workstreams,
   sessions = [],
+  planned = [],
 }: {
   engagementId: string
   workstreams: Array<{ id: string; title: string }>
   sessions?: Array<{ id: string; label: string }>
+  planned?: Array<{ id: string; title: string }>
 }) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
   const [kind, setKind] = useState<'file' | 'link'>('file')
+  const [plannedId, setPlannedId] = useState('')
   const [status, setStatus] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
   function submit(formData: FormData) {
     startTransition(async () => {
       setStatus(null)
-      const title = String(formData.get('title') ?? '').trim()
+      // Fulfilling a plan: the plan's title stands unless retyped.
+      const typedTitle = String(formData.get('title') ?? '').trim()
+      const plannedTitle = planned.find((p) => p.id === plannedId)?.title
+      const title = typedTitle || (plannedId ? (plannedTitle ?? '') : '')
       const workstreamId = String(formData.get('workstreamId') ?? '')
       const note = String(formData.get('note') ?? '').trim()
       const deliveredOn = String(formData.get('deliveredOn') ?? '')
@@ -82,6 +88,7 @@ export default function AddDeliverableForm({
         sessionId: sessionId || undefined,
         workstreamId: workstreamId || undefined,
         deliveredOn: /^\d{4}-\d{2}-\d{2}$/.test(deliveredOn) ? deliveredOn : undefined,
+        plannedId: plannedId || undefined,
       })
       if ('error' in result) {
         setStatus(
@@ -92,17 +99,32 @@ export default function AddDeliverableForm({
         return
       }
       formRef.current?.reset()
-      setStatus('Shipped.')
+      setPlannedId('')
+      setStatus(plannedId ? 'Shipped; the plan is fulfilled.' : 'Shipped.')
       router.refresh()
     })
   }
 
   return (
     <form ref={formRef} action={submit} className="mt-4 flex flex-col gap-3">
+      {planned.length > 0 ? (
+        <select
+          value={plannedId}
+          onChange={(e) => setPlannedId(e.target.value)}
+          className="self-start rounded-lg border border-ink/15 bg-paper px-2 py-1 text-sm"
+        >
+          <option value="">A fresh deliverable</option>
+          {planned.map((p) => (
+            <option key={p.id} value={p.id}>
+              Fulfills: {p.title.slice(0, 60)}
+            </option>
+          ))}
+        </select>
+      ) : null}
       <div className="flex flex-wrap gap-3">
         <input
           name="title"
-          placeholder="What shipped"
+          placeholder={plannedId ? 'Title (defaults to the plan)' : 'What shipped'}
           className="min-w-[200px] flex-1 rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink"
         />
         <select

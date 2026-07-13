@@ -69,6 +69,7 @@ export default async function ClientCloseoutPage({
         .from('deliverables')
         .select('id, title, delivered_on')
         .eq('engagement_id', closeout.engagement_id)
+        .eq('status', 'shipped')
         .order('delivered_on', { ascending: false }),
       supabase
         .from('digests')

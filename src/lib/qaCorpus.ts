@@ -60,6 +60,7 @@ export async function buildQaCorpus(
       .from('deliverables')
       .select('title, note, delivered_on')
       .eq('engagement_id', engagementId)
+      .eq('status', 'shipped')
       .order('delivered_on', { ascending: false })
       .limit(40),
     supabase

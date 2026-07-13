@@ -125,6 +125,7 @@ export async function GET(req: NextRequest) {
         .from('deliverables')
         .select('title, delivered_on')
         .eq('engagement_id', e.id)
+        .eq('status', 'shipped')
         .gte('delivered_on', weekAgo.slice(0, 10)),
       supabaseAdmin
         .from('action_items')

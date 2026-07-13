@@ -32,6 +32,7 @@ import {
   attachEvidence,
   findInEngagement,
   addReadinessEvidence,
+  planDeliverable,
   removeDeliverable,
   removeReadinessEvidence,
   requestDeliverableAcceptance,
@@ -85,6 +86,7 @@ const STATES: Record<string, string> = {
   poll_closed: 'Poll closed without booking.',
   poll_error: 'That did not save. Try again.',
   dlv_saved: 'Saved. The client sees it on the deliverable.',
+  dlv_planned: 'Planned. The client sees it as coming.',
   dlv_asked: 'Acceptance asked. The client team hears about it.',
   dlv_already_asked: 'Acceptance is already asked or given on that one.',
   dlv_error: 'That did not save. Try again.',
@@ -163,9 +165,11 @@ export default async function EngagementDetailPage({
       .eq('engagement_id', id),
     supabase
       .from('deliverables')
-      .select('id, title, kind, url, storage_path, note, about_md, session_id, delivered_on, workstreams(title)')
+      .select(
+        'id, title, kind, url, storage_path, note, about_md, session_id, status, expected_note, delivered_on, workstreams(title)'
+      )
       .eq('engagement_id', id)
-      .order('delivered_on', { ascending: false }),
+      .order('delivered_on', { ascending: false, nullsFirst: false }),
   ])
 
   const { data: messages } = await supabase
@@ -299,6 +303,9 @@ export default async function EngagementDetailPage({
   ])
   const dlvApprovalFor = (dlvId: string) => (dlvApprovals ?? []).find((a) => a.subject_id === dlvId)
   const dlvVersionsFor = (dlvId: string) => (dlvVersions ?? []).filter((v) => v.deliverable_id === dlvId)
+  // Planned deliverables: promises above, receipts below, one table.
+  const dlvPlanned = (deliverables.data ?? []).filter((d) => d.status === 'planned')
+  const dlvShipped = (deliverables.data ?? []).filter((d) => d.status === 'shipped')
 
   // 3G: the archive fold reads what was sent, newest first.
   const { data: sentDigests } = await supabase
@@ -1180,13 +1187,49 @@ export default async function EngagementDetailPage({
       <section className="mt-12">
         <h2 className="font-display text-2xl font-medium text-ink">Deliverables</h2>
         <p className="mt-1 text-sm text-ink-dim">
-          Every artifact you ship, on the client&apos;s timeline the moment it lands.
+          Every artifact you ship, on the client&apos;s timeline the moment it lands. Plans show
+          the client what is coming; fulfilling one flips it to shipped, one record throughout.
         </p>
-        {(deliverables.data ?? []).length === 0 ? (
+        {dlvPlanned.length > 0 ? (
+          <div className="mt-4">
+            <p className="eyebrow">Planned</p>
+            <ul className="mt-2 flex flex-col gap-2">
+              {dlvPlanned.map((d) => (
+                <li
+                  key={d.id}
+                  className="rounded-[var(--radius)] border border-dashed border-ink/15 bg-paper px-4 py-2.5"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm text-ink">
+                      {d.title}
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      {[((d.workstreams as any)?.title as string) || null, d.expected_note]
+                        .filter(Boolean)
+                        .map((part, i) => (
+                          <span key={i} className="ml-2 font-mono text-xs uppercase tracking-wide text-ink-dim">
+                            {part}
+                          </span>
+                        ))}
+                    </span>
+                    <form action={removeDeliverable}>
+                      <input type="hidden" name="deliverableId" value={d.id} />
+                      <input type="hidden" name="engagementId" value={engagement.id} />
+                      <button type="submit" className="text-sm text-ink-dim underline hover:text-ink">
+                        Remove
+                      </button>
+                    </form>
+                  </div>
+                  {d.about_md ? <p className="mt-1 text-sm text-ink-dim">{d.about_md}</p> : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {dlvShipped.length === 0 ? (
           <p className="mt-3 text-sm text-ink-dim">Nothing shipped yet.</p>
         ) : (
           <ul className="mt-3 flex flex-col gap-2">
-            {(deliverables.data ?? []).map((d) => (
+            {dlvShipped.map((d) => (
               <li
                 key={d.id}
                 className="rounded-[var(--radius)] border border-ink/10 bg-paper-raised px-4 py-2.5"
@@ -1312,7 +1355,54 @@ export default async function EngagementDetailPage({
           engagementId={engagement.id}
           workstreams={(ws.data ?? []).map((w) => ({ id: w.id, title: w.title }))}
           sessions={(sessions.data ?? []).map((s) => ({ id: s.id, label: fmt(s.starts_at, s.tz) }))}
+          planned={dlvPlanned.map((d) => ({ id: d.id, title: d.title }))}
         />
+        <details className="mt-6">
+          <summary className="cursor-pointer text-sm text-forest">Plan a deliverable</summary>
+          <form action={planDeliverable} className="mt-3 flex flex-col gap-3">
+            <input type="hidden" name="engagementId" value={engagement.id} />
+            <div className="flex flex-wrap gap-3">
+              <input
+                name="title"
+                required
+                maxLength={200}
+                placeholder="What will ship"
+                className="min-w-[200px] flex-1 rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink"
+              />
+              <select
+                name="workstreamId"
+                defaultValue=""
+                className="rounded-lg border border-ink/15 bg-paper px-2 py-1 text-sm"
+              >
+                <option value="">No workstream</option>
+                {(ws.data ?? []).map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.title}
+                  </option>
+                ))}
+              </select>
+              <input
+                name="expectedNote"
+                maxLength={120}
+                placeholder="When to expect it (optional)"
+                className="rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink"
+              />
+            </div>
+            <textarea
+              name="about"
+              rows={2}
+              maxLength={4000}
+              placeholder="What it is for (the client reads this, optional)"
+              className="rounded-lg border border-ink/15 bg-paper p-2 text-sm text-ink"
+            />
+            <button
+              type="submit"
+              className="self-start rounded-lg border border-ink/15 px-4 py-2 text-sm text-ink transition-colors duration-200 hover:border-ink/30 active:scale-[0.98]"
+            >
+              Plan it
+            </button>
+          </form>
+        </details>
       </section>
 
       <section className="mt-12">

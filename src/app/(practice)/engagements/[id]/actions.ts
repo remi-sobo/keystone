@@ -141,10 +141,89 @@ const DeliverableShape = z
     sessionId: z.string().uuid().optional(),
     about: z.string().max(4000).optional(),
     deliveredOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    // Fulfilling a planned row: the SAME row flips to shipped, so the
+    // promise and the receipt stay one record.
+    plannedId: z.string().uuid().optional(),
   })
   .refine((d) => (d.kind === 'file' ? !!d.storagePath : !!d.url), {
     message: 'a file needs its path, a link its url',
   })
+
+// Plan a deliverable: a promise on the record, no artifact yet. The
+// status shape constraint keeps it payload-free until it ships.
+const PlanShape = z.object({
+  engagementId: z.string().uuid(),
+  title: z.string().min(1).max(200),
+  workstreamId: z.string().uuid().optional(),
+  expectedNote: z.string().max(120).optional(),
+  about: z.string().max(4000).optional(),
+})
+
+export async function planDeliverable(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const clean = (k: string) => {
+    const v = String(formData.get(k) ?? '').trim()
+    return v || undefined
+  }
+  const parsed = PlanShape.safeParse({
+    engagementId: formData.get('engagementId'),
+    title: clean('title'),
+    workstreamId: clean('workstreamId'),
+    expectedNote: clean('expectedNote'),
+    about: clean('about'),
+  })
+  if (!parsed.success) redirect('/engagements')
+  const d = parsed.data
+
+  const supabase = await createServerSupabase()
+  const { data: engagement } = await supabase
+    .from('engagements')
+    .select('id, practice_id, client_id')
+    .eq('id', d.engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!engagement) redirect('/engagements')
+
+  let workstreamId: string | null = null
+  if (d.workstreamId) {
+    const { data: ws } = await supabase
+      .from('workstreams')
+      .select('id')
+      .eq('id', d.workstreamId)
+      .eq('engagement_id', engagement.id)
+      .maybeSingle()
+    workstreamId = ws?.id ?? null
+  }
+
+  const { error } = await supabase.from('deliverables').insert({
+    engagement_id: engagement.id,
+    practice_id: engagement.practice_id,
+    client_id: engagement.client_id,
+    workstream_id: workstreamId,
+    title: d.title,
+    status: 'planned',
+    kind: null,
+    delivered_on: null,
+    expected_note: d.expectedNote ?? null,
+    about_md: d.about ?? null,
+    created_by: viewer.user!.id,
+  })
+  if (error) {
+    console.error('[deliverables] plan failed:', error.message)
+    redirect(`/engagements/${d.engagementId}?state=dlv_error`)
+  }
+
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement.id,
+    practiceId: viewer.practice!.practiceId,
+    action: 'deliverable.plan',
+    target: engagement.id,
+  })
+  revalidatePath(`/engagements/${engagement.id}`)
+  revalidatePath('/deliverables')
+  redirect(`/engagements/${d.engagementId}?state=dlv_planned`)
+}
 
 export async function createDeliverable(
   input: z.input<typeof DeliverableShape>
@@ -194,31 +273,65 @@ export async function createDeliverable(
     sessionId = sess?.id ?? null
   }
 
-  const { error } = await supabase.from('deliverables').insert({
-    engagement_id: engagement.id,
-    practice_id: engagement.practice_id,
-    client_id: engagement.client_id,
-    workstream_id: workstreamId,
-    session_id: sessionId,
-    about_md: d.about?.trim() ? d.about.trim() : null,
-    title: d.title,
-    kind: d.kind,
-    storage_path: d.kind === 'file' ? d.storagePath : null,
-    url: d.kind === 'link' ? d.url : null,
-    note: d.note || null,
-    delivered_on: d.deliveredOn ?? new Date().toISOString().slice(0, 10),
-    created_by: viewer.user!.id,
-  })
-  if (error) {
-    console.error('[deliverables] insert failed:', error.message)
-    return { error: 'save_failed' }
+  if (d.plannedId) {
+    // The planned row must be this engagement's and still a plan; the
+    // flip to shipped is the delivery moment.
+    const { data: planned } = await supabase
+      .from('deliverables')
+      .select('id, about_md, workstream_id')
+      .eq('id', d.plannedId)
+      .eq('engagement_id', engagement.id)
+      .eq('status', 'planned')
+      .maybeSingle()
+    if (!planned) return { error: 'not_found' }
+
+    const { error } = await supabase
+      .from('deliverables')
+      .update({
+        status: 'shipped',
+        title: d.title,
+        kind: d.kind,
+        storage_path: d.kind === 'file' ? d.storagePath : null,
+        url: d.kind === 'link' ? d.url : null,
+        note: d.note || null,
+        session_id: sessionId,
+        workstream_id: workstreamId ?? planned.workstream_id,
+        about_md: d.about?.trim() ? d.about.trim() : planned.about_md,
+        expected_note: null,
+        delivered_on: d.deliveredOn ?? new Date().toISOString().slice(0, 10),
+      })
+      .eq('id', planned.id)
+    if (error) {
+      console.error('[deliverables] fulfill failed:', error.message)
+      return { error: 'save_failed' }
+    }
+  } else {
+    const { error } = await supabase.from('deliverables').insert({
+      engagement_id: engagement.id,
+      practice_id: engagement.practice_id,
+      client_id: engagement.client_id,
+      workstream_id: workstreamId,
+      session_id: sessionId,
+      about_md: d.about?.trim() ? d.about.trim() : null,
+      title: d.title,
+      kind: d.kind,
+      storage_path: d.kind === 'file' ? d.storagePath : null,
+      url: d.kind === 'link' ? d.url : null,
+      note: d.note || null,
+      delivered_on: d.deliveredOn ?? new Date().toISOString().slice(0, 10),
+      created_by: viewer.user!.id,
+    })
+    if (error) {
+      console.error('[deliverables] insert failed:', error.message)
+      return { error: 'save_failed' }
+    }
   }
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',
     engagementId: engagement.id,
     practiceId: viewer.practice!.practiceId,
-    action: 'deliverable.create',
+    action: d.plannedId ? 'deliverable.fulfilled' : 'deliverable.create',
     target: engagement.id,
     detail: { kind: d.kind },
   })
@@ -2164,12 +2277,14 @@ export async function requestDeliverableAcceptance(formData: FormData): Promise<
   const { deliverableId, engagementId } = parsed.data
 
   const supabase = await createServerSupabase()
+  // Acceptance is for what shipped; a plan has nothing to accept yet.
   const { data: row } = await supabase
     .from('deliverables')
     .select('id, title, engagement_id, practice_id, client_id')
     .eq('id', deliverableId)
     .eq('engagement_id', engagementId)
     .eq('practice_id', viewer.practice!.practiceId)
+    .eq('status', 'shipped')
     .maybeSingle()
   if (!row) redirect('/engagements')
 

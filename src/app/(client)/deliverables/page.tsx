@@ -43,12 +43,17 @@ export default async function DeliverablesPage({
 
   const { data: deliverables } = await supabase
     .from('deliverables')
-    .select('id, title, kind, url, note, about_md, session_id, delivered_on, workstreams(title)')
+    .select(
+      'id, title, kind, url, note, about_md, session_id, status, expected_note, delivered_on, workstreams(title)'
+    )
     .eq('client_id', viewer.client.clientId)
-    .order('delivered_on', { ascending: false })
+    .order('delivered_on', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
 
-  const rows = deliverables ?? []
+  // The plan and the receipts, one record in two states: planned rows
+  // are what is coming, shipped rows are the timeline.
+  const rows = (deliverables ?? []).filter((d) => d.status === 'shipped')
+  const coming = (deliverables ?? []).filter((d) => d.status === 'planned')
 
   // 3D: acceptance rides the 5D approvals; versions are read as facts.
   const [{ data: approvals }, { data: versions }] = await Promise.all([
@@ -74,11 +79,51 @@ export default async function DeliverablesPage({
           {STATES[state]}
         </p>
       ) : null}
+      {coming.length > 0 ? (
+        <section className="mb-8">
+          <p className="eyebrow">Coming</p>
+          <ul className="mt-2 flex flex-col gap-2">
+            {coming.map((d) => (
+              <li
+                key={d.id}
+                className="rounded-[var(--radius)] border border-dashed border-ink/15 bg-paper px-4 py-2.5"
+              >
+                <p className="text-sm text-ink">
+                  {d.title}
+                  {d.expected_note ? (
+                    <span className="ml-2 font-mono text-xs uppercase tracking-wide text-ink-dim">
+                      {d.expected_note}
+                    </span>
+                  ) : null}
+                </p>
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                {((d.workstreams as any)?.title as string) ? (
+                  <p className="mt-0.5 font-mono text-xs uppercase tracking-wide text-ink-dim">
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {(d.workstreams as any).title}
+                  </p>
+                ) : null}
+                {d.about_md ? (
+                  <div className="mt-1.5 text-sm text-ink-dim">
+                    <MarkdownLite text={d.about_md} />
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {rows.length === 0 ? (
-        <ArchEmptyState
-          title="Your first deliverable lands after kickoff."
-          body="Each artifact your consultant delivers shows up here on a timeline, newest first, with its date and context."
-        />
+        coming.length > 0 ? (
+          <p className="text-sm text-ink-dim">
+            Each item above becomes a real artifact on this timeline as it ships.
+          </p>
+        ) : (
+          <ArchEmptyState
+            title="Your first deliverable lands after kickoff."
+            body="Each artifact your consultant delivers shows up here on a timeline, newest first, with its date and context."
+          />
+        )
       ) : (
         <ol className="relative flex flex-col gap-6 border-l border-brass/60 pl-6">
           {rows.map((d) => (

@@ -63,6 +63,7 @@ export default async function ClientHomePage() {
       .from('deliverables')
       .select('id, title, delivered_on')
       .eq('client_id', viewer.client.clientId)
+      .eq('status', 'shipped')
       .order('delivered_on', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(1)
@@ -202,6 +203,7 @@ export default async function ClientHomePage() {
         .from('deliverables')
         .select('id, title, delivered_on, workstream_id')
         .eq('engagement_id', engagement.id)
+        .eq('status', 'shipped')
         .not('workstream_id', 'is', null)
         .order('delivered_on', { ascending: false })
         .limit(60),

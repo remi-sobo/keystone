@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -26,6 +26,12 @@ const jetbrains = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Keystone",
   description: "Where your engagement lives.",
+};
+
+// Browser chrome takes the sidebar's paper-deep, so the installed app
+// reads as one warm surface (tokens frozen in globals.css).
+export const viewport: Viewport = {
+  themeColor: "#F3EADC",
 };
 
 export default function RootLayout({

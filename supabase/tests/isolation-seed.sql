@@ -2630,4 +2630,90 @@ end $$;
 
 reset role;
 
+-- ── Issue reports (help FAB): client-writable, both walls read, a record ─
+
+set role authenticated;
+
+-- The client leader files a report from inside their own scope, and can
+-- read what they filed.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$
+declare n int;
+begin
+  insert into issue_reports (id, engagement_id, practice_id, client_id, kind, body, reported_side, created_by)
+    values ('c0000000-0000-0000-0000-0000000000f1', '30000000-0000-0000-0000-0000000000a1',
+            '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+            'bug', 'The charter link opens a blank page', 'client',
+            '00000000-0000-0000-0000-0000000000a1');
+  if (select count(*) from issue_reports) <> 1 then
+    raise exception 'member_a1 must read the report they filed';
+  end if;
+  -- A report is a record: even the author cannot rewrite or remove it.
+  update issue_reports set body = 'rewritten' where id = 'c0000000-0000-0000-0000-0000000000f1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a client member rewrote an issue report'; end if;
+  delete from issue_reports where id = 'c0000000-0000-0000-0000-0000000000f1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a client member deleted an issue report'; end if;
+end $$;
+
+-- The author must be the caller: created_by is not auth.uid() so the
+-- insert is refused.
+do $$ begin
+  insert into issue_reports (engagement_id, practice_id, client_id, kind, body, reported_side, created_by)
+    values ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1', 'bug', 'forged author', 'client',
+            '00000000-0000-0000-0000-00000000000a');
+  raise exception 'HOLE: a client member forged issue authorship';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+-- The practice reads its client's report (both walls read) and cannot
+-- edit or delete it either.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$
+declare n int;
+begin
+  if (select count(*) from issue_reports) <> 1 then
+    raise exception 'owner_a must read their client issue report';
+  end if;
+  update issue_reports set body = 'rewritten' where id = 'c0000000-0000-0000-0000-0000000000f1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a session rewrote an issue report'; end if;
+  delete from issue_reports where id = 'c0000000-0000-0000-0000-0000000000f1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a session deleted an issue report'; end if;
+end $$;
+
+-- Cross-client: another client of the same practice reads zero, and
+-- cannot file into a scope that is not theirs.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$ begin
+  if (select count(*) from issue_reports) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 issue reports';
+  end if;
+end $$;
+do $$ begin
+  insert into issue_reports (engagement_id, practice_id, client_id, kind, body, reported_side, created_by)
+    values ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1', 'bug', 'cross-client forge', 'client',
+            '00000000-0000-0000-0000-0000000000a2');
+  raise exception 'HOLE: member_a2 filed into client_a1 scope';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+-- Cross-practice: practice_b's owner reads zero of practice_a reports.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from issue_reports) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a issue reports';
+  end if;
+end $$;
+
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

@@ -1,10 +1,13 @@
+import Link from 'next/link'
 import { KeystoneCard } from '@/components/KeystoneCard'
 
 /**
  * Roadmap: the six-month build as the client sees it (0038). Six phase
  * cards in order, each with its numbered sessions; the active session
  * breathes forest (the one allowed loop), done sessions carry the brass
- * tick, the future stays quiet ink. Read-only by design: no operator
+ * tick, the future stays quiet ink. A done session whose teaching deck
+ * exists (0039) earns a quiet deck link; upcoming decks never show, so
+ * the session keeps its surprise. Read-only by design: no operator
  * controls ever render here, and the data arrives through the caller's
  * own session under RLS.
  */
@@ -16,6 +19,7 @@ export interface RoadmapSession {
   attendees: string | null
   status: string
   scheduled_at: string | null
+  has_deck?: boolean
 }
 
 export interface RoadmapPhase {
@@ -79,6 +83,14 @@ export function Roadmap({ phases }: { phases: RoadmapPhase[] }) {
                         <span className="stage-breathing shrink-0 rounded-full border border-forest px-2 py-0.5 font-mono text-[0.65rem] uppercase tracking-wider text-forest">
                           now
                         </span>
+                      ) : null}
+                      {s.status === 'done' && s.has_deck ? (
+                        <Link
+                          href={`/session/${s.id}/present`}
+                          className="shrink-0 font-mono text-[0.65rem] uppercase tracking-wider text-brass underline decoration-brass/40 hover:decoration-brass"
+                        >
+                          deck
+                        </Link>
                       ) : null}
                       {extra || (s.scheduled_at && s.status !== 'done') ? (
                         <span className="ml-auto flex shrink-0 items-baseline gap-2 font-mono text-[0.65rem] text-ink-dim">

@@ -183,7 +183,9 @@ export default async function ClientHomePage() {
         .order('sort_order', { ascending: true }),
       supabase
         .from('engagement_sessions')
-        .select('id, phase_id, code, title, attendees, status, scheduled_at, sort_order')
+        .select(
+          'id, phase_id, code, title, attendees, status, scheduled_at, sort_order, session_slides(count)'
+        )
         .eq('engagement_id', engagement.id)
         .order('sort_order', { ascending: true }),
     ])
@@ -192,7 +194,16 @@ export default async function ClientHomePage() {
       month_label: p.month_label,
       title: p.title,
       subtitle: p.subtitle,
-      sessions: (phaseSessions ?? []).filter((s) => s.phase_id === p.id),
+      sessions: (phaseSessions ?? [])
+        .filter((s) => s.phase_id === p.id)
+        .map((s) => ({
+          ...s,
+          // The deck link appears once the session is done (the wall the
+          // presenter route enforces too); the count rides the select.
+          /* eslint-disable @typescript-eslint/no-explicit-any */
+          has_deck: (((s.session_slides as any)?.[0]?.count as number) ?? 0) > 0,
+          /* eslint-enable @typescript-eslint/no-explicit-any */
+        })),
     }))
 
     const [ws, practice, events, wsDecisions, wsOpenItems, wsShips] = await Promise.all([

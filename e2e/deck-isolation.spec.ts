@@ -69,6 +69,25 @@ test('the live matrix asserts the deck walls in both dimensions', () => {
   expect(matrix).toContain('LEAK: a membershipless session reads deck slides')
 })
 
+test('the presenter enforces the walls at the route layer', () => {
+  // The shell admits both memberships; the pages decide what each wall
+  // may see. Practice: any of its own decks plus the fixture preview.
+  // Client: a deck only once its session is done (Remi 2026-07-17), so
+  // upcoming teaching stays in the room.
+  const layout = read('src/app/(present)/layout.tsx')
+  expect(layout).toContain('!viewer.practice && !viewer.client')
+  const present = read('src/app/(present)/session/[id]/present/page.tsx')
+  expect(present).toContain(
+    "if (!viewer.practice && session.status !== 'done') redirect('/home')"
+  )
+  const preview = read('src/app/(present)/session/preview/page.tsx')
+  expect(preview).toContain("if (!viewer.practice) redirect('/home')")
+  // The client entry point mirrors the same wall: the roadmap link
+  // renders only for a done session that has a deck.
+  const roadmap = read('src/components/Roadmap.tsx')
+  expect(roadmap).toContain("s.status === 'done' && s.has_deck")
+})
+
 test('the Session 1 deck seed is idempotent, complete, and verbatim to the fixture', () => {
   expect(seed.toLowerCase()).toContain(
     'on conflict (engagement_session_id, sort_order) do nothing'

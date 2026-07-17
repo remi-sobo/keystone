@@ -9,6 +9,13 @@
 -- Idempotent: slides key on (engagement_session_id, sort_order), unique
 -- since 0039, with on conflict do nothing, so a re-run never duplicates
 -- a slide and never clobbers an edit made since.
+--
+-- Slide 13 (homework) was rewritten 2026-07-17 on Remi's call: the
+-- brain dump graduated to pre-work (seed-safespace-prework.sql) and the
+-- top-donor pull already rides Susan's pre-work, so the close-of-session
+-- homework now points at the first pitch rep, the flagship question for
+-- S2, and bringing the donor list Thursday. The original wording lives
+-- in git history.
 
 with s as (
   select es.id as session_id, es.engagement_id, es.practice_id, es.client_id
@@ -34,7 +41,7 @@ from s, (values
   (10, 'idea', '{"eyebrow":"Mindset 04","head":"The donor is a partner.","sup":"You bring the work, they bring the funding, and you both want the same outcome. There’s no power dynamic. You’re in the same boat."}'),
   (11, 'section', '{"num":"03","title":"The learning phase","sub":"We’ll walk every department, program, fundraising, finance, impact, through one lens: what does a fundraiser need to understand here?"}'),
   (12, 'idea', '{"eyebrow":"Our Workspace","head":"Keystone is where we work together.","sup":"You’ll see the workstreams, the notes, and every artifact we build, in one place. We set it up today."}'),
-  (13, 'homework', '{"eyebrow":"This Week","title":"Before we meet again","rows":[{"who":"Everyone","task":"A current-state brain dump: your program, and the relationships that matter most."},{"who":"Susan","task":"Pull the top-donor list so we can start mapping it Thursday."},{"who":"Thursday","task":"Come ready to build."}]}'),
+  (13, 'homework', '{"eyebrow":"Before Thursday","title":"Before we meet again","rows":[{"who":"Aris + Jasmine","task":"Your first pitch rep: five minutes, pitch each other once before Thursday. Rough is the point."},{"who":"Everyone","task":"Come with an answer: if SafeSpace ran one flagship program, what would it be, and what would you stop doing to protect it?"},{"who":"Susan","task":"Bring the top-donor list from your pre-work. Thursday we start mapping it."},{"who":"Thursday","task":"Come ready to build."}]}'),
   (14, 'close', '{"line1":"It’s usually not the heart.","line2":"It’s the system.","attr":"See you Thursday."}')
 ) as v(sort_order, slide_type, payload)
 on conflict (engagement_session_id, sort_order) do nothing;

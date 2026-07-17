@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import WorkstreamArc from '@/components/WorkstreamArc'
+import { Roadmap, type RoadmapPhase } from '@/components/Roadmap'
 import { RoomShell } from '@/components/RoomShell'
 import { KeystoneCard } from '@/components/KeystoneCard'
 import { ArchEmptyState } from '@/components/ArchEmptyState'
@@ -169,8 +170,31 @@ export default async function ClientHomePage() {
   const decisionsByWs = new Map<string, Array<{ id: string; title: string; decided_on: string }>>()
   const openByWs = new Map<string, { count: number; nearestDue: string | null }>()
   const latestShipByWs = new Map<string, { title: string; delivered_on: string }>()
+  let roadmapPhases: RoadmapPhase[] = []
 
   if (engagement) {
+    // The six-month roadmap (0038): the whole arc from day one, pure
+    // RLS like everything else on this surface.
+    const [{ data: phases }, { data: phaseSessions }] = await Promise.all([
+      supabase
+        .from('engagement_phases')
+        .select('id, month_label, title, subtitle, sort_order')
+        .eq('engagement_id', engagement.id)
+        .order('sort_order', { ascending: true }),
+      supabase
+        .from('engagement_sessions')
+        .select('id, phase_id, code, title, attendees, status, scheduled_at, sort_order')
+        .eq('engagement_id', engagement.id)
+        .order('sort_order', { ascending: true }),
+    ])
+    roadmapPhases = (phases ?? []).map((p) => ({
+      id: p.id,
+      month_label: p.month_label,
+      title: p.title,
+      subtitle: p.subtitle,
+      sessions: (phaseSessions ?? []).filter((s) => s.phase_id === p.id),
+    }))
+
     const [ws, practice, events, wsDecisions, wsOpenItems, wsShips] = await Promise.all([
       supabase
         .from('workstreams')
@@ -323,6 +347,8 @@ export default async function ClientHomePage() {
           </section>
         )
       })()}
+
+      <Roadmap phases={roadmapPhases} />
 
       <div className="grid gap-10 lg:grid-cols-[1fr_280px]">
         <section aria-label="Workstreams" className="flex flex-col gap-8">

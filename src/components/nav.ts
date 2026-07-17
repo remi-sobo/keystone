@@ -32,13 +32,19 @@ export function clientNav(): NavItem[] {
   ]
 }
 
-export function practiceNav(): NavItem[] {
+export function practiceNav(role?: 'owner' | 'consultant'): NavItem[] {
   return [
     { href: '/today', label: 'Home', icon: 'home', mobile: true },
     { href: '/clients', label: 'Clients', icon: 'clients', mobile: true },
     { href: '/engagements', label: 'Engagements', icon: 'engagements', mobile: true },
     // Desktop rail only: the mobile bar keeps its five.
     { href: '/team', label: 'Team', icon: 'team' },
+    // Reported issues from the help FAB. Owner only, by decision: the
+    // triage screen is Remi's. Desktop rail only, so the mobile bar
+    // stays at its five-item max.
+    ...(role === 'owner'
+      ? [{ href: '/issues', label: 'Issues', icon: 'issues' } as NavItem]
+      : []),
     // /library belongs to the client surface; authoring sits beneath it
     // (the App Router cannot give two route groups the same path).
     { href: '/library/authoring', label: 'Library', icon: 'library', mobile: true },

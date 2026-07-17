@@ -18,7 +18,7 @@ export default async function PracticeLayout({ children }: { children: React.Rea
   return (
     <div className="flex min-h-screen bg-paper">
       <Sidebar
-        items={practiceNav()}
+        items={practiceNav(viewer.practice.role)}
         practiceName={viewer.practice.practiceName}
         personEmail={viewer.user.email ?? ''}
       />

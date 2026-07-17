@@ -43,7 +43,7 @@ ship in vercel.json.
 - [ ] `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` (see section 3). Ring 2.
 - [ ] `ANTHROPIC_API_KEY` (console.anthropic.com > API keys). Ring 3: transcript extraction, and later digest, Q&A, suggestions.
 - [ ] `AI_SPEND_HARD_USD_MONTH` / `AI_SPEND_WARN_USD_MONTH` (optional; defaults 50/40).
-- [ ] `RESEND_API_KEY` (resend.com; see section 4). Ring 5 messages, Ring 6 digest.
+- [ ] `RESEND_API_KEY` (resend.com; see section 4). Ring 5 messages, Ring 6 digest, and the help-FAB issue reports (the email to the practice owners on each report). Until this is set, a filed report still saves and shows on the Reported issues screen, but no email goes out (it degrades honestly, never a fake sent).
 - [ ] `KEYSTONE_FROM_EMAIL` (optional; defaults to `Keystone <hello@soboconsulting.com>`, which requires the domain verified in Resend).
 - [ ] `CRON_SECRET` (mint: `openssl rand -hex 24`). Ring 6 digest cron.
 

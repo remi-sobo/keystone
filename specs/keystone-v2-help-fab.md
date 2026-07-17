@@ -96,7 +96,18 @@ focus is trapped while open; it is verified at 390px before it ships.
   bucket with a path-scoped read policy like the homework-evidence one).
 - The BloomOS-style AI intake interview that drafts a developer brief
   (a second AI surface, gated on its own).
-- A practice-side triage list view of reports (the read policy already
-  admits it; the surface is a later commit). Email is the delivery for
-  now.
 - The practice-side mount of the FAB.
+
+## Built after the first merge
+
+- The practice-side triage screen (`/issues`, on Remi's ask). Owner
+  only: the nav item and the page both gate to the practice owner, and a
+  consultant who reaches the URL is sent back to Home. Reads
+  `issue_reports` on the owner's own session under RLS. It reads the
+  rows, never edits them (the table is immutable by policy). One honest
+  limit, flagged rather than hidden: the RLS read policy still admits any
+  practice member, so the owner-only wall here is at the app layer; a
+  data-layer owner-only lock is a later change if the pilot wants it.
+  `RESEND_API_KEY` is flagged on the setup checklist so the per-report
+  email actually sends; until then the report saves and shows on this
+  screen with no email.

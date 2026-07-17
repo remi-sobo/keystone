@@ -92,3 +92,21 @@ test.describe('the report surface holds its enforcement model', () => {
     expect(clientLayout).toContain('HelpFab')
   })
 })
+
+test.describe('the practice triage screen is the owner’s', () => {
+  const page = 'src/app/(practice)/issues/page.tsx'
+
+  test('the Reported issues page gates to the practice owner and reads issue_reports', () => {
+    const src = read(page)
+    expect(src).toContain("viewer.practice.role !== 'owner'")
+    expect(src).toContain("from('issue_reports')")
+  })
+
+  test('the Issues nav item is owner-only and desktop-only', () => {
+    const nav = read('src/components/nav.ts')
+    // The item only appears when the resolved role is owner.
+    expect(nav).toMatch(/role === 'owner'[\s\S]*href: '\/issues'/)
+    // No mobile flag on the item, so the practice mobile bar keeps its five.
+    expect(nav).not.toMatch(/href: '\/issues'[^}]*mobile: true/)
+  })
+})

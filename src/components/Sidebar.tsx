@@ -18,6 +18,7 @@ import {
   Landmark,
   CircleUserRound,
   ClipboardList,
+  Flag,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
@@ -55,6 +56,8 @@ const ICONS: Record<string, LucideIcon> = {
   closeout: Landmark,
   account: CircleUserRound,
   team: ClipboardList,
+  // Reported issues from the help FAB (owner-only triage screen).
+  issues: Flag,
 }
 
 const COLLAPSE_KEY = 'keystone.sidebar.collapsed'

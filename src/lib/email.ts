@@ -72,11 +72,11 @@ export function emailShell(opts: {
   cta?: { href: string; label: string }
 }): string {
   return [
-    `<div style="max-width:560px;margin:0 auto;padding:24px;background:#FBF4EA;color:#2A2620;font-family:Georgia,serif;">`,
-    `<p style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#6E675C;margin:0 0 18px 0;">${opts.eyebrow}</p>`,
+    `<div style="max-width:560px;margin:0 auto;padding:24px;background:#FBF4EA;color:#1C1914;font-family:Georgia,serif;">`,
+    `<p style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#4A453B;margin:0 0 18px 0;">${opts.eyebrow}</p>`,
     opts.bodyHtml,
     opts.cta
-      ? `<p style="margin:18px 0 0 0;"><a href="${opts.cta.href}" style="color:#33503C;">${opts.cta.label}</a></p>`
+      ? `<p style="margin:18px 0 0 0;"><a href="${opts.cta.href}" style="color:#1E3526;">${opts.cta.label}</a></p>`
       : '',
     `</div>`,
   ].join('\n')

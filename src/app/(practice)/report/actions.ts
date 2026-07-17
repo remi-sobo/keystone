@@ -80,7 +80,7 @@ export async function reportPracticeIssue(input: {
     eyebrow: `${reporter} reported an issue`,
     bodyHtml: [
       `<p style="margin:0 0 12px 0;">${escapeHtml(KIND_LABEL[parsed.data.kind])}, from your team:</p>`,
-      `<blockquote style="margin:0;padding:0 0 0 12px;border-left:2px solid #B08D3E;color:#2A2620;">${escapeHtml(excerpt)}</blockquote>`,
+      `<blockquote style="margin:0;padding:0 0 0 12px;border-left:2px solid #8A6A26;color:#1C1914;">${escapeHtml(excerpt)}</blockquote>`,
     ].join('\n'),
     cta: { href: `${appBaseUrl()}/issues`, label: 'Open Reported issues in Keystone' },
   })

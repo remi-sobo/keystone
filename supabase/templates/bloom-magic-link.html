@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <meta name="supported-color-schemes" content="light" />
+  <title>Sign in to Bloom</title>
+  <!--
+    Bloom magic link email. Paste the whole file into Supabase:
+    Authentication > Emails > Templates > Magic Link (and Confirm signup,
+    which first-time invitees receive instead). Setup steps live in
+    docs/bloom-magic-link-setup.md.
+
+    Email clients strip stylesheets unevenly, so every style is inline
+    and layout is tables. Georgia stands in for Cormorant, Courier for
+    the mono register; webfonts do not survive most inboxes. Hex values
+    mirror the frozen SOBO family tokens in DESIGN.md.
+  -->
+</head>
+<body style="margin:0; padding:0; background-color:#FBF4EA;" bgcolor="#FBF4EA">
+
+  <!-- Preheader: the inbox preview line. Hidden in the open email. -->
+  <div style="display:none; max-height:0; overflow:hidden; mso-hide:all;">
+    Your one-time link to sign in to Bloom. It works once and expires in an hour.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#FBF4EA" style="background-color:#FBF4EA;">
+    <tr>
+      <td align="center" style="padding:40px 16px 48px 16px;">
+
+        <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px; max-width:100%;">
+
+          <!-- Wordmark: navy, with the family's brass period. -->
+          <tr>
+            <td align="center" style="padding:0 0 24px 0;">
+              <span style="font-family:Georgia, 'Times New Roman', serif; font-size:30px; font-weight:600; color:#26303D; letter-spacing:0.5px;">Bloom<span style="color:#8A6A26;">.</span></span>
+            </td>
+          </tr>
+
+          <!-- The card. -->
+          <tr>
+            <td bgcolor="#FFFBF3" style="background-color:#FFFBF3; border:1px solid #E7DCC6; border-radius:12px; padding:40px 40px 32px 40px;">
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+
+                <!-- Eyebrow. -->
+                <tr>
+                  <td align="center" style="font-family:'Courier New', Courier, monospace; font-size:11px; letter-spacing:3px; text-transform:uppercase; color:#4A453B; padding:0 0 16px 0;">
+                    Sign in
+                  </td>
+                </tr>
+
+                <!-- Heading. -->
+                <tr>
+                  <td align="center" style="font-family:Georgia, 'Times New Roman', serif; font-size:26px; line-height:1.2; font-weight:400; color:#26303D; padding:0 0 14px 0;">
+                    Your sign-in link is ready.
+                  </td>
+                </tr>
+
+                <!-- One thin brass rule, the expensive detail. -->
+                <tr>
+                  <td align="center" style="padding:0 0 18px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="48">
+                      <tr><td height="1" style="height:1px; line-height:1px; font-size:0; background-color:#8A6A26;">&nbsp;</td></tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Body line. -->
+                <tr>
+                  <td align="center" style="font-family:Georgia, 'Times New Roman', serif; font-size:15px; line-height:1.6; color:#1C1914; padding:0 8px 6px 8px;">
+                    Press the button and you are in. The link works once,
+                    and it expires in an hour.
+                  </td>
+                </tr>
+
+                <!-- Button. -->
+                <tr>
+                  <td align="center" style="padding:24px 0 28px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+                      <tr>
+                        <td align="center" bgcolor="#1E3526" style="background-color:#1E3526; border-radius:8px;">
+                          <a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block; padding:14px 40px; font-family:Georgia, 'Times New Roman', serif; font-size:16px; color:#FBF4EA; text-decoration:none; border-radius:8px;">
+                            Sign in to Bloom
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Fallback link, on a paper-deep well. -->
+                <tr>
+                  <td align="center" style="font-family:Georgia, 'Times New Roman', serif; font-size:13px; line-height:1.5; color:#4A453B; padding:0 0 10px 0;">
+                    If the button does not work, copy this link into your browser:
+                  </td>
+                </tr>
+                <tr>
+                  <td bgcolor="#F3EADC" style="background-color:#F3EADC; border-radius:8px; padding:12px 16px;">
+                    <a href="{{ .ConfirmationURL }}" target="_blank" style="font-family:'Courier New', Courier, monospace; font-size:12px; line-height:1.5; color:#1E3526; text-decoration:none; word-break:break-all;">{{ .ConfirmationURL }}</a>
+                  </td>
+                </tr>
+
+                <!-- Quiet security note. -->
+                <tr>
+                  <td align="center" style="font-family:Georgia, 'Times New Roman', serif; font-size:13px; line-height:1.6; color:#4A453B; padding:26px 8px 0 8px;">
+                    Did not ask for this? You can ignore it. The link came
+                    from someone entering this address at sign-in, and
+                    nothing happens in your account without it.
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer. -->
+          <tr>
+            <td align="center" style="font-family:'Courier New', Courier, monospace; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#4A453B; padding:28px 0 0 0;">
+              Bloom &nbsp;&middot;&nbsp; by Sobo Consulting
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

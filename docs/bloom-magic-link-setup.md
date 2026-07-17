@@ -1,23 +1,23 @@
-# Bloom magic link email: setup
+# BloomOS magic link email: setup
 
 The default Supabase auth email is the plain "Your Magic Link / Follow
 this link to login" note from `noreply@mail.app.supabase.io`. This doc
 replaces it with the designed template at
-`supabase/templates/bloom-magic-link.html`: paper canvas, the Bloom
+`supabase/templates/bloom-magic-link.html`: paper canvas, the BloomOS
 wordmark with the brass period, a forest button, one brass hairline.
 Ten minutes of dashboard work, no code deploy.
 
 ## 1. Pick the right project
 
 Email templates are per Supabase project. Open the project that serves
-the Bloom hub you sign in to (the one that sent the email in your
+the BloomOS hub you sign in to (the one that sent the email in your
 inbox). From this account the Ambition Angels hub candidates are
 `aa-fundraising-hub` (ref `zegznwcbsalhhvqhhllz`) and `Ambition-Angels`
 (ref `kzzdtibbwsucloaoqpqa`); if unsure, check Authentication > Users
 in each for your address with a recent "last sign in".
 
 The same file works for any SOBO family app. For Keystone, swap the
-wordmark text `Bloom` for `Keystone` and the footer line, then paste it
+wordmark text `BloomOS` for `Keystone` and the footer line, then paste it
 into the `keystone` project (ref `mvuycjxainskaylvupji`) the same way.
 
 ## 2. Paste the template (two places, on purpose)
@@ -26,7 +26,7 @@ Supabase dashboard > your project > **Authentication > Emails >
 Templates** (older UI: Authentication > Email Templates).
 
 1. Open the **Magic Link** tab.
-   - Subject: `Your sign-in link for Bloom`
+   - Subject: `Your sign-in link for BloomOS`
    - Message body: select everything in the editor, delete it, and
      paste the full contents of `supabase/templates/bloom-magic-link.html`.
    - Save.
@@ -54,7 +54,7 @@ Authentication > Emails > **SMTP Settings**:
 - Password: a Resend API key for a domain verified in Resend
 - Sender address: something on that domain, e.g.
   `hello@ambitionangels.org` (or the hub's own domain)
-- Sender name: `Bloom`
+- Sender name: `BloomOS`
 
 This mirrors what `docs/setup-checklist.md` section 1 already
 prescribes for the keystone project.
@@ -77,5 +77,5 @@ Send yourself a fresh link from the sign-in page. Confirm:
   phone client).
 - The button signs you in; the plain-text fallback link below it works
   too.
-- The sender shows `Bloom` from your domain, not supabase.io, once
+- The sender shows `BloomOS` from your domain, not supabase.io, once
   step 3 lands.

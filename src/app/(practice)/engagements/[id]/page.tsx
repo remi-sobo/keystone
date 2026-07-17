@@ -139,7 +139,7 @@ export default async function EngagementDetailPage({
   // days as of THIS render.
   // eslint-disable-next-line react-hooks/purity
   const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
-  const [ws, practice, sessions, items, readiness, deliverables] = await Promise.all([
+  const [ws, practice, sessions, items, readiness, deliverables, deckSessions] = await Promise.all([
     supabase
       .from('workstreams')
       .select('id, title, stage, sort, note_md, note_updated_at, owner_practice_member_id')
@@ -170,6 +170,14 @@ export default async function EngagementDetailPage({
       )
       .eq('engagement_id', id)
       .order('delivered_on', { ascending: false, nullsFirst: false }),
+    // Roadmap sessions that carry a teaching deck (0039), for the
+    // Present entry point. The count rides the nested select so
+    // deckless sessions can be filtered without a second query.
+    supabase
+      .from('engagement_sessions')
+      .select('id, code, title, status, sort_order, session_slides(count)')
+      .eq('engagement_id', id)
+      .order('sort_order', { ascending: true }),
   ])
 
   const { data: messages } = await supabase
@@ -578,6 +586,43 @@ export default async function EngagementDetailPage({
               ))}
             </ul>
           )}
+
+          {(() => {
+            /* eslint-disable @typescript-eslint/no-explicit-any */
+            const decked = (deckSessions.data ?? []).filter(
+              (rs) => (((rs.session_slides as any)?.[0]?.count as number) ?? 0) > 0
+            )
+            /* eslint-enable @typescript-eslint/no-explicit-any */
+            if (decked.length === 0) return null
+            return (
+              <>
+                <h3 className="font-display mt-6 text-xl font-medium text-ink">
+                  Teaching decks
+                </h3>
+                <ul className="mt-3 flex flex-col gap-2">
+                  {decked.map((rs) => (
+                    <li
+                      key={rs.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius)] border border-ink/10 bg-paper-raised px-4 py-3"
+                    >
+                      <span className="text-sm text-ink">
+                        {rs.code} · {rs.title}
+                        {rs.status === 'active' ? (
+                          <span className="text-ink-dim"> (up next)</span>
+                        ) : null}
+                      </span>
+                      <Link
+                        href={`/session/${rs.id}/present`}
+                        className="rounded-lg bg-forest px-3 py-1.5 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98]"
+                      >
+                        Present
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )
+          })()}
         </section>
 
         <section id="scheduling">

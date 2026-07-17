@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import WorkstreamArc from '@/components/WorkstreamArc'
 import { Roadmap, type RoadmapPhase } from '@/components/Roadmap'
+import { PreworkCard } from '@/components/PreworkCard'
 import { RoomShell } from '@/components/RoomShell'
 import { KeystoneCard } from '@/components/KeystoneCard'
 import { ArchEmptyState } from '@/components/ArchEmptyState'
@@ -143,12 +144,25 @@ export default async function ClientHomePage() {
     .limit(1)
     .maybeSingle()
 
+  // Pre-work rides the homework model but gets the featured card, so
+  // the everyday lists below skip before-session items to say each
+  // thing once.
+  const { data: myPrework } = myMembership
+    ? await supabase
+        .from('action_items')
+        .select('id, title, body_md, status')
+        .eq('assigned_client_member_id', myMembership.id)
+        .eq('timing', 'before_session')
+        .order('created_at', { ascending: true })
+    : { data: [] }
+
   const { data: myOpenItems } = myMembership
     ? await supabase
         .from('action_items')
         .select('id, title, due_on, review_requested')
         .eq('assigned_client_member_id', myMembership.id)
         .eq('status', 'open')
+        .neq('timing', 'before_session')
         .order('due_on', { ascending: true, nullsFirst: false })
         .limit(3)
     : { data: [] }
@@ -347,6 +361,8 @@ export default async function ClientHomePage() {
           </section>
         )
       })()}
+
+      <PreworkCard items={myPrework ?? []} />
 
       <Roadmap phases={roadmapPhases} />
 

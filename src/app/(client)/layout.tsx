@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
+import HelpFab from '@/components/HelpFab'
 import { clientNav } from '@/components/nav'
 import { getViewer } from '@/lib/membership'
 
@@ -24,6 +25,7 @@ export default async function ClientLayout({ children }: { children: React.React
         personEmail={viewer.user.email ?? ''}
       />
       <main className="min-w-0 flex-1 pb-20 md:pb-0">{children}</main>
+      <HelpFab />
     </div>
   )
 }

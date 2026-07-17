@@ -233,6 +233,12 @@ export const LIMITS = {
   MESSAGES_PER_MIN: { kind: 'messages:user:min', windowMs: 60 * 1000, max: 10 },
   MESSAGES_PER_HOUR: { kind: 'messages:user:hour', windowMs: 60 * 60 * 1000, max: 100 },
 
+  // Issue reports (help FAB): each filed report sends the practice owners
+  // a Resend email, so this bounds email spend and noise like messages
+  // do. A leader files a handful at most; the caps are generous.
+  ISSUE_REPORTS_PER_MIN: { kind: 'issue-reports:user:min', windowMs: 60 * 1000, max: 5 },
+  ISSUE_REPORTS_PER_HOUR: { kind: 'issue-reports:user:hour', windowMs: 60 * 60 * 1000, max: 30 },
+
   // Session booking (Ring 2). Deliberate, infrequent actions.
   BOOKING_PER_MIN: { kind: 'booking:user:min', windowMs: 60 * 1000, max: 5 },
   BOOKING_PER_HOUR: { kind: 'booking:user:hour', windowMs: 60 * 60 * 1000, max: 20 },

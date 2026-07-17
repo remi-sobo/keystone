@@ -63,3 +63,33 @@ test('the live matrix asserts the roadmap walls in both dimensions', () => {
   expect(seed).toContain('LEAK cross-practice: owner_b reads practice_a roadmap phases')
   expect(seed).toContain('LEAK: a membershipless session reads roadmap rows')
 })
+
+test('the SafeSpace roadmap seed is idempotent and complete', () => {
+  const roadmap = read('supabase/seed-safespace-roadmap.sql')
+  // Reuse, never duplicate: phases key on (engagement, sort_order) and
+  // sessions on (engagement, code) via on conflict do nothing.
+  expect(roadmap.toLowerCase()).toContain('on conflict (engagement_id, sort_order) do nothing')
+  expect(roadmap.toLowerCase()).toContain('on conflict (engagement_id, code) do nothing')
+  // The whole arc: six phases, twenty-eight sessions, exactly one
+  // active (S1), verbatim phase titles from the scope and sequence.
+  for (let i = 1; i <= 28; i++) {
+    expect(roadmap).toContain(`'S${i}'`)
+  }
+  for (const title of [
+    'Foundation & the Program',
+    'The Budget & the Math of the Ask',
+    'The Fundraising Plan',
+    'The Season: Execution',
+    'Peak & Operations',
+    'Stabilize & Handoff',
+  ]) {
+    expect(roadmap).toContain(title)
+  }
+  expect(roadmap.match(/, 'active'\)/g)).toHaveLength(1)
+  // Shannon joins the budget and operations sessions, Kendra the impact
+  // touchpoints and the teach-back.
+  expect(roadmap.match(/\+ Shannon/g)).toHaveLength(4)
+  expect(roadmap.match(/\+ Kendra/g)).toHaveLength(3)
+  // The voice rule holds in client-visible copy.
+  expect(roadmap).not.toContain('—')
+})

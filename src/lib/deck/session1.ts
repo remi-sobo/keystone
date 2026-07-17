@@ -107,14 +107,21 @@ export const session1Slides: DeckSlide[] = [
   },
   {
     slide_type: 'homework',
-    eyebrow: 'This Week',
+    eyebrow: 'Before Thursday',
     title: 'Before we meet again',
     rows: [
       {
-        who: 'Everyone',
-        task: 'A current-state brain dump: your program, and the relationships that matter most.',
+        who: 'Aris + Jasmine',
+        task: 'Your first pitch rep: five minutes, pitch each other once before Thursday. Rough is the point.',
       },
-      { who: 'Susan', task: 'Pull the top-donor list so we can start mapping it Thursday.' },
+      {
+        who: 'Everyone',
+        task: 'Come with an answer: if SafeSpace ran one flagship program, what would it be, and what would you stop doing to protect it?',
+      },
+      {
+        who: 'Susan',
+        task: 'Bring the top-donor list from your pre-work. Thursday we start mapping it.',
+      },
       { who: 'Thursday', task: 'Come ready to build.' },
     ],
   },

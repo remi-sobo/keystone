@@ -1,17 +1,21 @@
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import DeckRenderer from '@/components/deck/DeckRenderer'
 import type { DeckMeta, DeckSlide } from '@/lib/deck/types'
+import { getViewer } from '@/lib/membership'
 import { createServerSupabase } from '@/lib/supabase/server'
 
 /**
  * The full-screen presenter: /session/[id]/present, id being the
  * engagement_sessions row (the roadmap session whose deck this is).
- * Operator-only via the (present) layout; every read rides the session
- * client under RLS, so a session id from another practice resolves to
- * zero rows and lands on notFound, never on data. The deck meta is
- * data-driven off the cover slide (its eyebrow is the program name,
- * its meta pair the footer), with the session code as the counter.
+ * The practice presents any of its own decks; a client member opens a
+ * deck only once its session is done (Remi's call, 2026-07-17), so
+ * upcoming teaching stays in the room until it has been taught. Every
+ * read rides the session client under RLS, so a session id from
+ * another scope resolves to zero rows and lands on notFound, never on
+ * data. The deck meta is data-driven off the cover slide (its eyebrow
+ * is the program name, its meta pair the footer), with the session
+ * code as the counter.
  */
 export const metadata: Metadata = {
   title: 'Present',
@@ -23,10 +27,14 @@ export default async function PresentPage({ params }: { params: Promise<{ id: st
 
   const { data: session } = await supabase
     .from('engagement_sessions')
-    .select('id, code, title, practices(name), clients(name)')
+    .select('id, code, title, status, practices(name), clients(name)')
     .eq('id', id)
     .maybeSingle()
   if (!session) notFound()
+
+  // The done wall: a client member never opens an upcoming deck.
+  const viewer = await getViewer()
+  if (!viewer.practice && session.status !== 'done') redirect('/home')
 
   const { data: rows } = await supabase
     .from('session_slides')

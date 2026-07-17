@@ -233,12 +233,12 @@ Light warm paper, the SOBO family polarity, never stark:
   --color-paper:        #FBF4EA;   /* page canvas, SOBO cream */
   --color-paper-raised: #FFFBF3;   /* cards, panels */
   --color-paper-deep:   #F3EADC;   /* sidebar, wells, hover fills */
-  --color-forest:       #33503C;   /* primary structure, active states */
-  --color-forest-deep:  #26402E;   /* hover/active of primary */
-  --color-navy:         #3D4959;   /* ink for headings, secondary structure */
-  --color-ink:          #2A2620;   /* body text, warm near-black, never #000 */
-  --color-ink-dim:      #6E675C;   /* secondary text, AA-checked on paper */
-  --color-brass:        #B08D3E;   /* THE metallic. Hairlines, keystone marks,
+  --color-forest:       #1E3526;   /* primary structure, active states; deep green near black */
+  --color-forest-deep:  #152717;   /* hover/active of primary */
+  --color-navy:         #26303D;   /* ink for headings, secondary structure */
+  --color-ink:          #1C1914;   /* body text, warm near-black, never #000 */
+  --color-ink-dim:      #4A453B;   /* secondary text, AAA-checked on paper */
+  --color-brass:        #8A6A26;   /* THE metallic. Hairlines, keystone marks,
                                       focus glints, stage-complete ticks. Sparingly. */
   --color-sage:         #7A9471;   /* organic accent: progress fills, quiet success */
 }

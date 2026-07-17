@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
+import PracticeReportFab from '@/components/PracticeReportFab'
 import { practiceNav } from '@/components/nav'
 import { getViewer } from '@/lib/membership'
 
@@ -23,6 +24,7 @@ export default async function PracticeLayout({ children }: { children: React.Rea
         personEmail={viewer.user.email ?? ''}
       />
       <main className="min-w-0 flex-1 pb-20 md:pb-0">{children}</main>
+      <PracticeReportFab />
     </div>
   )
 }

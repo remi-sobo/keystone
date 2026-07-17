@@ -104,10 +104,26 @@ focus is trapped while open; it is verified at 390px before it ships.
   only: the nav item and the page both gate to the practice owner, and a
   consultant who reaches the URL is sent back to Home. Reads
   `issue_reports` on the owner's own session under RLS. It reads the
-  rows, never edits them (the table is immutable by policy). One honest
-  limit, flagged rather than hidden: the RLS read policy still admits any
-  practice member, so the owner-only wall here is at the app layer; a
-  data-layer owner-only lock is a later change if the pilot wants it.
+  rows, never edits them (the table is immutable by policy).
   `RESEND_API_KEY` is flagged on the setup checklist so the per-report
   email actually sends; until then the report saves and shows on this
   screen with no email.
+
+- Owner-only read at the database, and reporting opened to the practice
+  team (migration 0037, on Remi's ask). Remi runs the system, so only
+  the owner may READ the reports: a new `issue.read` permission is
+  granted to `owner` alone and the read policy asks the permission
+  authority for it, so a consultant or a client member now reads zero
+  reports at the database, not just in the app. Reporting is the
+  opposite, deliberately open: a client leader files from their side and
+  a consultant files from the practice side (the report FAB now mounts on
+  both surfaces), each as themselves, and both come to the owner. A
+  practice-authored report has no client and no engagement, so those two
+  ids are nullable now, with a CHECK that keeps a client-authored report
+  fully scoped (both ids present) so the cross-client wall on client
+  reports stays structural. Delivery for a practice-authored report rides
+  a new minimal-disclosure RPC (`keystone_issue_notify_targets`, the
+  practice-caller twin of the message notify RPC). The live matrix proves
+  it: a client leader and a consultant each file but read zero, only the
+  owner reads, the cross-client and cross-practice walls hold, and a
+  filed report is a record.

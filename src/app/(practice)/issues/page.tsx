@@ -37,7 +37,8 @@ interface Row {
   kind: string
   body: string
   created_at: string
-  engagement_id: string
+  reported_side: 'practice' | 'client'
+  engagement_id: string | null
   engagements: { title: string } | null
   clients: { name: string } | null
 }
@@ -51,7 +52,7 @@ export default async function IssuesPage() {
   const supabase = await createServerSupabase()
   const { data } = await supabase
     .from('issue_reports')
-    .select('id, kind, body, created_at, engagement_id, engagements(title), clients(name)')
+    .select('id, kind, body, created_at, reported_side, engagement_id, engagements(title), clients(name)')
     .order('created_at', { ascending: false })
   const reports = (data ?? []) as unknown as Row[]
 
@@ -59,7 +60,7 @@ export default async function IssuesPage() {
     <RoomShell
       eyebrow="Reported issues"
       title="Reported issues"
-      description="What client leaders file through the help button: something broken, something confusing, or an idea. Each one also emails you when Resend is connected."
+      description="What client leaders and your own team file through the help button: something broken, something confusing, or an idea. Only you see this list; each one also emails you when Resend is connected."
       maxWidth="max-w-3xl"
     >
       {reports.length === 0 ? (
@@ -82,15 +83,24 @@ export default async function IssuesPage() {
               </div>
               <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-ink">{r.body}</p>
               <p className="mt-3 text-xs text-ink-dim">
-                {r.clients?.name ?? 'A client'}
-                {r.engagements?.title ? (
+                {r.reported_side === 'practice' ? (
+                  'From your team'
+                ) : (
                   <>
-                    {' on '}
-                    <Link href={`/engagements/${r.engagement_id}`} className="text-forest underline">
-                      {r.engagements.title}
-                    </Link>
+                    {r.clients?.name ?? 'A client'}
+                    {r.engagements?.title && r.engagement_id ? (
+                      <>
+                        {' on '}
+                        <Link
+                          href={`/engagements/${r.engagement_id}`}
+                          className="text-forest underline"
+                        >
+                          {r.engagements.title}
+                        </Link>
+                      </>
+                    ) : null}
                   </>
-                ) : null}
+                )}
               </p>
             </li>
           ))}

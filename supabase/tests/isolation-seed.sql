@@ -2630,32 +2630,26 @@ end $$;
 
 reset role;
 
--- ── Issue reports (help FAB): client-writable, both walls read, a record ─
+-- ── Issue reports (help FAB): owner-only read, anyone-files, a record ─
+-- Reports come from client leaders AND the practice's own consultants;
+-- only the practice owner may read them. Files means filed: no rewrite,
+-- no delete, and the author of a report cannot read it back.
 
 set role authenticated;
 
--- The client leader files a report from inside their own scope, and can
--- read what they filed.
+-- A client leader files a report from inside their own scope, and CANNOT
+-- read it back (read is the owner's alone).
 select set_config('request.jwt.claims',
   '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
-do $$
-declare n int;
-begin
+do $$ begin
   insert into issue_reports (id, engagement_id, practice_id, client_id, kind, body, reported_side, created_by)
     values ('c0000000-0000-0000-0000-0000000000f1', '30000000-0000-0000-0000-0000000000a1',
             '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
             'bug', 'The charter link opens a blank page', 'client',
             '00000000-0000-0000-0000-0000000000a1');
-  if (select count(*) from issue_reports) <> 1 then
-    raise exception 'member_a1 must read the report they filed';
+  if (select count(*) from issue_reports) <> 0 then
+    raise exception 'LEAK: a client member reads issue reports (owner-only)';
   end if;
-  -- A report is a record: even the author cannot rewrite or remove it.
-  update issue_reports set body = 'rewritten' where id = 'c0000000-0000-0000-0000-0000000000f1';
-  get diagnostics n = row_count;
-  if n <> 0 then raise exception 'HOLE: a client member rewrote an issue report'; end if;
-  delete from issue_reports where id = 'c0000000-0000-0000-0000-0000000000f1';
-  get diagnostics n = row_count;
-  if n <> 0 then raise exception 'HOLE: a client member deleted an issue report'; end if;
 end $$;
 
 -- The author must be the caller: created_by is not auth.uid() so the
@@ -2669,15 +2663,29 @@ do $$ begin
 exception when insufficient_privilege then null; -- expected RLS denial
 end $$;
 
--- The practice reads its client's report (both walls read) and cannot
--- edit or delete it either.
+-- A practice consultant files a system report (no client, no engagement)
+-- and also CANNOT read the list: reporting is open, reading is not.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000b","email":"consultant_a@practice-a.test"}', false);
+do $$ begin
+  insert into issue_reports (id, practice_id, kind, body, reported_side, created_by)
+    values ('c0000000-0000-0000-0000-0000000000f2', '10000000-0000-0000-0000-00000000000a',
+            'idea', 'The engagement list could group by client', 'practice',
+            '00000000-0000-0000-0000-00000000000b');
+  if (select count(*) from issue_reports) <> 0 then
+    raise exception 'LEAK: a consultant reads issue reports (owner-only)';
+  end if;
+end $$;
+
+-- The owner reads BOTH reports (client-filed and consultant-filed) and
+-- cannot edit or delete either: a report is a record.
 select set_config('request.jwt.claims',
   '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
 do $$
 declare n int;
 begin
-  if (select count(*) from issue_reports) <> 1 then
-    raise exception 'owner_a must read their client issue report';
+  if (select count(*) from issue_reports) <> 2 then
+    raise exception 'owner_a must read every report of their practice';
   end if;
   update issue_reports set body = 'rewritten' where id = 'c0000000-0000-0000-0000-0000000000f1';
   get diagnostics n = row_count;

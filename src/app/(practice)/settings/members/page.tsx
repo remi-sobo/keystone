@@ -61,11 +61,25 @@ function fmtDay(iso: string | null): string {
   })
 }
 
+/**
+ * Recency for invite sends: the owner who just clicked Send needs the
+ * page to say so plainly. Fresh sends read as minutes or hours ago;
+ * anything older falls back to the date.
+ */
+function fmtRecent(iso: string): string {
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return mins === 1 ? '1 minute ago' : `${mins} minutes ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return hours === 1 ? '1 hour ago' : `${hours} hours ago`
+  return fmtDay(iso)
+}
+
 function statusLine(m: MemberRow, lastSignIn?: string): string {
   if (m.revoked_at) return `Deactivated ${fmtDay(m.revoked_at)}`
   if (!m.claimed_at) {
     return m.last_invite_sent_at
-      ? `Invited, email sent ${fmtDay(m.last_invite_sent_at)}`
+      ? `Invited, email sent ${fmtRecent(m.last_invite_sent_at)}`
       : 'Invited, no email sent yet'
   }
   const seen = lastSignIn ? `, last sign-in ${fmtDay(lastSignIn)}` : ''
@@ -328,7 +342,7 @@ export default async function MembersPage({
                 <span className="block text-xs text-ink-dim">
                   {m.where}
                   {m.last_invite_sent_at
-                    ? `, email sent ${fmtDay(m.last_invite_sent_at)}`
+                    ? `, email sent ${fmtRecent(m.last_invite_sent_at)}`
                     : ', no email sent yet'}
                 </span>
               </span>

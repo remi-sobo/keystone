@@ -113,7 +113,7 @@ export async function GET(req: NextRequest) {
       continue
     }
 
-    const [held, shipped, done, stages, upcoming] = await Promise.all([
+    const [held, shipped, done, stages, upcoming, checkinsOpen] = await Promise.all([
       supabaseAdmin
         .from('sessions')
         .select('starts_at, tz, kind')
@@ -145,6 +145,14 @@ export async function GET(req: NextRequest) {
         .eq('status', 'booked')
         .gte('starts_at', nowIso)
         .lt('starts_at', weekOut),
+      // Confidence awareness: check-ins open right now (or due within
+      // the coming week). Existence only; no scores, no names.
+      supabaseAdmin
+        .from('confidence_checkins')
+        .select('label, due_at')
+        .eq('engagement_id', e.id)
+        .lte('opens_at', nowIso.slice(0, 10))
+        .gte('due_at', nowIso.slice(0, 10)),
     ])
 
     const facts: DigestFacts = {
@@ -158,6 +166,7 @@ export async function GET(req: NextRequest) {
       upcomingSessions: (upcoming.data ?? []).map(
         (s) => `${s.kind} session on ${fmtWhen(s.starts_at, s.tz)}`
       ),
+      confidenceOpen: (checkinsOpen.data ?? []).map((c) => `${c.label} (due ${c.due_at})`),
     }
 
     // The refusal: an empty week gets no draft, full stop.

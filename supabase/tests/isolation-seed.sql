@@ -2907,6 +2907,215 @@ do $$ begin
   end if;
 end $$;
 
+-- ── Confidence check-ins (0041): the participant wall ────────────────
+-- member_a1 is the named participant (the coachee). member_a1c, the
+-- same-client teammate/buyer persona, is NOT: they read nothing, not
+-- even the instrument, and cannot answer. Responses stay between the
+-- person and the practice.
+reset role;
+
+insert into confidence_items (id, engagement_id, practice_id, client_id, domain, prompt, kind, sort_order) values
+  ('e1000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   'fundraising', 'Make a direct ask for a specific dollar amount.', 'scale', 1),
+  ('e1000000-0000-0000-0000-0000000000a2', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   'open', 'What feels most solid for you right now?', 'text', 2),
+  ('e1000000-0000-0000-0000-0000000000b1', '30000000-0000-0000-0000-0000000000b1',
+   '10000000-0000-0000-0000-00000000000b', '20000000-0000-0000-0000-0000000000b1',
+   'mindset', 'Practice B scale item.', 'scale', 1);
+
+insert into confidence_checkins (id, engagement_id, practice_id, client_id, label, opens_at, due_at, sort_order) values
+  ('e2000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   'Baseline', current_date - 1, current_date + 7, 0),
+  ('e2000000-0000-0000-0000-0000000000a2', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   'Month 1', current_date + 30, current_date + 37, 1),
+  ('e2000000-0000-0000-0000-0000000000b1', '30000000-0000-0000-0000-0000000000b1',
+   '10000000-0000-0000-0000-00000000000b', '20000000-0000-0000-0000-0000000000b1',
+   'Baseline', current_date - 1, current_date + 7, 0);
+
+insert into confidence_participants (engagement_id, practice_id, client_id, client_member_id) values
+  ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+   '20000000-0000-0000-0000-0000000000a1',
+   (select id from client_members where email = 'member_a1@client-a.test')),
+  ('30000000-0000-0000-0000-0000000000b1', '10000000-0000-0000-0000-00000000000b',
+   '20000000-0000-0000-0000-0000000000b1',
+   (select id from client_members where email = 'member_b@client-b.test'));
+
+insert into confidence_responses (checkin_id, item_id, engagement_id, practice_id, client_id, client_member_id, score) values
+  ('e2000000-0000-0000-0000-0000000000b1', 'e1000000-0000-0000-0000-0000000000b1',
+   '30000000-0000-0000-0000-0000000000b1', '10000000-0000-0000-0000-00000000000b',
+   '20000000-0000-0000-0000-0000000000b1',
+   (select id from client_members where email = 'member_b@client-b.test'), 4);
+
+set role authenticated;
+
+-- The participant reads the instrument and schedule, answers an open
+-- check-in once, cannot answer twice, cannot rewrite, cannot answer a
+-- check-in that has not opened.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ declare n int; begin
+  if (select count(*) from confidence_items) <> 2 then
+    raise exception 'member_a1 must read exactly their engagement''s confidence items';
+  end if;
+  if (select count(*) from confidence_checkins) <> 2 then
+    raise exception 'member_a1 must read exactly their engagement''s check-ins';
+  end if;
+  insert into confidence_responses (checkin_id, item_id, engagement_id, practice_id, client_id, client_member_id, score)
+    values ('e2000000-0000-0000-0000-0000000000a1', 'e1000000-0000-0000-0000-0000000000a1',
+            '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1',
+            (select id from client_members where email = 'member_a1@client-a.test'), 6);
+  if (select count(*) from confidence_responses) <> 1 then
+    raise exception 'member_a1 must read exactly their own response';
+  end if;
+  update confidence_responses set score = 10
+    where checkin_id = 'e2000000-0000-0000-0000-0000000000a1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a coachee rewrote a submitted confidence response'; end if;
+end $$;
+do $$ begin
+  insert into confidence_responses (checkin_id, item_id, engagement_id, practice_id, client_id, client_member_id, score)
+    values ('e2000000-0000-0000-0000-0000000000a1', 'e1000000-0000-0000-0000-0000000000a1',
+            '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1',
+            (select id from client_members where email = 'member_a1@client-a.test'), 9);
+  raise exception 'HOLE: resubmission of the same check-in item was not blocked';
+exception when unique_violation then null; -- expected: point-in-time measure
+end $$;
+do $$ begin
+  insert into confidence_responses (checkin_id, item_id, engagement_id, practice_id, client_id, client_member_id, score)
+    values ('e2000000-0000-0000-0000-0000000000a2', 'e1000000-0000-0000-0000-0000000000a1',
+            '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1',
+            (select id from client_members where email = 'member_a1@client-a.test'), 5);
+  raise exception 'HOLE: a coachee answered a check-in before it opened';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+-- The teammate/buyer persona on the SAME client: no card, no
+-- instrument, no schedule, no responses, no write path.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a3","email":"member_a1c@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from confidence_items) <> 0 then
+    raise exception 'LEAK: a non-participant teammate reads the confidence instrument';
+  end if;
+  if (select count(*) from confidence_checkins) <> 0 then
+    raise exception 'LEAK: a non-participant teammate reads the check-in schedule';
+  end if;
+  if (select count(*) from confidence_participants) <> 0 then
+    raise exception 'LEAK: a non-participant teammate reads the participant list';
+  end if;
+  if (select count(*) from confidence_responses) <> 0 then
+    raise exception 'LEAK: a teammate/buyer reads a coachee''s confidence responses';
+  end if;
+end $$;
+do $$ begin
+  insert into confidence_responses (checkin_id, item_id, engagement_id, practice_id, client_id, client_member_id, score)
+    values ('e2000000-0000-0000-0000-0000000000a1', 'e1000000-0000-0000-0000-0000000000a1',
+            '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1',
+            (select id from client_members where email = 'member_a1c@client-a.test'), 3);
+  raise exception 'HOLE: a non-participant inserted a confidence response';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+-- Forging a response AS the participant fails on self-authorship.
+do $$ begin
+  insert into confidence_responses (checkin_id, item_id, engagement_id, practice_id, client_id, client_member_id, score)
+    values ('e2000000-0000-0000-0000-0000000000a1', 'e1000000-0000-0000-0000-0000000000a2',
+            '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1',
+            (select id from client_members where email = 'member_a1@client-a.test'), 3);
+  raise exception 'HOLE: a teammate forged a response as the coachee';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+-- A client member cannot write the instrument or the schedule.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  insert into confidence_items (engagement_id, practice_id, client_id, domain, prompt, kind, sort_order)
+    values ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1', 'open', 'forged item', 'text', 9);
+  raise exception 'HOLE: a client member inserted a confidence item';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+do $$ begin
+  insert into confidence_checkins (engagement_id, practice_id, client_id, label, opens_at, due_at, sort_order)
+    values ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1', 'Forged', current_date, current_date + 7, 9);
+  raise exception 'HOLE: a client member inserted a confidence check-in';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+-- The operator reads all of their practice's responses and manages the
+-- instrument; growth is watched, never rewritten (no update path).
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ declare n int; begin
+  if (select count(*) from confidence_items) <> 2 then raise exception 'owner_a item visibility wrong'; end if;
+  if (select count(*) from confidence_responses) <> 1 then
+    raise exception 'owner_a must read the coachee responses of their practice';
+  end if;
+  insert into confidence_participants (engagement_id, practice_id, client_id, client_member_id)
+    values ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1',
+            (select id from client_members where email = 'member_a1c@client-a.test'));
+  delete from confidence_participants
+    where client_member_id = (select id from client_members where email = 'member_a1c@client-a.test');
+  update confidence_responses set score = 0 where engagement_id = '30000000-0000-0000-0000-0000000000a1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: an operator rewrote a confidence response'; end if;
+end $$;
+
+-- cross-client: the OTHER client of the same practice reads zero.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$ begin
+  if (select count(*) from confidence_items) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 confidence items';
+  end if;
+  if (select count(*) from confidence_responses) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 confidence responses';
+  end if;
+end $$;
+
+-- cross-practice: practice_b's owner reads zero of practice_a's.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from confidence_responses where practice_id = '10000000-0000-0000-0000-00000000000a') <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a confidence responses';
+  end if;
+  if (select count(*) from confidence_checkins where practice_id = '10000000-0000-0000-0000-00000000000a') <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a check-ins';
+  end if;
+end $$;
+
+-- member_b answers on THEIR engagement (proving the participant path
+-- works outside practice_a) and the stranger reads zero everywhere.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000b1","email":"member_b@client-b.test"}', false);
+do $$ begin
+  if (select count(*) from confidence_responses) <> 1 then
+    raise exception 'member_b must read exactly their own response';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000ee","email":"stranger@example.test"}', false);
+do $$ begin
+  if (select count(*) from confidence_items) <> 0
+    or (select count(*) from confidence_checkins) <> 0
+    or (select count(*) from confidence_participants) <> 0
+    or (select count(*) from confidence_responses) <> 0 then
+    raise exception 'LEAK: a membershipless session reads confidence rows';
+  end if;
+end $$;
+
 reset role;
 
 select 'keystone isolation matrix: all assertions passed' as result;

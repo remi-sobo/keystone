@@ -951,6 +951,8 @@ export default async function EngagementDetailPage({
         </section>
       </div>
 
+      <ConfidenceFold engagementId={id} />
+
       <section id="decisions" className="mt-12">
         <h2 className="font-display text-2xl font-medium text-ink">Decision log</h2>
         <p className="mt-1 text-sm text-ink-dim">
@@ -1861,5 +1863,75 @@ export default async function EngagementDetailPage({
         )}
       </details>
     </RoomShell>
+  )
+}
+
+/**
+ * The Confidence fold (section 3(e)): who is on the current check-in
+ * and where it stands, with the full trend view one click away. Quiet
+ * when the instrument is not seeded for this engagement. Session
+ * reads; the practice reads all of its scope under RLS.
+ */
+async function ConfidenceFold({ engagementId }: { engagementId: string }) {
+  const supabase = await createServerSupabase()
+  const today = new Date().toISOString().slice(0, 10)
+
+  const [{ data: participants }, { data: current }] = await Promise.all([
+    supabase
+      .from('confidence_participants')
+      .select('client_member_id, client_members(email)')
+      .eq('engagement_id', engagementId),
+    supabase
+      .from('confidence_checkins')
+      .select('id, label, due_at')
+      .eq('engagement_id', engagementId)
+      .lte('opens_at', today)
+      .order('sort_order', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ])
+  if (!participants || participants.length === 0) return null
+
+  const { data: currentResponses } = current
+    ? await supabase
+        .from('confidence_responses')
+        .select('client_member_id')
+        .eq('checkin_id', current.id)
+    : { data: [] }
+  const submittedMembers = new Set((currentResponses ?? []).map((r) => r.client_member_id))
+
+  return (
+    <section id="confidence" className="mt-12">
+      <h2 className="font-display text-2xl font-medium text-ink">Confidence</h2>
+      <p className="mt-1 text-sm text-ink-dim">
+        The fixed monthly self-rating. Each person watches their own line; raw answers stay
+        between them and us.
+      </p>
+      {current ? (
+        <ul className="mt-3 flex flex-col gap-1">
+          {participants.map((p) => {
+            /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+            const email = ((p.client_members as any)?.email as string) ?? 'unknown'
+            const done = submittedMembers.has(p.client_member_id)
+            return (
+              <li key={p.client_member_id} className="text-sm text-ink">
+                {email}
+                <span className="text-ink-dim">
+                  {' '}
+                  ({current.label}: {done ? 'submitted' : `open, due ${current.due_at}`})
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      ) : (
+        <p className="mt-3 text-sm text-ink-dim">Nothing is open right now.</p>
+      )}
+      <p className="mt-3 text-sm">
+        <Link href={`/engagements/${engagementId}/confidence`} className="text-forest underline">
+          The trend view
+        </Link>
+      </p>
+    </section>
   )
 }

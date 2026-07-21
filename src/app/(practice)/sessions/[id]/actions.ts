@@ -13,6 +13,7 @@ import { buildExtractionRequest, parseExtraction, TRANSCRIPT_CHAR_CAP } from '@/
 import { validateVoice } from '@/lib/voice'
 import { logVoiceViolation } from '@/lib/voiceViolations'
 import { logAuditAction } from '@/lib/audit'
+import { sendPublishNotices, type PublishedHomework } from '@/lib/publishNotice'
 import {
   decisionsBlock,
   type EditedPayload,
@@ -488,8 +489,9 @@ export async function reviewProposal(formData: FormData): Promise<void> {
   }
 
   const kept = pubItems ? edited.action_items.filter((it) => it.disposition !== 'drop') : []
+  let publishedHomework: PublishedHomework[] = []
   if (kept.length > 0) {
-    const { error: itemsError } = await supabaseAdmin.from('action_items').insert(
+    const { data: insertedItems, error: itemsError } = await supabaseAdmin.from('action_items').insert(
       kept.map((it) => ({
         engagement_id: proposal.engagement_id,
         practice_id: proposal.practice_id,
@@ -506,17 +508,56 @@ export async function reviewProposal(formData: FormData): Promise<void> {
         source: 'accepted_proposal',
         proposal_id: proposal.id,
       }))
-    )
+    ).select('id, title, assigned_client_member_id, due_on')
     if (itemsError) {
       console.error('[review] items insert failed:', itemsError.message)
       redirect(back(sessionId, 'accept_failed'))
     }
+    publishedHomework = (insertedItems ?? [])
+      .filter((r) => r.assigned_client_member_id)
+      .map((r) => ({
+        itemId: r.id,
+        clientMemberId: r.assigned_client_member_id as string,
+        title: r.title,
+        dueOn: r.due_on,
+      }))
   }
 
   await supabaseAdmin
     .from('ai_proposals')
     .update({ status: 'accepted', decided_at: new Date().toISOString(), decided_by: viewer.user!.id })
     .eq('id', proposal.id)
+
+  // The publish-time touch: one email per client member covering the
+  // note and their homework together, stamped so the cron never repeats.
+  if (pubNote || publishedHomework.length > 0) {
+    let dateLabel: string | null = null
+    if (pubNote) {
+      const { data: s } = await supabaseAdmin
+        .from('sessions')
+        .select('starts_at, tz')
+        .eq('id', proposal.session_id)
+        .maybeSingle()
+      if (s?.starts_at) {
+        try {
+          dateLabel = new Date(s.starts_at).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            timeZone: s.tz ?? 'UTC',
+          })
+        } catch {
+          dateLabel = null
+        }
+      }
+    }
+    await sendPublishNotices({
+      practiceId: proposal.practice_id,
+      clientId: proposal.client_id,
+      engagementId: proposal.engagement_id,
+      note: pubNote ? { sessionId: proposal.session_id, dateLabel } : undefined,
+      homework: publishedHomework,
+    })
+  }
 
   await logAuditAction({
     actorEmail: viewer.user!.email ?? '',

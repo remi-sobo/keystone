@@ -27,6 +27,8 @@ export type NotificationKind =
   | 'closeout_published'
   | 'change_order_requested'
   | 'change_order_decided'
+  | 'homework_assigned'
+  | 'note_published'
 
 export interface NotifyRecipient {
   clientMemberId?: string

@@ -2724,4 +2724,189 @@ end $$;
 
 reset role;
 
+-- ── Roadmap (0038): the client's day-one map, both walls proven ──────
+-- The practice authors phases and sessions inside its own scope; a
+-- client member reads their own engagement's roadmap and writes none of
+-- it; the other client of the same practice and the other practice read
+-- zero.
+
+insert into engagement_phases (id, engagement_id, practice_id, client_id, sort_order, month_label, title) values
+  ('d0000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   1, 'Month 1', 'Phase A1'),
+  ('d0000000-0000-0000-0000-0000000000b1', '30000000-0000-0000-0000-0000000000b1',
+   '10000000-0000-0000-0000-00000000000b', '20000000-0000-0000-0000-0000000000b1',
+   1, 'Month 1', 'Phase B');
+insert into engagement_sessions (id, engagement_id, phase_id, practice_id, client_id, sort_order, code, title, status) values
+  ('d1000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
+   'd0000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+   '20000000-0000-0000-0000-0000000000a1', 1, 'S1', 'Session A1', 'active'),
+  ('d1000000-0000-0000-0000-0000000000b1', '30000000-0000-0000-0000-0000000000b1',
+   'd0000000-0000-0000-0000-0000000000b1', '10000000-0000-0000-0000-00000000000b',
+   '20000000-0000-0000-0000-0000000000b1', 1, 'S1', 'Session B', 'upcoming'),
+  ('d1000000-0000-0000-0000-0000000000a9', '30000000-0000-0000-0000-0000000000a1',
+   'd0000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+   '20000000-0000-0000-0000-0000000000a1', 2, 'S2', 'Session A1 second', 'upcoming');
+
+set role authenticated;
+
+-- The practice operator reads and writes the roadmap of their own scope.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ declare n int; begin
+  if (select count(*) from engagement_phases where practice_id = '10000000-0000-0000-0000-00000000000a') <> 1 then
+    raise exception 'owner_a must read their own roadmap phase';
+  end if;
+  update engagement_sessions set status = 'done'
+    where id = 'd1000000-0000-0000-0000-0000000000a9';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'owner_a must update their own roadmap session'; end if;
+  update engagement_sessions set status = 'upcoming'
+    where id = 'd1000000-0000-0000-0000-0000000000a9';
+end $$;
+
+-- member_a1 reads their own roadmap and cannot write a row of it.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ declare n int; begin
+  if (select count(*) from engagement_phases) <> 1 then
+    raise exception 'member_a1 must read their own roadmap phase';
+  end if;
+  if (select count(*) from engagement_sessions) <> 2 then
+    raise exception 'member_a1 must read their own roadmap sessions';
+  end if;
+  update engagement_sessions set status = 'done'
+    where id = 'd1000000-0000-0000-0000-0000000000a1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a client member wrote a roadmap session'; end if;
+  delete from engagement_phases where id = 'd0000000-0000-0000-0000-0000000000a1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a client member deleted a roadmap phase'; end if;
+end $$;
+do $$ begin
+  insert into engagement_phases (engagement_id, practice_id, client_id, sort_order, month_label, title)
+    values ('30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            '20000000-0000-0000-0000-0000000000a1', 9, 'Month 9', 'forged phase');
+  raise exception 'HOLE: a client member inserted a roadmap phase';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+-- cross-client: the OTHER client of the same practice reads zero.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$ begin
+  if (select count(*) from engagement_phases) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 roadmap phases';
+  end if;
+  if (select count(*) from engagement_sessions) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 roadmap sessions';
+  end if;
+end $$;
+
+-- cross-practice: practice_b's owner reads zero of practice_a's roadmap.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from engagement_phases where practice_id = '10000000-0000-0000-0000-00000000000a') <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a roadmap phases';
+  end if;
+  if (select count(*) from engagement_sessions where practice_id = '10000000-0000-0000-0000-00000000000a') <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a roadmap sessions';
+  end if;
+end $$;
+
+-- The stranger with a valid session reads zero roadmap rows.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000ee","email":"stranger@example.test"}', false);
+do $$ begin
+  if (select count(*) from engagement_phases) + (select count(*) from engagement_sessions) <> 0 then
+    raise exception 'LEAK: a membershipless session reads roadmap rows';
+  end if;
+end $$;
+
+reset role;
+
+-- ── Session deck slides (0039): the presenter's rows, both walls ─────
+-- The practice authors and edits its own deck slides; a client member
+-- reads their own engagement's slides and writes none of them; the
+-- other client of the same practice and the other practice read zero.
+
+insert into session_slides (id, engagement_session_id, engagement_id, practice_id, client_id, sort_order, slide_type, payload) values
+  ('d2000000-0000-0000-0000-0000000000a1', 'd1000000-0000-0000-0000-0000000000a1',
+   '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+   '20000000-0000-0000-0000-0000000000a1', 1, 'cover', '{"title":"Slide A1"}'),
+  ('d2000000-0000-0000-0000-0000000000b1', 'd1000000-0000-0000-0000-0000000000b1',
+   '30000000-0000-0000-0000-0000000000b1', '10000000-0000-0000-0000-00000000000b',
+   '20000000-0000-0000-0000-0000000000b1', 1, 'cover', '{"title":"Slide B"}');
+
+set role authenticated;
+
+-- The practice operator reads and writes the deck slides of their own scope.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ declare n int; begin
+  if (select count(*) from session_slides where practice_id = '10000000-0000-0000-0000-00000000000a') <> 1 then
+    raise exception 'owner_a must read their own deck slide';
+  end if;
+  update session_slides set payload = '{"title":"Slide A1 edited"}'
+    where id = 'd2000000-0000-0000-0000-0000000000a1';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'owner_a must update their own deck slide'; end if;
+  update session_slides set payload = '{"title":"Slide A1"}'
+    where id = 'd2000000-0000-0000-0000-0000000000a1';
+end $$;
+
+-- member_a1 reads their own deck slides and cannot write one.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ declare n int; begin
+  if (select count(*) from session_slides) <> 1 then
+    raise exception 'member_a1 must read their own deck slides';
+  end if;
+  update session_slides set payload = '{"title":"forged"}'
+    where id = 'd2000000-0000-0000-0000-0000000000a1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a client member wrote a deck slide'; end if;
+  delete from session_slides where id = 'd2000000-0000-0000-0000-0000000000a1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE: a client member deleted a deck slide'; end if;
+end $$;
+do $$ begin
+  insert into session_slides (engagement_session_id, engagement_id, practice_id, client_id, sort_order, slide_type, payload)
+    values ('d1000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
+            '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+            9, 'close', '{"title":"forged slide"}');
+  raise exception 'HOLE: a client member inserted a deck slide';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+-- cross-client: the OTHER client of the same practice reads zero.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$ begin
+  if (select count(*) from session_slides) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 deck slides';
+  end if;
+end $$;
+
+-- cross-practice: practice_b's owner reads zero of practice_a's slides.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from session_slides where practice_id = '10000000-0000-0000-0000-00000000000a') <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a deck slides';
+  end if;
+end $$;
+
+-- The stranger with a valid session reads zero deck slides.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000ee","email":"stranger@example.test"}', false);
+do $$ begin
+  if (select count(*) from session_slides) <> 0 then
+    raise exception 'LEAK: a membershipless session reads deck slides';
+  end if;
+end $$;
+
+reset role;
+
 select 'keystone isolation matrix: all assertions passed' as result;

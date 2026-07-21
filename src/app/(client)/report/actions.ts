@@ -86,7 +86,7 @@ export async function reportIssue(input: { kind: string; body: string }): Promis
     eyebrow: `${viewer.client.clientName} reported an issue`,
     bodyHtml: [
       `<p style="margin:0 0 12px 0;">${escapeHtml(KIND_LABEL[parsed.data.kind])}, on ${escapeHtml(engagement.title)}:</p>`,
-      `<blockquote style="margin:0;padding:0 0 0 12px;border-left:2px solid #B08D3E;color:#2A2620;">${escapeHtml(excerpt)}</blockquote>`,
+      `<blockquote style="margin:0;padding:0 0 0 12px;border-left:2px solid #8A6A26;color:#1C1914;">${escapeHtml(excerpt)}</blockquote>`,
     ].join('\n'),
     cta: { href: link, label: 'Open the engagement in Keystone' },
   })

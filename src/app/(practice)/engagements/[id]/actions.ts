@@ -21,6 +21,7 @@ import type { AskResult } from '@/components/AskRecordForm'
 import type { FindResult } from '@/components/FindRecordForm'
 import { searchRecord } from '@/lib/recordSearch'
 import { clientTeamRecipients, notify } from '@/lib/notify'
+import { sendPublishNotices } from '@/lib/publishNotice'
 import { parseAnchorParam, resolveAnchor } from '@/lib/messageAnchors'
 import { assembleSlots } from '@/lib/slotAssembly'
 import { fetchSchedulingSettings, resolveDuration } from '@/lib/schedulingSettings'
@@ -1540,23 +1541,28 @@ export async function addHomework(formData: FormData): Promise<void> {
     if (!wsRow) back('hw_error')
   }
 
-  const { error } = await supabase.from('action_items').insert({
-    engagement_id: engagement.id,
-    practice_id: engagement.practice_id,
-    client_id: engagement.client_id,
-    workstream_id: d.workstreamId ?? null,
-    title: sweepHomework(engagement.practice_id, d.title),
-    body_md: d.body ? sweepHomework(engagement.practice_id, d.body) : null,
-    assigned_client_member_id: assignedClient,
-    assigned_practice_member_id: assignedPractice,
-    due_on: d.dueOn ?? null,
-    audience: d.audience,
-    // The loop needs a coachee to run it; review stays off otherwise.
-    review_requested: d.review === 'on' && d.audience === 'client' && assignedClient != null,
-    source: 'manual',
-  })
-  if (error) {
-    console.error('[homework] add failed:', error.message)
+  const hwTitle = sweepHomework(engagement.practice_id, d.title)
+  const { data: created, error } = await supabase
+    .from('action_items')
+    .insert({
+      engagement_id: engagement.id,
+      practice_id: engagement.practice_id,
+      client_id: engagement.client_id,
+      workstream_id: d.workstreamId ?? null,
+      title: hwTitle,
+      body_md: d.body ? sweepHomework(engagement.practice_id, d.body) : null,
+      assigned_client_member_id: assignedClient,
+      assigned_practice_member_id: assignedPractice,
+      due_on: d.dueOn ?? null,
+      audience: d.audience,
+      // The loop needs a coachee to run it; review stays off otherwise.
+      review_requested: d.review === 'on' && d.audience === 'client' && assignedClient != null,
+      source: 'manual',
+    })
+    .select('id')
+    .single()
+  if (error || !created) {
+    console.error('[homework] add failed:', error?.message ?? 'no row returned')
     back('hw_error')
   }
 
@@ -1568,6 +1574,18 @@ export async function addHomework(formData: FormData): Promise<void> {
     target: engagement.id,
     detail: { audience: d.audience, review: d.review === 'on' },
   })
+
+  // Assigned client homework says so the moment it lands.
+  if (d.audience === 'client' && assignedClient) {
+    await sendPublishNotices({
+      practiceId: engagement.practice_id,
+      clientId: engagement.client_id,
+      engagementId: engagement.id,
+      homework: [
+        { itemId: created!.id, clientMemberId: assignedClient, title: hwTitle, dueOn: d.dueOn ?? null },
+      ],
+    })
+  }
   revalidatePath(`/engagements/${engagement.id}`)
   revalidatePath('/homework')
   revalidatePath('/home')

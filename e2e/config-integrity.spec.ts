@@ -33,16 +33,22 @@ function walk(dir: string, ext: string[]): string[] {
 
 // The ten tokens, frozen. Changing a value here requires a spec change
 // first (specs/keystone.md 6.1), then this gate, then globals.css.
+// Revalued 2026-07-17 on Remi's contrast call ("the words need to be
+// way darker; if green, a really deep green, close to black"): the six
+// reading colors dropped to AAA-range contrast on every paper (ink
+// 16.0:1, ink-dim 8.7:1, navy 12.2:1, forest 12.1:1, brass to 4.6:1 so
+// eyebrow-weight text passes AA); the three papers and sage (fills,
+// never text) held.
 const FROZEN_TOKENS: Record<string, string> = {
   '--color-paper': '#FBF4EA',
   '--color-paper-raised': '#FFFBF3',
   '--color-paper-deep': '#F3EADC',
-  '--color-forest': '#33503C',
-  '--color-forest-deep': '#26402E',
-  '--color-navy': '#3D4959',
-  '--color-ink': '#2A2620',
-  '--color-ink-dim': '#6E675C',
-  '--color-brass': '#B08D3E',
+  '--color-forest': '#1E3526',
+  '--color-forest-deep': '#152717',
+  '--color-navy': '#26303D',
+  '--color-ink': '#1C1914',
+  '--color-ink-dim': '#4A453B',
+  '--color-brass': '#8A6A26',
   '--color-sage': '#7A9471',
 }
 

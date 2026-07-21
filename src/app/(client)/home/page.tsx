@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import WorkstreamArc from '@/components/WorkstreamArc'
 import { Roadmap, type RoadmapPhase } from '@/components/Roadmap'
 import { PreworkCard } from '@/components/PreworkCard'
+import { ConfidenceCard } from '@/components/ConfidenceCard'
 import { RoomShell } from '@/components/RoomShell'
 import { KeystoneCard } from '@/components/KeystoneCard'
 import { ArchEmptyState } from '@/components/ArchEmptyState'
@@ -143,6 +144,41 @@ export default async function ClientHomePage() {
     .order('week_of', { ascending: false })
     .limit(1)
     .maybeSingle()
+
+  // The confidence check-in card, participants only (section 3(e)).
+  // The participant row is readable only by its own person, so this
+  // resolves to nothing for a founder or teammate and the card never
+  // renders for them; the RLS wall and the UI agree by construction.
+  const today = new Date().toISOString().slice(0, 10)
+  const { data: myParticipation } = myMembership
+    ? await supabase
+        .from('confidence_participants')
+        .select('engagement_id')
+        .eq('client_member_id', myMembership.id)
+        .limit(1)
+        .maybeSingle()
+    : { data: null }
+  let currentCheckin: { id: string; label: string } | null = null
+  let checkinSubmitted = false
+  if (myParticipation && myMembership) {
+    const { data: openCheckin } = await supabase
+      .from('confidence_checkins')
+      .select('id, label')
+      .eq('engagement_id', myParticipation.engagement_id)
+      .lte('opens_at', today)
+      .order('sort_order', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (openCheckin) {
+      currentCheckin = openCheckin
+      const { count } = await supabase
+        .from('confidence_responses')
+        .select('id', { count: 'exact', head: true })
+        .eq('checkin_id', openCheckin.id)
+        .eq('client_member_id', myMembership.id)
+      checkinSubmitted = (count ?? 0) > 0
+    }
+  }
 
   // Pre-work rides the homework model but gets the featured card, so
   // the everyday lists below skip before-session items to say each
@@ -372,6 +408,10 @@ export default async function ClientHomePage() {
           </section>
         )
       })()}
+
+      {currentCheckin ? (
+        <ConfidenceCard checkin={currentCheckin} submitted={checkinSubmitted} />
+      ) : null}
 
       <PreworkCard items={myPrework ?? []} />
 

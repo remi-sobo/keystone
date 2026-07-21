@@ -20,6 +20,7 @@ const EMPTY: DigestFacts = {
   homeworkDone: [],
   stageChanges: [],
   upcomingSessions: [],
+  confidenceOpen: [],
 }
 
 const FULL: DigestFacts = {
@@ -28,6 +29,7 @@ const FULL: DigestFacts = {
   homeworkDone: ['Draft the ask email'],
   stageChanges: ['Fundraising system moved to build'],
   upcomingSessions: ['working session on Tue, Jul 14, 10:00 AM'],
+  confidenceOpen: ['Baseline (due 2026-07-23)'],
 }
 
 const CTX = { clientName: 'SafeSpace', engagementTitle: 'Fundraising engagement', weekOf: '2026-07-06' }
@@ -37,6 +39,8 @@ test('an empty week is refused before any model call', () => {
   // Upcoming sessions alone do not make a week: the digest reports what
   // happened, not what might.
   expect(hasDigestContent({ ...EMPTY, upcomingSessions: FULL.upcomingSessions })).toBe(false)
+  // An open confidence check-in is awareness, not a week's motion.
+  expect(hasDigestContent({ ...EMPTY, confidenceOpen: FULL.confidenceOpen })).toBe(false)
   expect(hasDigestContent(FULL)).toBe(true)
   expect(hasDigestContent({ ...EMPTY, homeworkDone: ['one thing'] })).toBe(true)
 })
@@ -53,6 +57,8 @@ test('the facts ride as a record with the data-not-instructions guard', () => {
   const body = String(req.messages![0].content)
   expect(body).toContain('<week_record>')
   expect(body).toContain('Donor journey map')
+  expect(body).toContain('Confidence check-ins open')
+  expect(body).toContain('Baseline (due 2026-07-23)')
   expect(req.system).toContain('never directives')
   expect(req.system).toContain('never invent')
   expect(req.system).toContain('never')

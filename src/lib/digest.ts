@@ -38,10 +38,15 @@ export interface DigestFacts {
   homeworkDone: string[]
   stageChanges: string[]
   upcomingSessions: string[]
+  /** Confidence check-ins currently open for the engagement, e.g.
+   *  "Baseline (due 2026-07-23)". Awareness only: like upcoming
+   *  sessions, an open check-in never makes an empty week draftable. */
+  confidenceOpen: string[]
 }
 
 /** An empty week has nothing in the rear-view facts. Upcoming sessions
- *  alone do not make a week: the digest reports what happened. */
+ *  and open check-ins alone do not make a week: the digest reports
+ *  what happened. */
 export function hasDigestContent(facts: DigestFacts): boolean {
   return (
     facts.sessionsHeld.length > 0 ||
@@ -106,6 +111,7 @@ export function buildDigestRequest(
     factBlock('Homework completed', facts.homeworkDone),
     factBlock('Workstream stage changes', facts.stageChanges),
     factBlock('Scheduled next week', facts.upcomingSessions),
+    factBlock('Confidence check-ins open (about 3 minutes to complete)', facts.confidenceOpen),
   ].join('\n\n')
 
   return {

@@ -2146,6 +2146,112 @@ export async function closeSessionPoll(formData: FormData): Promise<void> {
   redirect(`/engagements/${engagementId}?state=poll_closed#scheduling`)
 }
 
+// ── Standing availability marks: the confirm ─────────────────────────
+// The operator's half of pick-a-date without a poll: the team's marks
+// gather on slot_interest, and confirming one books through the exact
+// confirmPollOption rails (offer re-verified at confirm time, session
+// row, snapshotted video link, calendar push, audit, notify). The
+// engagement's marks are swept after booking so the next round starts
+// clean; a mark is coordination, not a record.
+
+const SlotConfirmShape = z.object({
+  engagementId: z.string().uuid(),
+  start: z.string().datetime(),
+  duration: z.coerce.number().int().min(15).max(240),
+})
+
+export async function confirmSlotInterest(formData: FormData): Promise<void> {
+  const viewer = await guardPractice()
+  const parsed = SlotConfirmShape.safeParse({
+    engagementId: formData.get('engagementId'),
+    start: formData.get('start'),
+    duration: formData.get('duration'),
+  })
+  if (!parsed.success) redirect('/engagements')
+  const { engagementId, start, duration } = parsed.data
+  const back = (state: string) => redirect(`/engagements/${engagementId}?state=${state}#scheduling`)
+
+  const supabase = await createServerSupabase()
+  const { data: engagement } = await supabase
+    .from('engagements')
+    .select('id, practice_id, client_id')
+    .eq('id', engagementId)
+    .eq('practice_id', viewer.practice!.practiceId)
+    .maybeSingle()
+  if (!engagement) redirect('/engagements')
+
+  // The marked time must still be offered at CONFIRM time, at the exact
+  // length the team marked; a stale one refuses honestly.
+  const confirmSettings = await fetchSchedulingSettings(supabase, engagement!.practice_id)
+  const offered = await assembleSlots(
+    supabase,
+    { practiceId: engagement!.practice_id },
+    new Date(),
+    { settings: confirmSettings, exactDurationMinutes: duration }
+  )
+  const slot = isOfferedSlot(offered, new Date(start))
+  if (!slot) back('slot_stale')
+
+  const { data: session, error } = await supabase
+    .from('sessions')
+    .insert({
+      engagement_id: engagement!.id,
+      practice_id: engagement!.practice_id,
+      client_id: engagement!.client_id,
+      starts_at: slot!.startsAt.toISOString(),
+      ends_at: slot!.endsAt.toISOString(),
+      tz: slot!.tz,
+      kind: 'working',
+      status: 'booked',
+      // The video link, snapshotted (gate 4I-1).
+      location: confirmSettings.videoLink,
+      created_by: viewer.user!.id,
+    })
+    .select('id')
+    .single()
+  if (error || !session) {
+    const gone = error?.code === '23P01'
+    console.error('[slots] confirm booking failed:', error?.code)
+    back(gone ? 'slot_stale' : 'slot_error')
+  }
+
+  // Sweep the round: the question is settled, the next one starts clean.
+  const { error: sweepError } = await supabase
+    .from('slot_interest')
+    .delete()
+    .eq('engagement_id', engagement!.id)
+  if (sweepError) console.error('[slots] sweep after booking failed:', sweepError.message)
+
+  // The invite goes out with everyone on it, right now (V2 4I); a
+  // Google failure degrades to the hourly cron, never to a lost booking.
+  await pushSessionById(session!.id)
+
+  await logAuditAction({
+    actorEmail: viewer.user!.email ?? '',
+    engagementId: engagement!.id,
+    practiceId: viewer.practice!.practiceId,
+    action: 'slots.booked',
+    target: session!.id,
+    detail: { starts_at: slot!.startsAt.toISOString(), duration },
+  })
+  await notify(
+    {
+      practiceId: engagement!.practice_id,
+      clientId: engagement!.client_id,
+      engagementId: engagement!.id,
+      kind: 'poll_booked',
+      title: 'The next session is booked',
+      href: '/sessions',
+    },
+    await clientTeamRecipients(engagement!.client_id)
+  )
+  revalidatePath(`/engagements/${engagementId}`)
+  revalidatePath('/sessions')
+  revalidatePath('/home')
+  revalidatePath('/today')
+  back('slot_booked')
+}
+
 // ── Deliverable lifecycle (V2 3D) ─────────────────────────────────────
 // About and the session link edit in place; replacing a FILE keeps the
 // outgoing object as an append-only version row before the pointer

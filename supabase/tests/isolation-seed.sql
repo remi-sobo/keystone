@@ -1692,6 +1692,128 @@ end $$;
 
 reset role;
 
+-- ── Standing availability marks (0042: slot_interest) ────────────────
+-- The 3H marks wall without a parent poll: a member marks only as
+-- themselves, inside their own scope, on a future time; a teammate's
+-- mark is readable (the tally has names, the 3H posture) but never
+-- writable; the practice reads the tally and sweeps it at confirm, and
+-- never authors a mark.
+
+insert into slot_interest (engagement_id, practice_id, client_id, client_member_id,
+                           starts_at, tz, duration_minutes)
+  select '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+         '20000000-0000-0000-0000-0000000000a1', id,
+         now() + interval '25 days', 'America/Los_Angeles', 60
+  from client_members where email = 'member_a1c@client-a.test';
+
+set role authenticated;
+
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from slot_interest) <> 1 then
+    raise exception 'member_a1 must read the teammate''s availability mark (the tally has names)';
+  end if;
+  insert into slot_interest (engagement_id, practice_id, client_id, client_member_id,
+                             starts_at, tz, duration_minutes)
+    select '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+           '20000000-0000-0000-0000-0000000000a1', id,
+           now() + interval '25 days', 'America/Los_Angeles', 60
+    from client_members where email = 'member_a1@client-a.test';
+end $$;
+do $$ begin
+  insert into slot_interest (engagement_id, practice_id, client_id, client_member_id,
+                             starts_at, tz, duration_minutes)
+    select '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+           '20000000-0000-0000-0000-0000000000a1', id,
+           now() + interval '26 days', 'America/Los_Angeles', 60
+    from client_members where email = 'member_a1c@client-a.test';
+  raise exception 'LEAK: a member forged a teammate''s availability mark';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+do $$ begin
+  insert into slot_interest (engagement_id, practice_id, client_id, client_member_id,
+                             starts_at, tz, duration_minutes)
+    select '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+           '20000000-0000-0000-0000-0000000000a1', id,
+           now() - interval '1 day', 'America/Los_Angeles', 60
+    from client_members where email = 'member_a1@client-a.test';
+  raise exception 'HOLE: an availability mark landed on a past time';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+do $$ begin
+  insert into slot_interest (engagement_id, practice_id, client_id, client_member_id,
+                             starts_at, tz, duration_minutes)
+    select '30000000-0000-0000-0000-0000000000a2', '10000000-0000-0000-0000-00000000000a',
+           '20000000-0000-0000-0000-0000000000a2', id,
+           now() + interval '25 days', 'America/Los_Angeles', 60
+    from client_members where email = 'member_a1@client-a.test';
+  raise exception 'LEAK: a member marked into another client''s engagement';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+do $$
+declare n int;
+begin
+  delete from slot_interest
+    where client_member_id = (select id from client_members where email = 'member_a1c@client-a.test');
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'LEAK: a member deleted a teammate''s availability mark'; end if;
+  delete from slot_interest
+    where client_member_id = (select id from client_members where email = 'member_a1@client-a.test');
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'a member must be able to retract their own availability mark'; end if;
+  insert into slot_interest (engagement_id, practice_id, client_id, client_member_id,
+                             starts_at, tz, duration_minutes)
+    select '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+           '20000000-0000-0000-0000-0000000000a1', id,
+           now() + interval '25 days', 'America/Los_Angeles', 60
+    from client_members where email = 'member_a1@client-a.test';
+end $$;
+
+-- Cross-client and cross-practice: zero rows.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$ begin
+  if (select count(*) from slot_interest) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 availability marks';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from slot_interest) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a availability marks';
+  end if;
+end $$;
+
+-- The practice: reads the tally, never authors a mark, sweeps at confirm.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from slot_interest) < 1 then
+    raise exception 'the practice must read its own tally';
+  end if;
+end $$;
+do $$ begin
+  insert into slot_interest (engagement_id, practice_id, client_id, client_member_id,
+                             starts_at, tz, duration_minutes)
+    select '30000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+           '20000000-0000-0000-0000-0000000000a1', id,
+           now() + interval '27 days', 'America/Los_Angeles', 60
+    from client_members where email = 'member_a1@client-a.test';
+  raise exception 'LEAK: a practice session authored a client''s availability mark';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+do $$
+declare n int;
+begin
+  delete from slot_interest where engagement_id = '30000000-0000-0000-0000-0000000000a1';
+  get diagnostics n = row_count;
+  if n < 1 then raise exception 'the practice must sweep the round at confirm'; end if;
+end $$;
+
+reset role;
+
 -- ── V2 3A: the AI payload is immutable, for every writer ─────────────
 -- The trigger fires regardless of role: even the service role (the
 -- superuser here) cannot rewrite what the AI said. Edits belong in

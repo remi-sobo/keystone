@@ -27,7 +27,7 @@ import {
   setEngagementOwner,
   setWorkstreamOwner,
   confirmPollOption,
-  createSessionPoll,
+  confirmSlotInterest,
   askEngagementQuestion,
   attachEvidence,
   findInEngagement,
@@ -81,6 +81,10 @@ const STATES: Record<string, string> = {
   co_error: 'That did not save. Try again.',
   poll_opened: 'Poll opened. The team sees it on their sessions page now.',
   poll_exists: 'There is already an open poll for this engagement. Close it first.',
+  slot_booked:
+    'Booked. The invite is on every calendar, and the marks are cleared for the next round.',
+  slot_stale: 'That time is no longer on your calendar offer. The marks stay; pick another.',
+  slot_error: 'That did not save. Try again.',
   poll_slot_gone: 'One of those times is no longer free. Refresh and pick again.',
   poll_booked: 'Booked. The poll is settled and the session is on the calendar.',
   poll_closed: 'Poll closed without booking.',
@@ -294,6 +298,53 @@ export default async function EngagementDetailPage({
           durationMinutes: pollMinutes,
         }),
       ]
+
+  // Standing availability marks: the team's picks on the live offer, no
+  // poll to open. Grouped by time and length; a mark whose slot has
+  // since left the offer is shown stale, and confirm re-verifies anyway.
+  const { data: slotMarks } = await supabase
+    .from('slot_interest')
+    .select('starts_at, tz, duration_minutes, client_members:client_member_id(email)')
+    .eq('engagement_id', id)
+    .gte('starts_at', new Date().toISOString())
+    .order('starts_at')
+  const markDurations = [...new Set((slotMarks ?? []).map((m) => m.duration_minutes))]
+  const offeredByDuration = new Map<number, Set<string>>()
+  for (const mins of markDurations) {
+    const offer = await assembleSlots(
+      supabase,
+      { practiceId: engagement.practice_id },
+      new Date(),
+      { settings: schedulingSettings, exactDurationMinutes: mins }
+    )
+    offeredByDuration.set(mins, new Set(offer.map((s) => s.startsAt.toISOString())))
+  }
+  const markedSlots = (() => {
+    const byKey = new Map<
+      string,
+      { startsAt: string; tz: string; duration: number; names: string[]; offered: boolean }
+    >()
+    for (const m of slotMarks ?? []) {
+      const key = `${m.starts_at}|${m.duration_minutes}`
+      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+      const name = (((m.client_members as any)?.email as string) ?? '').split('@')[0]
+      const row = byKey.get(key) ?? {
+        startsAt: m.starts_at,
+        tz: m.tz,
+        duration: m.duration_minutes,
+        names: [] as string[],
+        offered:
+          offeredByDuration
+            .get(m.duration_minutes)
+            ?.has(new Date(m.starts_at).toISOString()) ?? false,
+      }
+      if (name && !row.names.includes(name)) row.names.push(name)
+      byKey.set(key, row)
+    }
+    return [...byKey.values()].sort(
+      (a, b) => b.names.length - a.names.length || a.startsAt.localeCompare(b.startsAt)
+    )
+  })()
 
   // 3D: acceptance states and the version history, as facts.
   const [{ data: dlvApprovals }, { data: dlvVersions }] = await Promise.all([
@@ -678,68 +729,54 @@ export default async function EngagementDetailPage({
               </form>
             </div>
           ) : (
-            <details className="mt-3">
-              <summary className="cursor-pointer text-sm font-medium text-forest">
-                Open a date poll
-              </summary>
-              <p className="mt-2 text-sm text-ink-dim">
-                Pick a few times from your own availability. The team marks what works, you
-                confirm the winner, and the booking runs on the same rails as always.
+            <div className="mt-3 flex flex-col gap-3">
+              <p className="text-sm text-ink-dim">
+                The team sees the open times on your calendar and marks what works. The
+                marks gather here; confirm the winner and the booking runs on the same
+                rails as always, calendar invite included.
               </p>
-              <form action={createSessionPoll} className="mt-3 flex flex-col gap-3">
-                <input type="hidden" name="engagementId" value={id} />
-                <input type="hidden" name="slotMinutes" value={pollMinutes} />
-                <input
-                  name="purpose"
-                  maxLength={200}
-                  placeholder="What this session is for (optional)"
-                  className="rounded-lg border border-ink/15 bg-paper-raised p-2 text-sm text-ink"
-                />
-                {schedulingSettings.durationOptions.length > 1 ? (
-                  <p className="text-sm text-ink">
-                    <span className="text-ink-dim">How long: </span>
-                    {schedulingSettings.durationOptions.map((mins, i) => (
-                      <span key={mins}>
-                        {i > 0 ? <span className="text-ink-dim"> / </span> : null}
-                        {mins === pollMinutes ? (
-                          <span className="font-medium">{mins} minutes</span>
-                        ) : (
-                          <a
-                            href={`/engagements/${id}?pollDuration=${mins}#scheduling`}
-                            className="text-forest underline"
-                          >
-                            {mins} minutes
-                          </a>
-                        )}
+              {markedSlots.length === 0 ? (
+                <p className="text-sm text-ink-dim">
+                  No marks yet.{' '}
+                  {(offeredSlots ?? []).length === 0
+                    ? 'Nothing is offered right now either: check your availability windows in Settings.'
+                    : `The team currently sees ${(offeredSlots ?? []).length} open times on their Sessions page.`}
+                </p>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {markedSlots.map((row) => (
+                    <li
+                      key={`${row.startsAt}|${row.duration}`}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius)] border border-ink/10 bg-paper-raised px-4 py-3"
+                    >
+                      <span className="text-sm text-ink">
+                        {fmt(row.startsAt, row.tz)}
+                        <span className="text-ink-dim">
+                          {' '}
+                          ({row.duration} min · {row.names.join(', ')})
+                        </span>
+                        {!row.offered ? (
+                          <span className="eyebrow ml-2">no longer offered</span>
+                        ) : null}
                       </span>
-                    ))}
-                  </p>
-                ) : null}
-                {(offeredSlots ?? []).length === 0 ? (
-                  <p className="text-sm text-ink-dim">
-                    No offered slots right now. Check your availability windows in Settings.
-                  </p>
-                ) : (
-                  <div className="grid gap-1 sm:grid-cols-2">
-                    {(offeredSlots ?? []).slice(0, 20).map((s) => (
-                      <label
-                        key={s.startsAt.toISOString()}
-                        className="flex items-center gap-2 text-sm text-ink"
-                      >
-                        <input type="checkbox" name="starts" value={s.startsAt.toISOString()} />
-                        {fmt(s.startsAt.toISOString(), s.tz)}
-                      </label>
-                    ))}
-                  </div>
-                )}
-                <button
-                  type="submit"
-                  className="self-start rounded-lg bg-forest px-4 py-2 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98]"
-                >
-                  Open the poll
-                </button>
-              </form>
-            </details>
+                      {row.offered ? (
+                        <form action={confirmSlotInterest}>
+                          <input type="hidden" name="engagementId" value={id} />
+                          <input type="hidden" name="start" value={new Date(row.startsAt).toISOString()} />
+                          <input type="hidden" name="duration" value={row.duration} />
+                          <button
+                            type="submit"
+                            className="rounded-lg bg-forest px-3 py-1.5 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98]"
+                          >
+                            Confirm this one
+                          </button>
+                        </form>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
         </section>
 

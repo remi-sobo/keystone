@@ -5,7 +5,7 @@ import { getViewer } from '@/lib/membership'
 import { RoomShell } from '@/components/RoomShell'
 import { assembleSlots } from '@/lib/slotAssembly'
 import { fetchSchedulingSettings, resolveDuration } from '@/lib/schedulingSettings'
-import { bookSession, cancelSession, rescheduleSession, togglePollMark } from './actions'
+import { cancelSession, rescheduleSession, togglePollMark, toggleSlotInterest } from './actions'
 import type { Slot } from '@/lib/scheduling'
 
 /**
@@ -99,7 +99,7 @@ export default async function SessionsPage({
     .eq('client_id', viewer.client.clientId)
     .eq('status', 'open')
     .maybeSingle()
-  const [{ data: pollOptions }, { data: pollMarks }, { data: myMembership }] = openPoll
+  const [{ data: pollOptions }, { data: pollMarks }] = openPoll
     ? await Promise.all([
         supabase
           .from('session_poll_options')
@@ -110,14 +110,25 @@ export default async function SessionsPage({
           .from('session_poll_marks')
           .select('option_id, client_member_id, client_members:client_member_id(email)')
           .eq('poll_id', openPoll.id),
-        supabase
-          .from('client_members')
-          .select('id')
-          .eq('user_id', viewer.user!.id)
-          .eq('client_id', viewer.client.clientId)
-          .maybeSingle(),
       ])
-    : [{ data: null }, { data: null }, { data: null }]
+    : [{ data: null }, { data: null }]
+
+  // Standing availability marks: my membership row (self-authorship on
+  // a toggle) and the whole team's marks, names in the open like the
+  // poll. Pure RLS: the read policy admits only this client's rows.
+  const [{ data: myMembership }, { data: slotMarks }] = await Promise.all([
+    supabase
+      .from('client_members')
+      .select('id')
+      .eq('user_id', viewer.user!.id)
+      .eq('client_id', viewer.client.clientId)
+      .maybeSingle(),
+    supabase
+      .from('slot_interest')
+      .select('starts_at, duration_minutes, client_member_id, client_members:client_member_id(email)')
+      .eq('client_id', viewer.client.clientId)
+      .gte('starts_at', nowIso),
+  ])
 
   // The duration choice (V2 4I): the offer and default come from the
   // practice's settings; a reschedule defaults to the session's own
@@ -294,8 +305,16 @@ export default async function SessionsPage({
 
       <section className="mt-10">
         <h2 className="font-display text-2xl font-medium text-ink">
-          {reschedulingId ? 'Pick the new time' : 'Book a session'}
+          {reschedulingId ? 'Pick the new time' : 'Pick the next time together'}
         </h2>
+        {!reschedulingId ? (
+          <p className="mt-2 text-sm text-ink-dim">
+            These are the open times on your consultant&rsquo;s calendar. Tap every one
+            that works for you, tap again to take one back. When the team has marked,
+            your consultant confirms the winner and the calendar invite lands for
+            everyone.
+          </p>
+        ) : null}
         {settings.durationOptions.length > 1 ? (
           <p className="mt-2 text-sm text-ink">
             <span className="text-ink-dim">How long: </span>
@@ -360,22 +379,50 @@ export default async function SessionsPage({
               <div key={day}>
                 <p className="eyebrow">{day}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {daySlots.map((s) => (
-                    <form key={s.startsAt.toISOString()} action={bookSession}>
-                      <input type="hidden" name="start" value={s.startsAt.toISOString()} />
-                      <input type="hidden" name="duration" value={activeDuration} />
-                      <button
-                        type="submit"
-                        className="rounded-lg border border-forest px-3 py-1.5 text-sm text-forest transition-colors duration-200 hover:bg-forest hover:text-paper active:scale-[0.98]"
-                      >
-                        {new Intl.DateTimeFormat('en-US', {
-                          timeZone: s.tz,
-                          hour: 'numeric',
-                          minute: '2-digit',
-                        }).format(s.startsAt)}
-                      </button>
-                    </form>
-                  ))}
+                  {daySlots.map((s) => {
+                    const iso = s.startsAt.toISOString()
+                    const marks = (slotMarks ?? []).filter(
+                      (m) =>
+                        new Date(m.starts_at).getTime() === s.startsAt.getTime() &&
+                        m.duration_minutes === activeDuration
+                    )
+                    const minePicked = marks.some(
+                      (m) => m.client_member_id === myMembership?.id
+                    )
+                    /* eslint-disable @typescript-eslint/no-explicit-any */
+                    const names = marks
+                      .map((m) => (((m.client_members as any)?.email as string) ?? '').split('@')[0])
+                      .filter(Boolean)
+                    /* eslint-enable @typescript-eslint/no-explicit-any */
+                    return (
+                      <form key={iso} action={toggleSlotInterest}>
+                        <input type="hidden" name="start" value={iso} />
+                        <input type="hidden" name="duration" value={activeDuration} />
+                        <button
+                          type="submit"
+                          title={names.length > 0 ? `Works for: ${names.join(', ')}` : undefined}
+                          className={`rounded-lg px-3 py-1.5 text-sm transition-colors duration-200 active:scale-[0.98] ${
+                            minePicked
+                              ? 'bg-forest text-paper hover:bg-forest-deep'
+                              : 'border border-forest text-forest hover:bg-forest hover:text-paper'
+                          }`}
+                        >
+                          {new Intl.DateTimeFormat('en-US', {
+                            timeZone: s.tz,
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          }).format(s.startsAt)}
+                          {minePicked ? ' ✓' : ''}
+                          {names.length > 0 ? (
+                            <span className={minePicked ? 'text-paper/80' : 'text-ink-dim'}>
+                              {' '}
+                              · {names.join(', ')}
+                            </span>
+                          ) : null}
+                        </button>
+                      </form>
+                    )
+                  })}
                 </div>
               </div>
             ))}

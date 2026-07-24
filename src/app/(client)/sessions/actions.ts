@@ -212,6 +212,88 @@ export async function cancelSession(formData: FormData): Promise<void> {
   redirect('/sessions?state=canceled')
 }
 
+// ── Standing availability marks: mark and unmark, pure RLS ───────────
+// The client team's half of pick-a-date without a poll: the offered
+// slots ARE the options. The requested time must match a
+// server-recomputed offered slot (the bookSession discipline), so a
+// hand-crafted POST cannot mark a time the practice never offered; the
+// insert policy holds the scope and self-authorship wall.
+
+const SlotMarkShape = z.object({
+  start: z.string().datetime(),
+  duration: z.coerce.number().int().min(15).max(240).optional(),
+})
+
+export async function toggleSlotInterest(formData: FormData): Promise<void> {
+  const viewer = await guard()
+  const parsed = SlotMarkShape.safeParse({
+    start: formData.get('start'),
+    duration: formData.get('duration') ?? undefined,
+  })
+  if (!parsed.success) redirect('/sessions?state=invalid')
+
+  const supabase = await createServerSupabase()
+  const client = viewer.client!
+
+  const [{ data: engagement }, { data: me }] = await Promise.all([
+    supabase
+      .from('engagements')
+      .select('id')
+      .eq('client_id', client.clientId)
+      .in('status', ['active', 'proposed'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('client_members')
+      .select('id')
+      .eq('user_id', viewer.user!.id)
+      .eq('client_id', client.clientId)
+      .maybeSingle(),
+  ])
+  if (!engagement) redirect('/sessions?state=no_engagement')
+  if (!me) redirect('/sessions')
+
+  const settings = await fetchSchedulingSettings(supabase, client.practiceId)
+  const duration =
+    parsed.data.duration && settings.durationOptions.includes(parsed.data.duration)
+      ? parsed.data.duration
+      : (settings.durationOptions[0] ?? 60)
+  const slots = await assembleSlots(supabase, client, new Date(), {
+    settings,
+    durationMinutes: duration,
+  })
+  const slot = isOfferedSlot(slots, new Date(parsed.data.start))
+  if (!slot) redirect('/sessions?state=slot_gone')
+
+  const { data: existing } = await supabase
+    .from('slot_interest')
+    .select('id')
+    .eq('engagement_id', engagement!.id)
+    .eq('client_member_id', me!.id)
+    .eq('starts_at', slot.startsAt.toISOString())
+    .eq('duration_minutes', duration)
+    .maybeSingle()
+
+  const { error } = existing
+    ? await supabase.from('slot_interest').delete().eq('id', existing.id)
+    : await supabase.from('slot_interest').insert({
+        engagement_id: engagement!.id,
+        practice_id: client.practiceId,
+        client_id: client.clientId,
+        client_member_id: me!.id,
+        starts_at: slot.startsAt.toISOString(),
+        tz: slot.tz,
+        duration_minutes: duration,
+      })
+  if (error) {
+    console.error('[slots] interest toggle failed:', error.code)
+    redirect('/sessions?state=error')
+  }
+  revalidatePath('/sessions')
+  redirect(`/sessions${duration ? `?duration=${duration}` : ''}`)
+}
+
 // ── The date poll (V2 3H): mark and unmark, pure RLS ─────────────────
 // The one client write on polls. The insert policy demands your own
 // membership, your own client's open poll, and scope columns matching

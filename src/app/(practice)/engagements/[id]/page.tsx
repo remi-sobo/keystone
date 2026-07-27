@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import WorkstreamArc from '@/components/WorkstreamArc'
 import { RoomShell } from '@/components/RoomShell'
+import { SubmitButton } from '@/components/SubmitButton'
 import AddDeliverableForm from './AddDeliverableForm'
 import ReplaceDeliverableForm from './ReplaceDeliverableForm'
 import UploadAgreementForm from './UploadAgreementForm'
@@ -1663,12 +1664,7 @@ export default async function EngagementDetailPage({
             placeholder="Write to the client."
             className="w-full rounded-lg border border-ink/15 bg-paper-raised p-3 text-sm text-ink"
           />
-          <button
-            type="submit"
-            className="mt-3 rounded-lg bg-forest px-4 py-2 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98]"
-          >
-            Reply
-          </button>
+          <SubmitButton label="Reply" pendingLabel="Sending" />
         </form>
       </section>
 

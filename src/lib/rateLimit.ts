@@ -279,6 +279,12 @@ export const LIMITS = {
   EXPORT_PER_HOUR: { kind: 'export:user:hour', windowMs: 60 * 60 * 1000, max: 3 },
   EXPORT_PER_DAY: { kind: 'export:user:day', windowMs: 24 * 60 * 60 * 1000, max: 8 },
 
+  // The Life hub snapshot feed (trellis specs/Life-hub-spec 3.3). One
+  // machine caller on a 30-minute cron; the caps bound both a runaway
+  // caller and bearer guessing (the limit runs BEFORE the secret check).
+  HUB_SNAPSHOT_PER_MIN: { kind: 'hub-snapshot:ip:min', windowMs: 60 * 1000, max: 10 },
+  HUB_SNAPSHOT_PER_HOUR: { kind: 'hub-snapshot:ip:hour', windowMs: 60 * 60 * 1000, max: 60 },
+
   // The per-practice model-spend ceiling: a call-count proxy for spend,
   // consumed by lib/spend.ts before every AI call. Every Keystone AI
   // call is max_tokens-bounded, so capping calls per practice per day

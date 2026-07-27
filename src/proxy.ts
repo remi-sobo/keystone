@@ -13,13 +13,22 @@ import { updateSession } from '@/lib/supabase/session'
 
 const PUBLIC_PATHS = ['/login', '/auth']
 
+// Machine endpoints carry no session by design; each authenticates its
+// own bearer secret inside the route and fails closed without it. A
+// session bounce here would 307 their callers to /login. (FLAG, Phase 6
+// recon: /api/digest, /api/notify, and /api/calendar/refresh sit behind
+// the bounce today; latent only because their secrets are not set yet.
+// Their carve-out is a one-line addition once confirmed wanted.)
+const MACHINE_PATHS = ['/api/hub']
+
 export async function proxy(req: NextRequest) {
   const { response, hasUser } = await updateSession(req)
 
   const { pathname } = req.nextUrl
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+  const isMachine = MACHINE_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
 
-  if (!hasUser && !isPublic) {
+  if (!hasUser && !isPublic && !isMachine) {
     const url = req.nextUrl.clone()
     url.pathname = '/login'
     url.search = ''

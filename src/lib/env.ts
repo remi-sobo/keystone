@@ -49,6 +49,8 @@ const _KEYSTONE_FROM_EMAIL = process.env.KEYSTONE_FROM_EMAIL
 const _GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID
 const _GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET
 const _CRON_SECRET = process.env.CRON_SECRET
+const _HUB_SECRET_KEYSTONE = process.env.HUB_SECRET_KEYSTONE
+const _HUB_MEMBER_IDS = process.env.HUB_MEMBER_IDS
 const _CLAUDE_MODEL_EXTRACT = process.env.CLAUDE_MODEL_EXTRACT
 const _CLAUDE_MODEL_DEFAULT = process.env.CLAUDE_MODEL_DEFAULT
 const _CLAUDE_MODEL_FAST = process.env.CLAUDE_MODEL_FAST
@@ -121,6 +123,11 @@ export const env = {
   GOOGLE_CLIENT_ID: _GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET: _GOOGLE_CLIENT_SECRET,
   CRON_SECRET: _CRON_SECRET,
+  // The Life hub snapshot endpoint (trellis specs/Life-hub-spec 3.3):
+  // the bearer the Trellis sync presents, and the practice_members ids
+  // whose assigned work may leave through it.
+  HUB_SECRET_KEYSTONE: _HUB_SECRET_KEYSTONE,
+  HUB_MEMBER_IDS: _HUB_MEMBER_IDS,
   CLAUDE_MODEL_EXTRACT: _CLAUDE_MODEL_EXTRACT,
   CLAUDE_MODEL_DEFAULT: _CLAUDE_MODEL_DEFAULT,
   CLAUDE_MODEL_FAST: _CLAUDE_MODEL_FAST,

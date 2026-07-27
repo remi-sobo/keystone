@@ -20,13 +20,22 @@ import { parseAnchorParam, resolveAnchor } from '@/lib/messageAnchors'
  * A failed email is said out loud; the message itself still stands.
  */
 
-const SendShape = z.object({ body: z.string().min(1).max(8000) })
+const SendShape = z.object({
+  // The composer mints this at render time; it becomes the row's primary
+  // key, so repeated clicks on one rendered page cannot land twice. A
+  // format check before it touches the key: never trust form input raw.
+  messageId: z.string().uuid(),
+  body: z.string().min(1).max(8000),
+})
 
 export async function sendMessage(formData: FormData): Promise<void> {
   const viewer = await getViewer()
   if (!viewer.user || !viewer.client) redirect('/login')
 
-  const parsed = SendShape.safeParse({ body: formData.get('body') })
+  const parsed = SendShape.safeParse({
+    messageId: formData.get('messageId'),
+    body: formData.get('body'),
+  })
   if (!parsed.success) redirect('/messages?state=invalid')
 
   const limited = await checkRateLimits([
@@ -81,22 +90,35 @@ export async function sendMessage(formData: FormData): Promise<void> {
     : null
   if (anchorParam && !anchor) redirect('/messages?state=anchor_gone')
 
-  const { error } = await supabase.from('messages').insert({
-    thread_id: thread.id,
-    engagement_id: engagement.id,
-    practice_id: engagement.practice_id,
-    client_id: engagement.client_id,
-    author_user_id: viewer.user!.id,
-    author_side: 'client',
-    body: parsed.data.body,
-    anchor_type: anchor?.type ?? null,
-    anchor_id: anchor?.id ?? null,
-    anchor_label: anchor?.label ?? null,
-  })
+  const { data: inserted, error } = await supabase
+    .from('messages')
+    .upsert(
+      {
+        id: parsed.data.messageId,
+        thread_id: thread.id,
+        engagement_id: engagement.id,
+        practice_id: engagement.practice_id,
+        client_id: engagement.client_id,
+        author_user_id: viewer.user!.id,
+        author_side: 'client',
+        body: parsed.data.body,
+        anchor_type: anchor?.type ?? null,
+        anchor_id: anchor?.id ?? null,
+        anchor_label: anchor?.label ?? null,
+      },
+      { onConflict: 'id', ignoreDuplicates: true }
+    )
+    .select('id')
+    .maybeSingle()
   if (error) {
     console.error('[messages] send failed:', error.message)
     redirect('/messages?state=error')
   }
+  // No row back means the id already landed: this call is a duplicate
+  // click on the same rendered composer. The first submission owns every
+  // downstream effect (the thread touch, the notification row, the
+  // email), so a duplicate sends NOTHING twice; say sent and stop.
+  if (!inserted) redirect('/messages?state=sent')
   await supabase
     .from('message_threads')
     .update({ last_message_at: new Date().toISOString() })

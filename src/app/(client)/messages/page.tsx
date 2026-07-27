@@ -171,6 +171,11 @@ export default async function MessagesPage({
         {composerAnchor ? (
           <input type="hidden" name="anchor" value={`${composerAnchor.type}:${composerAnchor.id}`} />
         ) : null}
+        {/* One id per rendered composer: every click on this page submits
+            the same primary key, so the insert's on-conflict-do-nothing
+            makes the extra clicks inert. A successful send redirects and
+            the re-render mints a fresh id for the next message. */}
+        <input type="hidden" name="messageId" value={crypto.randomUUID()} />
         <textarea
           name="body"
           rows={4}

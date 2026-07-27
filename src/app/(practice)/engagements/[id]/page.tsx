@@ -1637,6 +1637,11 @@ export default async function EngagementDetailPage({
         </div>
         <form action={replyMessage} className="mt-4">
           <input type="hidden" name="engagementId" value={engagement.id} />
+          {/* One id per rendered composer: every click on this page submits
+              the same primary key, so the insert's on-conflict-do-nothing
+              makes the extra clicks inert. A successful reply redirects and
+              the re-render mints a fresh id for the next message. */}
+          <input type="hidden" name="messageId" value={crypto.randomUUID()} />
           {composerAnchor ? (
             <p className="mb-2 font-mono text-xs uppercase text-ink-dim">
               about: {composerAnchor.label}{' '}

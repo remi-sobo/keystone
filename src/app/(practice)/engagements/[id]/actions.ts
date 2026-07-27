@@ -403,6 +403,10 @@ export async function removeDeliverable(formData: FormData): Promise<void> {
 
 const ReplyShape = z.object({
   engagementId: z.string().uuid(),
+  // The composer mints this at render time; it becomes the row's primary
+  // key, so repeated clicks on one rendered page cannot land twice. A
+  // format check before it touches the key: never trust form input raw.
+  messageId: z.string().uuid(),
   body: z.string().min(1).max(8000),
 })
 
@@ -410,10 +414,11 @@ export async function replyMessage(formData: FormData): Promise<void> {
   const viewer = await guardPractice()
   const parsed = ReplyShape.safeParse({
     engagementId: formData.get('engagementId'),
+    messageId: formData.get('messageId'),
     body: formData.get('body'),
   })
   if (!parsed.success) redirect('/engagements')
-  const { engagementId, body } = parsed.data
+  const { engagementId, messageId, body } = parsed.data
 
   const limited = await checkRateLimits([
     { config: LIMITS.MESSAGES_PER_MIN, key: viewer.user!.id },
@@ -468,22 +473,35 @@ export async function replyMessage(formData: FormData): Promise<void> {
     : null
   if (anchorParam && !anchor) redirect(`/engagements/${engagementId}?state=msg_error#messages`)
 
-  const { error } = await supabase.from('messages').insert({
-    thread_id: thread.id,
-    engagement_id: engagement.id,
-    practice_id: engagement.practice_id,
-    client_id: engagement.client_id,
-    author_user_id: viewer.user!.id,
-    author_side: 'practice',
-    body,
-    anchor_type: anchor?.type ?? null,
-    anchor_id: anchor?.id ?? null,
-    anchor_label: anchor?.label ?? null,
-  })
+  const { data: inserted, error } = await supabase
+    .from('messages')
+    .upsert(
+      {
+        id: messageId,
+        thread_id: thread.id,
+        engagement_id: engagement.id,
+        practice_id: engagement.practice_id,
+        client_id: engagement.client_id,
+        author_user_id: viewer.user!.id,
+        author_side: 'practice',
+        body,
+        anchor_type: anchor?.type ?? null,
+        anchor_id: anchor?.id ?? null,
+        anchor_label: anchor?.label ?? null,
+      },
+      { onConflict: 'id', ignoreDuplicates: true }
+    )
+    .select('id')
+    .maybeSingle()
   if (error) {
     console.error('[messages] reply failed:', error.message)
     redirect(`/engagements/${engagementId}?state=msg_error#messages`)
   }
+  // No row back means the id already landed: this call is a duplicate
+  // click on the same rendered composer. The first submission owns every
+  // downstream effect (the thread touch, the read receipts, the
+  // notification row, the email), so a duplicate sends NOTHING twice.
+  if (!inserted) redirect(`/engagements/${engagementId}?state=msg_sent#messages`)
   await supabase
     .from('message_threads')
     .update({ last_message_at: new Date().toISOString() })

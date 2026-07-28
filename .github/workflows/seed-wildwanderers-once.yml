@@ -12,7 +12,9 @@ name: seed-wildwanderers-once
 on:
   push:
     branches: [claude/new-session-afgk7c]
-    paths: ['.github/workflows/seed-wildwanderers-once.yml']
+    paths:
+      - '.github/workflows/seed-wildwanderers-once.yml'
+      - 'supabase/seed-wildwanderers.sql'
 
 jobs:
   seed:

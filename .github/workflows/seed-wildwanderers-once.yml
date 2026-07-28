@@ -27,7 +27,7 @@ jobs:
           set -euo pipefail
           FN="https://mvuycjxainskaylvupji.supabase.co/functions/v1/keystone-seed-once"
           ANON=$(grep -o '"NEXT_PUBLIC_SUPABASE_ANON_KEY": *"[^"]*"' vercel.json | head -1 | sed 's/.*: *"//;s/"$//')
-          post () { u="$1"; shift; curl -fsS -X POST "$u" -H "Authorization: Bearer $ANON" -H "x-seed-token: $SEED_TOKEN" "$@"; echo; }
+          post () { u="$1"; shift; out=$(curl -sS -X POST "$u" -H "Authorization: Bearer $ANON" -H "x-seed-token: $SEED_TOKEN" "$@"); echo "$out"; echo "$out" | grep -q '"ok":true'; }
           post "$FN?op=sql" -H "Content-Type: text/plain" --data-binary @supabase/seed-wildwanderers.sql
           post "$FN?op=upload&file=WildWanderers_Business_Plan.pdf" -H "Content-Type: application/pdf" --data-binary @docs/seed/files/WildWanderers_Business_Plan.pdf
           post "$FN?op=upload&file=WildWanderers_SixMonth_Build.pdf" -H "Content-Type: application/pdf" --data-binary @docs/seed/files/WildWanderers_SixMonth_Build.pdf

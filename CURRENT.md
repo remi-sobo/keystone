@@ -33,6 +33,7 @@ Gabe Brewer's family business entered as the second client of the SOBO practice,
 Delivery path FLAG: this sandbox's egress policy blocks supabase.co, so the seed and uploads rode a one-shot GitHub Actions run (`seed-wildwanderers-once.yml`, removed after) into a temporary token-guarded edge function (`keystone-seed-once`, disabled right after; the service role key never left Supabase).
 
 Wild Wanderers FLAGS:
+- OPEN, needs Remi: the June 18 first-meeting session is NOT yet in the record. The practice-wide sessions_no_overlap constraint rejects it because an Ambition Angels session (the Shannon fellows-module note, session e61d9409) sits at 10:00 to 11:00 that morning with no calendar id, while the calendar puts 10:00 to 10:45 on Gabe and shows no Ambition Angels session that day. That row's time looks approximate, but this seed does not correct another client's record. Fix the Ambition Angels session time, then re-run supabase/seed-wildwanderers.sql; the June 18 session and its note enter on the re-run.
 - No fee is named in any source and no agreement is signed; fee_display is null. When paper exists it follows the amended gate 9.
 - The four workstream titles are assembled from the founding documents' section language, not quoted; the build plan says "four workstreams" without naming them. Remi may rename in-app.
 - Gabe's invite email waits on RESEND_API_KEY with the SafeSpace four.

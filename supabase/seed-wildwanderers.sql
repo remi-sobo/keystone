@@ -102,6 +102,20 @@ from e, (values
 where not exists (
   select 1 from sessions s where s.engagement_id = e.id
     and s.starts_at = v.starts_at
+)
+-- FLAG (2026-07-27): the practice-wide sessions_no_overlap constraint
+-- rejects the June 18 row because an Ambition Angels session sits at
+-- 10:00 to 11:00 that morning with no calendar id; the calendar puts
+-- the 10:00 to 10:45 slot on Gabe (event k0iasbamhni6j9ht5npnalnueo)
+-- and shows no Ambition Angels session that day. That row's clock time
+-- looks approximate, but correcting another client's record is not
+-- this seed's call. This guard skips any colliding row instead of
+-- failing the whole run; once the Ambition Angels time is fixed,
+-- re-running this file enters the June 18 session and its note.
+and not exists (
+  select 1 from sessions s where s.practice_id = e.practice_id
+    and s.status in ('booked', 'held')
+    and tstzrange(s.starts_at, s.ends_at) && tstzrange(v.starts_at, v.ends_at)
 );
 
 -- The June 18 note: shared, summary only, from the email record.

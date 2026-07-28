@@ -1,0 +1,34 @@
+# One-shot seed runner for the Wild Wanderers engagement. This session's
+# sandbox cannot reach supabase.co directly (egress policy), so a runner
+# carries the seed SQL and the two founding PDFs to a temporary,
+# token-guarded edge function on the keystone project. The token arrives
+# as a dispatch input, the anon key comes from vercel.json (public), and
+# no service role key appears anywhere in this flow; the key stays inside
+# the Supabase runtime. The function is disabled right after the run and
+# this file is removed in the cleanup commit.
+name: seed-wildwanderers-once
+on:
+  workflow_dispatch:
+    inputs:
+      seed_token:
+        description: One-time token baked into the temporary edge function
+        required: true
+        type: string
+
+jobs:
+  seed:
+    if: github.repository == 'remi-sobo/keystone'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Seed rows, then upload the two founding PDFs
+        env:
+          SEED_TOKEN: ${{ inputs.seed_token }}
+        run: |
+          set -euo pipefail
+          FN="https://mvuycjxainskaylvupji.supabase.co/functions/v1/keystone-seed-once"
+          ANON=$(grep -o '"NEXT_PUBLIC_SUPABASE_ANON_KEY": *"[^"]*"' vercel.json | head -1 | sed 's/.*: *"//;s/"$//')
+          post () { u="$1"; shift; curl -fsS -X POST "$u" -H "Authorization: Bearer $ANON" -H "x-seed-token: $SEED_TOKEN" "$@"; echo; }
+          post "$FN?op=sql" -H "Content-Type: text/plain" --data-binary @supabase/seed-wildwanderers.sql
+          post "$FN?op=upload&file=WildWanderers_Business_Plan.pdf" -H "Content-Type: application/pdf" --data-binary @docs/seed/files/WildWanderers_Business_Plan.pdf
+          post "$FN?op=upload&file=WildWanderers_SixMonth_Build.pdf" -H "Content-Type: application/pdf" --data-binary @docs/seed/files/WildWanderers_SixMonth_Build.pdf

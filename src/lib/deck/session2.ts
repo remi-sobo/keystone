@@ -3,12 +3,12 @@ import type { DeckMeta, DeckSlide } from './types'
 /**
  * lib/deck/session2.ts
  *
- * Session 2's twenty-one slides, verbatim from the standalone teaching
- * deck (SafeSpace_Session02_Teaching.html, the v2 file for the Jul 23
- * session). The source the seed graduates into session_slides rows,
- * the session1.ts discipline. One layout note lives in the seed
- * header: the sort slide's big-chip flow rides the tracks layout with
- * an empty label, content verbatim, layout approximate.
+ * Session 2's twenty-three slides, verbatim from the standalone
+ * teaching deck (SafeSpace_Session02_Teaching.html, the v3 file for
+ * the moved Wed Jul 29 session). The source the seed graduates into
+ * session_slides rows, the session1.ts discipline. The sort slide's
+ * big-chip flow rides the tracks layout with an empty label, content
+ * verbatim, layout approximate (standing note from v2).
  */
 
 export const session2Meta: DeckMeta = {
@@ -25,7 +25,7 @@ export const session2Slides: DeckSlide[] = [
     "subtitle": "The three-year program plan starts today.",
     "meta_left": "SafeSpace",
     "meta_right": "SOBO",
-    "meta_when": "Thursday, 3:00 PM"
+    "meta_when": "Wednesday, 3:00 PM"
   },
   {
     "slide_type": "idea",
@@ -40,10 +40,11 @@ export const session2Slides: DeckSlide[] = [
     "items": [
       "Your baseline: the check-in and your first pitch",
       "Your organization, in your words",
-      "The teaching: fewer things, done well",
+      "The teaching: the peer is the power",
       "The sort: everything you do, on the wall",
       "Five answers I can’t write the plan without",
-      "Your Bloom"
+      "Your Bloom",
+      "Where we are, and your questions"
     ]
   },
   {
@@ -73,8 +74,8 @@ export const session2Slides: DeckSlide[] = [
   {
     "slide_type": "idea",
     "eyebrow": "Program 01",
-    "head": "The mission is the mission. How we get there is the question.",
-    "sup": "Nobody here needs convincing that SafeSpace matters. The question is which few things you’ll do so well that funders keep paying for them."
+    "head": "In youth mental health, the peer is the power.",
+    "sup": "A young person hears it differently from another young person. Youth leadership isn’t how SafeSpace delivers. It’s why SafeSpace works."
   },
   {
     "slide_type": "idea",
@@ -155,6 +156,18 @@ export const session2Slides: DeckSlide[] = [
     "sup": "A first look at yours, built from your own words this week. We’ll live in it together from here."
   },
   {
+    "slide_type": "idea",
+    "eyebrow": "The Arc",
+    "head": "Plan. Budget. Ask.",
+    "sup": "Last week we listened. Today, the plan. Next week, the budget that prices it. Then the ask that funds it, and the ten-year story it earns."
+  },
+  {
+    "slide_type": "idea",
+    "eyebrow": "Open Floor",
+    "head": "What are you wondering?",
+    "sup": "Anything about where we are. Anything about Bloom. Nothing is off the table, and short answers now beat long confusion later."
+  },
+  {
     "slide_type": "homework",
     "eyebrow": "This Week",
     "title": "Before Tuesday",
@@ -165,7 +178,7 @@ export const session2Slides: DeckSlide[] = [
       },
       {
         "who": "Susan",
-        "task": "The financials package for Shannon: last two years of actuals and the current budget. The three-year budget starts next week."
+        "task": "The financials package for Shannon: last two years of actuals and the current budget. Plus the grant status list: every grant, active or completed, with the county’s exact status and end date."
       },
       {
         "who": "Aris & Jasmine",

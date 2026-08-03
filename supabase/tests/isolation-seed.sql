@@ -3238,6 +3238,123 @@ do $$ begin
   end if;
 end $$;
 
+-- ── Lead intake: the untriaged inbound wall ───────────────────────────
+-- specs/website-to-keystone-lead-intake.md. sales_intake_staging is
+-- deny-all to every session: the practice owner included, because until
+-- a human routes a lead nobody is entitled to it. Most submissions are
+-- not sales leads at all (families, schools, existing clients, and
+-- vendors all use the one form), so an untriaged row is exactly the
+-- thing that must be unreachable. The service role behind the intake
+-- route is the only reader and the only writer.
+--
+-- The matrix also pins the normalization the collision check will key
+-- on: three spellings of one organization must land on one key.
+
+reset role;
+
+insert into sales_intake_staging
+  (practice_id, external_submission_id, org_name, contact_name, email, audience, budget_band)
+values
+  ('10000000-0000-0000-0000-00000000000a',
+   '99999999-0000-0000-0000-000000000001',
+   'SafeSpace Center, Inc.', 'Leak Test', 'leak-test@example.test', 'nonprofit', 'Under $250K');
+
+do $$ begin
+  -- Failure mode 4: "SafeSpace", "Safe Space Center", and
+  -- "SafeSpace Center, Inc." are one org typed three ways. All three
+  -- must normalize to one key or the collision check is decorative.
+  if private.keystone_normalize_org('SafeSpace Center, Inc.') <> 'safespace' then
+    raise exception 'org normalization: "SafeSpace Center, Inc." must key on safespace, got %',
+      private.keystone_normalize_org('SafeSpace Center, Inc.');
+  end if;
+  if private.keystone_normalize_org('Safe Space Center') <> 'safespace' then
+    raise exception 'org normalization: "Safe Space Center" must key on safespace, got %',
+      private.keystone_normalize_org('Safe Space Center');
+  end if;
+  if private.keystone_normalize_org('The SafeSpace Foundation') <> 'safespace' then
+    raise exception 'org normalization: a leading article and a suffix must both drop, got %',
+      private.keystone_normalize_org('The SafeSpace Foundation');
+  end if;
+  -- Distinct organizations must NOT collide: over-normalizing would block
+  -- real leads with a false collision, which is its own failure.
+  if private.keystone_normalize_org('Safe Harbor') = private.keystone_normalize_org('SafeSpace') then
+    raise exception 'org normalization: distinct orgs must not collide';
+  end if;
+  -- The generated column is the one place normalization happens, so no
+  -- two call sites can normalize differently.
+  if (select org_name_normalized from sales_intake_staging
+      where external_submission_id = '99999999-0000-0000-0000-000000000001') <> 'safespace' then
+    raise exception 'the generated collision key must be normalized on insert';
+  end if;
+end $$;
+
+-- Idempotency is the database's job, not the route's care: the same
+-- site submission id cannot land twice in one practice.
+do $$ begin
+  begin
+    insert into sales_intake_staging
+      (practice_id, external_submission_id, org_name, contact_name, email)
+    values
+      ('10000000-0000-0000-0000-00000000000a',
+       '99999999-0000-0000-0000-000000000001',
+       'SafeSpace', 'Leak Test', 'leak-test@example.test');
+    raise exception 'HOLE: a replayed submission id inserted a second staging row';
+  exception when unique_violation then
+    null; -- expected
+  end;
+end $$;
+
+set role authenticated;
+
+-- The practice owner: the one person who WILL triage these, and who
+-- still reads zero through a session. Commit 3 reads the queue through
+-- the service role after a membership check, never through RLS.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from sales_intake_staging) <> 0 then
+    raise exception 'LEAK: a practice owner session reads untriaged inbound';
+  end if;
+end $$;
+do $$ begin
+  begin
+    insert into sales_intake_staging
+      (practice_id, external_submission_id, org_name, contact_name, email)
+    values
+      ('10000000-0000-0000-0000-00000000000a',
+       '99999999-0000-0000-0000-000000000002',
+       'Wrote It', 'Leak Test', 'leak-test@example.test');
+    raise exception 'HOLE: a practice owner session wrote a staging row';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+
+-- A client member reads zero. Their own organization could be sitting in
+-- this queue and they would never see it.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from sales_intake_staging) <> 0 then
+    raise exception 'LEAK: a client member reads untriaged inbound';
+  end if;
+end $$;
+
+-- cross-practice and the stranger: zero, like everyone else.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from sales_intake_staging) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a inbound';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000ee","email":"stranger@example.test"}', false);
+do $$ begin
+  if (select count(*) from sales_intake_staging) <> 0 then
+    raise exception 'LEAK: a membershipless session reads untriaged inbound';
+  end if;
+end $$;
+
 reset role;
 
 select 'keystone isolation matrix: all assertions passed' as result;

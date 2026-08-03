@@ -51,6 +51,8 @@ const _GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET
 const _CRON_SECRET = process.env.CRON_SECRET
 const _HUB_SECRET_KEYSTONE = process.env.HUB_SECRET_KEYSTONE
 const _HUB_MEMBER_IDS = process.env.HUB_MEMBER_IDS
+const _SITE_INTAKE_SECRET = process.env.SITE_INTAKE_SECRET
+const _INTAKE_PRACTICE_ID = process.env.INTAKE_PRACTICE_ID
 const _CLAUDE_MODEL_EXTRACT = process.env.CLAUDE_MODEL_EXTRACT
 const _CLAUDE_MODEL_DEFAULT = process.env.CLAUDE_MODEL_DEFAULT
 const _CLAUDE_MODEL_FAST = process.env.CLAUDE_MODEL_FAST
@@ -128,6 +130,13 @@ export const env = {
   // whose assigned work may leave through it.
   HUB_SECRET_KEYSTONE: _HUB_SECRET_KEYSTONE,
   HUB_MEMBER_IDS: _HUB_MEMBER_IDS,
+  // The website lead intake (specs/website-to-keystone-lead-intake.md):
+  // the shared secret soboconsulting.com presents on x-intake-secret, and
+  // the practice whose queue inbound lands in. The practice id is read
+  // here and never from the request body, so a leaked secret cannot write
+  // into another tenant's intake. Both unset means the door is closed.
+  SITE_INTAKE_SECRET: _SITE_INTAKE_SECRET,
+  INTAKE_PRACTICE_ID: _INTAKE_PRACTICE_ID,
   CLAUDE_MODEL_EXTRACT: _CLAUDE_MODEL_EXTRACT,
   CLAUDE_MODEL_DEFAULT: _CLAUDE_MODEL_DEFAULT,
   CLAUDE_MODEL_FAST: _CLAUDE_MODEL_FAST,

@@ -285,6 +285,13 @@ export const LIMITS = {
   HUB_SNAPSHOT_PER_MIN: { kind: 'hub-snapshot:ip:min', windowMs: 60 * 1000, max: 10 },
   HUB_SNAPSHOT_PER_HOUR: { kind: 'hub-snapshot:ip:hour', windowMs: 60 * 60 * 1000, max: 60 },
 
+  // The website lead intake. One inbound submission per form fill, so the
+  // honest traffic is a trickle; the caps exist to bound secret guessing,
+  // which is why the route spends them BEFORE the secret check. Generous
+  // enough that a reconcile job replaying a backlog still gets through.
+  INTAKE_LEAD_PER_MIN: { kind: 'intake-lead:ip:min', windowMs: 60 * 1000, max: 20 },
+  INTAKE_LEAD_PER_HOUR: { kind: 'intake-lead:ip:hour', windowMs: 60 * 60 * 1000, max: 120 },
+
   // The per-practice model-spend ceiling: a call-count proxy for spend,
   // consumed by lib/spend.ts before every AI call. Every Keystone AI
   // call is max_tokens-bounded, so capping calls per practice per day

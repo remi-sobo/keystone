@@ -47,6 +47,8 @@ ship in vercel.json.
 - [ ] `KEYSTONE_FROM_EMAIL` (optional; defaults to `Keystone <hello@soboconsulting.com>`, which requires the domain verified in Resend).
 - [ ] `CRON_SECRET` (mint: `openssl rand -hex 24`). Ring 6 digest cron.
 - [ ] `HUB_SECRET_KEYSTONE` (mint: `openssl rand -hex 24`). The Life hub snapshot feed (`/api/hub/v1/snapshot`); set the SAME value as `HUB_SECRET_KEYSTONE` in the Trellis Vercel project. Until both are set, the endpoint answers 503 and the Trellis sync records an honest error run.
+- [ ] `SITE_INTAKE_SECRET` (mint: `openssl rand -hex 24`). The website lead intake (`/api/intake/lead`); set the SAME value as `KEYSTONE_INTAKE_SECRET` in the sobo-consulting Vercel project. Until both are set, the endpoint answers 503, the site's forward is skipped, and `forwarded_at` stays null so the reconcile job can pick the submission up later. Rotate it the first time anyone new touches either repo.
+- [ ] `INTAKE_PRACTICE_ID`: the practice whose triage queue inbound website leads land in. For SOBO, the SOBO Consulting practice id. The route reads the scope from here and never from the request body, so this must be set for the door to open at all.
 - [ ] `HUB_MEMBER_IDS`: the practice_members ids whose assigned work may leave through the hub feed, comma-separated. For SOBO: Remi's two rows and Kendra's row, `45272293-2b93-4993-8513-be295c0dd336,c81551db-55ed-4154-98d1-6adb0304e8f5,78f1309f-2a32-49da-88a2-77cb9f4c5aaf`. Never add a member whose work is their own (Shannon).
 
 ## 3. Google Cloud (for calendar sync, Ring 2)

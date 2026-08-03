@@ -49,6 +49,7 @@ const SERVICE_ROLE_ONLY_TABLES: ReadonlyArray<string> = [
   'google_connections', // encrypted OAuth tokens; deny-all, calendar routes only (SECURITY.md 7)
   'qa_exchanges',       // Q&A accountability copy; no session reads it (SECURITY.md 5, V2 2E)
   'calendar_busy',      // cached Google free/busy; deny-all, read via keystone_busy_intervals only (SECURITY.md 7, V2 4I)
+  'sales_intake_staging', // inbound website leads, untriaged; deny-all until a human routes one (SECURITY.md 5)
 ]
 
 function readAllMigrations(): string {

@@ -19,7 +19,7 @@ const PUBLIC_PATHS = ['/login', '/auth']
 // recon: /api/digest, /api/notify, and /api/calendar/refresh sit behind
 // the bounce today; latent only because their secrets are not set yet.
 // Their carve-out is a one-line addition once confirmed wanted.)
-const MACHINE_PATHS = ['/api/hub']
+const MACHINE_PATHS = ['/api/hub', '/api/intake']
 
 export async function proxy(req: NextRequest) {
   const { response, hasUser } = await updateSession(req)

@@ -19,6 +19,9 @@ import {
   CircleUserRound,
   ClipboardList,
   Flag,
+  Handshake,
+  Coins,
+  Receipt,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
@@ -58,6 +61,12 @@ const ICONS: Record<string, LucideIcon> = {
   team: ClipboardList,
   // Reported issues from the help FAB (owner-only triage screen).
   issues: Flag,
+  // The sales surface: a registration is a claim staked on a name, a
+  // commission is money received, and the ledger is where the practice
+  // records both.
+  prospects: Handshake,
+  commission: Coins,
+  ledger: Receipt,
 }
 
 const COLLAPSE_KEY = 'keystone.sidebar.collapsed'

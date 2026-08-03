@@ -3238,6 +3238,425 @@ do $$ begin
   end if;
 end $$;
 
+
+-- ═════════════════════════════════════════════════════════════════════
+-- Sales module (specs/keystone-sales.md, migrations 0044 and 0045)
+--
+-- The privacy wall is the whole point of the ring: the sales lead is a
+-- contractor who sells the offers and must never reach the delivery
+-- record. These cases assert it from both sides, plus the registration
+-- collision guard and the commission arithmetic that discharges the
+-- agreement's monthly statement obligation.
+-- ═════════════════════════════════════════════════════════════════════
+
+reset role;
+
+insert into auth.users (id, email) values
+  ('00000000-0000-0000-0000-0000000000c1', 'sales_a@practice-a.test'),
+  ('00000000-0000-0000-0000-0000000000c2', 'sales_a2@practice-a.test'),
+  ('00000000-0000-0000-0000-0000000000c3', 'sales_b@practice-b.test')
+on conflict do nothing;
+
+-- Two reps in practice_a (so owner-scoping between reps is exercised)
+-- and one in practice_b (so the cross-practice wall is exercised).
+insert into practice_members (practice_id, email, role) values
+  ('10000000-0000-0000-0000-00000000000a', 'sales_a@practice-a.test',  'sales_lead'),
+  ('10000000-0000-0000-0000-00000000000a', 'sales_a2@practice-a.test', 'sales_lead'),
+  ('10000000-0000-0000-0000-00000000000b', 'sales_b@practice-b.test',  'sales_lead');
+
+-- Exhibit A, in test form: the org the contract reserves to the house.
+insert into house_accounts (practice_id, org_name, note) values
+  ('10000000-0000-0000-0000-00000000000a', 'Reserved House Org', 'leak-test exhibit A row');
+
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000c1","email":"sales_a@practice-a.test"}', false);
+select keystone_claim_membership();
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000c2","email":"sales_a2@practice-a.test"}', false);
+select keystone_claim_membership();
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000c3","email":"sales_b@practice-b.test"}', false);
+select keystone_claim_membership();
+
+-- ── The wall: a sales lead reads none of the delivery record ─────────
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000c1","email":"sales_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from engagements) <> 0 then
+    raise exception 'LEAK sales: a sales lead reads engagements';
+  end if;
+  if (select count(*) from clients) <> 0 then
+    raise exception 'LEAK sales: a sales lead reads the practice client list';
+  end if;
+  if (select count(*) from client_members) <> 0 then
+    raise exception 'LEAK sales: a sales lead reads a client roster';
+  end if;
+  if (select count(*) from sessions) <> 0 then
+    raise exception 'LEAK sales: a sales lead reads sessions';
+  end if;
+  if (select count(*) from session_notes) <> 0 then
+    raise exception 'LEAK sales: a sales lead reads session notes';
+  end if;
+  if (select count(*) from action_items) <> 0 then
+    raise exception 'LEAK sales: a sales lead reads homework';
+  end if;
+  if (select count(*) from workstreams) <> 0 then
+    raise exception 'LEAK sales: a sales lead reads workstreams';
+  end if;
+  if (select count(*) from deliverables) <> 0 then
+    raise exception 'LEAK sales: a sales lead reads deliverables';
+  end if;
+  if (select count(*) from resources) <> 0 then
+    raise exception 'LEAK sales: a sales lead reads the practice library';
+  end if;
+  if (select count(*) from messages) <> 0 then
+    raise exception 'LEAK sales: a sales lead reads messages';
+  end if;
+  if (select count(*) from deals) <> 0 then
+    raise exception 'LEAK sales: a sales lead reads the practice pipeline';
+  end if;
+  if (select count(*) from house_accounts) <> 0 then
+    raise exception 'LEAK sales: a sales lead enumerates the house-account list';
+  end if;
+  -- The two rows the role IS entitled to: its own practice (for the
+  -- shell) and its own membership row, never the roster.
+  if (select count(*) from practices) <> 1 then
+    raise exception 'a sales lead must read exactly their own practice';
+  end if;
+  if (select count(*) from practice_members) <> 1 then
+    raise exception 'LEAK sales: a sales lead enumerates the practice roster';
+  end if;
+end $$;
+
+-- No write reaches delivery either.
+do $$ begin
+  insert into engagements (practice_id, client_id, title)
+    values ('10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1', 'forged');
+  raise exception 'HOLE sales: a sales lead created an engagement';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+do $$ begin
+  insert into resources (practice_id, title) values ('10000000-0000-0000-0000-00000000000a', 'forged');
+  raise exception 'HOLE sales: a sales lead wrote to the practice library';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+-- ── Registration: the timestamp record, and the collision guard ──────
+do $$ begin
+  insert into sales_prospects (id, practice_id, org_name, contact_name, registered_by)
+    values ('f0000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a',
+            'Harbor Youth Alliance', 'A Contact', '00000000-0000-0000-0000-0000000000c1');
+end $$;
+
+-- Self-authorship: he cannot register in another person's name.
+do $$ begin
+  insert into sales_prospects (practice_id, org_name, registered_by)
+    values ('10000000-0000-0000-0000-00000000000a', 'Forged Owner Org',
+            '00000000-0000-0000-0000-00000000000a');
+  raise exception 'HOLE sales: a registration was filed in another persons name';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+-- Cross-practice: he cannot register into a practice he does not belong to.
+do $$ begin
+  insert into sales_prospects (practice_id, org_name, registered_by)
+    values ('10000000-0000-0000-0000-00000000000b', 'Cross Practice Org',
+            '00000000-0000-0000-0000-0000000000c1');
+  raise exception 'HOLE sales: a registration crossed the practice wall';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+-- The house account is refused AT INSERT, whatever the form says, and
+-- the normalizer sees through casing, punctuation and a legal suffix.
+do $$ begin
+  insert into sales_prospects (practice_id, org_name, registered_by)
+    values ('10000000-0000-0000-0000-00000000000a', 'the reserved house org, inc.',
+            '00000000-0000-0000-0000-0000000000c1');
+  raise exception 'HOLE sales: a house account was registered';
+exception when check_violation then null; -- expected: sales_collision_house_account
+end $$;
+
+-- An existing client of the practice is refused the same way.
+do $$ begin
+  insert into sales_prospects (practice_id, org_name, registered_by)
+    values ('10000000-0000-0000-0000-00000000000a', 'Client A1',
+            '00000000-0000-0000-0000-0000000000c1');
+  raise exception 'HOLE sales: an existing client of the practice was registered';
+exception when check_violation then null; -- expected: sales_collision_existing_client
+end $$;
+
+-- And so is an org that already carries a live registration.
+do $$ begin
+  insert into sales_prospects (practice_id, org_name, registered_by)
+    values ('10000000-0000-0000-0000-00000000000a', 'Harbor Youth Alliance',
+            '00000000-0000-0000-0000-0000000000c1');
+  raise exception 'HOLE sales: the same org was registered twice';
+exception when check_violation then null; -- expected: sales_collision_already_registered
+end $$;
+
+-- The live check the form calls returns a verdict, never the list.
+do $$ begin
+  if keystone_sales_registration_check('10000000-0000-0000-0000-00000000000a',
+       'Reserved House Org') <> 'house_account' then
+    raise exception 'the registration check missed a house account';
+  end if;
+  if keystone_sales_registration_check('10000000-0000-0000-0000-00000000000a',
+       'Client A1') <> 'existing_client' then
+    raise exception 'the registration check missed an existing client';
+  end if;
+  if keystone_sales_registration_check('10000000-0000-0000-0000-00000000000a',
+       'Harbor Youth Alliance') <> 'registered_by_you' then
+    raise exception 'the registration check misreports the callers own registration';
+  end if;
+  if keystone_sales_registration_check('10000000-0000-0000-0000-00000000000a',
+       'Some New Nonprofit') <> 'available' then
+    raise exception 'the registration check refuses an available org';
+  end if;
+  -- The check itself is walled: it answers nothing about another practice.
+  if keystone_sales_registration_check('10000000-0000-0000-0000-00000000000b',
+       'Client B') <> 'forbidden' then
+    raise exception 'LEAK sales: the registration check answered across practices';
+  end if;
+end $$;
+
+-- Money is the practice's act: no deal and no payment from this side.
+do $$ begin
+  insert into sales_deals (prospect_id, offer, amount_cents, practice_id, owner_id)
+    values ('f0000000-0000-0000-0000-0000000000a1', 'greenhouse', 2500000,
+            '10000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-0000000000c1');
+  raise exception 'HOLE sales: a sales lead created their own deal';
+exception when insufficient_privilege then null; -- expected RLS denial
+end $$;
+
+-- ── The second rep in the same practice reads none of the first's ────
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000c2","email":"sales_a2@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from sales_prospects) <> 0 then
+    raise exception 'LEAK sales: a rep reads another reps registrations';
+  end if;
+  if keystone_sales_registration_check('10000000-0000-0000-0000-00000000000a',
+       'Harbor Youth Alliance') <> 'registered_by_other' then
+    raise exception 'the registration check does not report another reps claim';
+  end if;
+end $$;
+
+-- ── A consultant is delivery, not sales: zero rows, and delivery intact ──
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000b","email":"consultant_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from sales_prospects) <> 0 then
+    raise exception 'LEAK sales: a consultant reads the sales pipeline';
+  end if;
+  -- The predicate change must not have cost delivery anything.
+  if (select count(*) from engagements) <> 2 then
+    raise exception 'the sales wall broke a consultants delivery visibility';
+  end if;
+end $$;
+
+-- ── The practice owner: the whole pipeline, and the money ────────────
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from sales_prospects) <> 1 then
+    raise exception 'the practice owner must read every registration of the practice';
+  end if;
+  if (select count(*) from house_accounts) <> 1 then
+    raise exception 'the practice owner must read the house-account list';
+  end if;
+  -- The deal is recorded by the practice; scope and owner come from the
+  -- prospect, so the posted values below are overwritten, not trusted.
+  insert into sales_deals (id, prospect_id, offer, amount_cents, signed_on,
+                           practice_id, owner_id, created_by)
+    values ('f1000000-0000-0000-0000-0000000000a1', 'f0000000-0000-0000-0000-0000000000a1',
+            'greenhouse', 2500000, current_date,
+            '10000000-0000-0000-0000-00000000000b',
+            '00000000-0000-0000-0000-00000000000a',
+            '00000000-0000-0000-0000-00000000000a');
+end $$;
+do $$ begin
+  if (select owner_id from sales_deals where id = 'f1000000-0000-0000-0000-0000000000a1')
+     <> '00000000-0000-0000-0000-0000000000c1' then
+    raise exception 'HOLE sales: a posted owner_id overrode the registration record';
+  end if;
+  if (select practice_id from sales_deals where id = 'f1000000-0000-0000-0000-0000000000a1')
+     <> '10000000-0000-0000-0000-00000000000a' then
+    raise exception 'HOLE sales: a posted practice_id overrode the prospects scope';
+  end if;
+end $$;
+
+-- A payment lands. Ten thousand dollars collected, three hundred in
+-- processing fees, so the basis is 970000 cents and twenty percent of
+-- that is 194000 cents. Hand calculation, asserted.
+do $$ begin
+  insert into sales_payments (id, deal_id, amount_received_cents, processing_fee_cents,
+                              received_at, source_ref, recorded_by, practice_id)
+    values ('f2000000-0000-0000-0000-0000000000a1', 'f1000000-0000-0000-0000-0000000000a1',
+            1000000, 30000, date '2026-08-14', 'bank-ref-001',
+            '00000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000a')
+    on conflict (id) do nothing;
+end $$;
+do $$ declare c record; begin
+  if (select count(*) from sales_commissions) <> 1 then
+    raise exception 'a payment must accrue exactly one commission row';
+  end if;
+  select * into c from sales_commissions limit 1;
+  if c.basis_cents <> 970000 then
+    raise exception 'commission basis is not net of processing fees';
+  end if;
+  if c.rate_bp <> 2000 then
+    raise exception 'commission rate was not stamped onto the row';
+  end if;
+  if c.amount_cents <> 194000 then
+    raise exception 'commission arithmetic does not match the hand calculation';
+  end if;
+  if c.owner_id <> '00000000-0000-0000-0000-0000000000c1' then
+    raise exception 'commission accrued to the wrong owner';
+  end if;
+  if c.statement_month <> date '2026-08-01' then
+    raise exception 'commission landed in the wrong statement month';
+  end if;
+end $$;
+
+-- The duplication failure mode, twice over: the same client-minted id
+-- replayed, and the same real-world reference under a new id.
+do $$ begin
+  insert into sales_payments (id, deal_id, amount_received_cents, processing_fee_cents,
+                              received_at, source_ref, recorded_by, practice_id)
+    values ('f2000000-0000-0000-0000-0000000000a1', 'f1000000-0000-0000-0000-0000000000a1',
+            1000000, 30000, date '2026-08-14', 'bank-ref-001',
+            '00000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000a')
+    on conflict (id) do nothing;
+  if (select count(*) from sales_payments) <> 1 then
+    raise exception 'HOLE sales: a replayed payment id landed twice';
+  end if;
+  if (select count(*) from sales_commissions) <> 1 then
+    raise exception 'HOLE sales: a replayed payment double-accrued commission';
+  end if;
+end $$;
+do $$ begin
+  insert into sales_payments (id, deal_id, amount_received_cents, received_at,
+                              source_ref, recorded_by, practice_id)
+    values ('f2000000-0000-0000-0000-0000000000a2', 'f1000000-0000-0000-0000-0000000000a1',
+            1000000, date '2026-08-14', 'bank-ref-001',
+            '00000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000a');
+  raise exception 'HOLE sales: the same bank reference landed twice on one deal';
+exception when unique_violation then null; -- expected: one real payment, one row
+end $$;
+
+-- The ledger is append-only and the amounts are not writable by anyone.
+do $$ declare n int; begin
+  delete from sales_payments where id = 'f2000000-0000-0000-0000-0000000000a1';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE sales: a payment was deleted'; end if;
+end $$;
+do $$ begin
+  update sales_commissions set amount_cents = 1;
+  raise exception 'HOLE sales: a commission amount was rewritten';
+exception when insufficient_privilege then null; -- expected: column grant
+end $$;
+do $$ begin
+  update sales_commissions set rate_bp = 9000;
+  raise exception 'HOLE sales: a commission rate was rewritten';
+exception when insufficient_privilege then null; -- expected: column grant
+end $$;
+-- Marking it paid is the one write that exists.
+do $$ declare n int; begin
+  update sales_commissions set status = 'paid', paid_at = now(), paid_ref = 'ach-001';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'the practice owner must be able to mark a commission paid'; end if;
+end $$;
+
+-- ── The rep sees his own money, and the statement adds up ────────────
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000c1","email":"sales_a@practice-a.test"}', false);
+do $$ declare s record; begin
+  if (select count(*) from sales_deals) <> 1 then
+    raise exception 'a rep must read their own deal';
+  end if;
+  if (select count(*) from sales_payments) <> 1 then
+    raise exception 'a rep must read the collections on their own deal';
+  end if;
+  if (select count(*) from sales_commissions) <> 1 then
+    raise exception 'a rep must read their own commission';
+  end if;
+  select * into s from sales_commission_statement limit 1;
+  if s.org_name <> 'Harbor Youth Alliance' then
+    raise exception 'the statement does not name the org';
+  end if;
+  if s.collected_cents <> 1000000 or s.commission_cents <> 194000 then
+    raise exception 'the statement does not match the hand calculation';
+  end if;
+  if s.commission_paid_cents <> 194000 then
+    raise exception 'the statement does not carry the paid state';
+  end if;
+end $$;
+-- He cannot mark his own commission paid: the update policy is
+-- sales.manage, so the row is not visible to the write and nothing
+-- moves (RLS filters the row rather than raising).
+do $$ declare n int; begin
+  update sales_commissions set status = 'accrued';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE sales: a rep rewrote their own commission status'; end if;
+  if (select status from sales_commissions limit 1) <> 'paid' then
+    raise exception 'HOLE sales: a rep changed a commission status';
+  end if;
+end $$;
+
+-- ── The second rep sees none of the first rep's money ────────────────
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000c2","email":"sales_a2@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from sales_deals) <> 0
+    or (select count(*) from sales_payments) <> 0
+    or (select count(*) from sales_commissions) <> 0
+    or (select count(*) from sales_commission_statement) <> 0 then
+    raise exception 'LEAK sales: a rep reads another reps money';
+  end if;
+end $$;
+
+-- ── cross-practice: practice_b's people read zero of practice_a's ────
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000c3","email":"sales_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from sales_prospects) <> 0
+    or (select count(*) from sales_deals) <> 0
+    or (select count(*) from sales_payments) <> 0
+    or (select count(*) from sales_commissions) <> 0 then
+    raise exception 'LEAK cross-practice: sales_b reads practice_a sales rows';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from sales_prospects) <> 0
+    or (select count(*) from sales_commissions) <> 0
+    or (select count(*) from house_accounts) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a sales rows';
+  end if;
+end $$;
+
+-- ── The client side and the stranger read nothing, ever ──────────────
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from sales_prospects) <> 0
+    or (select count(*) from sales_deals) <> 0
+    or (select count(*) from sales_payments) <> 0
+    or (select count(*) from sales_commissions) <> 0
+    or (select count(*) from house_accounts) <> 0 then
+    raise exception 'LEAK sales: a client member reads sales rows';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000ee","email":"stranger@example.test"}', false);
+do $$ begin
+  if (select count(*) from sales_prospects) <> 0
+    or (select count(*) from sales_commissions) <> 0 then
+    raise exception 'LEAK sales: a membershipless session reads sales rows';
+  end if;
+end $$;
 reset role;
 
 select 'keystone isolation matrix: all assertions passed' as result;

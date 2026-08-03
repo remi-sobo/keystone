@@ -47,11 +47,20 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.redirect(new URL('/login?state=expired', url.origin))
 
   const [pm, cm] = await Promise.all([
-    supabase.from('practice_members').select('id').eq('user_id', user.id).limit(1).maybeSingle(),
+    supabase
+      .from('practice_members')
+      .select('id, role')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle(),
     supabase.from('client_members').select('id').eq('user_id', user.id).limit(1).maybeSingle(),
   ])
 
   if (cm.data) return NextResponse.redirect(new URL('/home', url.origin))
+  // The sales lead lands on his own surface, never the workshop.
+  if (pm.data?.role === 'sales_lead') {
+    return NextResponse.redirect(new URL('/sales', url.origin))
+  }
   if (pm.data) return NextResponse.redirect(new URL('/today', url.origin))
   return NextResponse.redirect(new URL('/login?state=no_access', url.origin))
 }

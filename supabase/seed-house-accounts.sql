@@ -1,0 +1,50 @@
+-- Keystone sales seed: the house accounts (Exhibit A of the sales
+-- agreement). Run against the real project after migration 0044.
+-- Idempotent, safe to re-run.
+--
+-- STANDING FLAG (also in CURRENT.md): THIS FILE IS DELIBERATELY EMPTY
+-- OF ORGANIZATIONS. Exhibit A is a list in a signed contract and this
+-- build did not have it. Inventing a substitute would be worse than an
+-- empty table, because a house-account list that is wrong reads as
+-- authoritative and a registration would be blocked or allowed for a
+-- reason nobody can trace back to the paper.
+--
+-- Until the real list is entered, NO organization is protected: every
+-- name is open for registration except the practice's existing clients,
+-- which the guard checks separately against the clients table.
+--
+-- Two ways to enter it, whichever suits:
+--
+--   1. The ledger UI. Sign in as the practice owner, open /sales-ledger,
+--      and add each organization under House accounts. This is the path
+--      to prefer: it audits the addition and it can be done from a
+--      phone with the contract open next to it.
+--
+--   2. This file. Uncomment the insert and list the organizations
+--      exactly as Exhibit A names them, one row each. The normalizer
+--      handles casing, punctuation, a leading "the", and a trailing
+--      legal suffix, so "The Harbor Fund, Inc." and "harbor fund" are
+--      the same account and either spelling blocks the other.
+--
+-- The practice id below is SOBO Consulting's, the same one every other
+-- seed file in this directory uses.
+
+-- insert into public.house_accounts (practice_id, org_name, note)
+-- select p.id, v.org_name, 'Exhibit A of the sales agreement'
+--   from public.practices p
+--   cross join (values
+--     ('ORGANIZATION ONE'),
+--     ('ORGANIZATION TWO')
+--   ) as v(org_name)
+--  where p.slug = 'sobo'
+--    and not exists (
+--      select 1 from public.house_accounts h
+--       where h.practice_id = p.id
+--         and h.org_name_norm = private.keystone_norm_org(v.org_name)
+--    );
+
+-- The practice's own clients need no row here. The registration guard
+-- checks the clients table directly, so an existing client is refused
+-- whether or not anyone remembered to add it to Exhibit A.
+
+select 'house accounts: nothing seeded, Exhibit A still owed' as result;

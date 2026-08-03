@@ -32,6 +32,19 @@ export function clientNav(): NavItem[] {
   ]
 }
 
+/**
+ * The sales lead's surface (specs/keystone-sales.md). Two rooms in this
+ * build, both mobile: he works from a phone. The board, the
+ * qualification card and the materials shelf are Rings 2, 3 and 5, and
+ * they join this list when they land.
+ */
+export function salesNav(): NavItem[] {
+  return [
+    { href: '/sales', label: 'Prospects', icon: 'prospects', mobile: true },
+    { href: '/sales/commission', label: 'Commission', icon: 'commission', mobile: true },
+  ]
+}
+
 export function practiceNav(role?: 'owner' | 'consultant'): NavItem[] {
   return [
     { href: '/today', label: 'Home', icon: 'home', mobile: true },
@@ -48,6 +61,12 @@ export function practiceNav(role?: 'owner' | 'consultant'): NavItem[] {
     // /library belongs to the client surface; authoring sits beneath it
     // (the App Router cannot give two route groups the same path).
     { href: '/library/authoring', label: 'Library', icon: 'library', mobile: true },
+    // Desktop rail only, owner only: the sales ledger, where a signed
+    // deal and a payment received get recorded and commission liability
+    // is read off (specs/keystone-sales.md, Ring 4).
+    ...(role === 'owner'
+      ? [{ href: '/sales-ledger', label: 'Sales', icon: 'ledger' } as NavItem]
+      : []),
     { href: '/settings', label: 'Settings', icon: 'settings', mobile: true },
   ]
 }

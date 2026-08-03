@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { clientNav, practiceNav } from '../src/components/nav'
+import { clientNav, practiceNav, salesNav } from '../src/components/nav'
 import fs from 'fs'
 import path from 'path'
 
@@ -14,6 +14,9 @@ test('no two nav items on a surface share an icon', () => {
   for (const [name, items] of [
     ['client', clientNav()],
     ['practice', practiceNav()],
+    // The owner variant carries two more rooms than the default one.
+    ['practice (owner)', practiceNav('owner')],
+    ['sales', salesNav()],
   ] as const) {
     const icons = items.map((i) => i.icon)
     expect(new Set(icons).size, `${name} nav has a duplicated icon: ${icons.join(', ')}`).toBe(
@@ -27,7 +30,7 @@ test('every declared icon exists in the Sidebar map', () => {
     path.join(process.cwd(), 'src/components/Sidebar.tsx'),
     'utf-8'
   )
-  for (const item of [...clientNav(), ...practiceNav()]) {
+  for (const item of [...clientNav(), ...practiceNav('owner'), ...salesNav()]) {
     expect(sidebar, `Sidebar ICONS map is missing '${item.icon}'`).toMatch(
       new RegExp(`^\\s*${item.icon}: [A-Z]`, 'm')
     )

@@ -13,6 +13,10 @@ export default async function PracticeLayout({ children }: { children: React.Rea
   const viewer = await getViewer()
   if (!viewer.user) redirect('/login')
   if (!viewer.practice) {
+    // The sales lead carries a practice_members row but is not delivery
+    // (specs/keystone-sales.md): the workshop is not his surface, and
+    // RLS would return an empty one anyway.
+    if (viewer.sales) redirect('/sales')
     redirect(viewer.client ? '/home' : '/login?state=no_access')
   }
 

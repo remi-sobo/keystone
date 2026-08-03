@@ -27,20 +27,40 @@ export interface ClientMembership {
   clientName: string
 }
 
+/**
+ * The sales lead (specs/keystone-sales.md). A practice_members row like
+ * any other, and deliberately NOT surfaced as `practice`: the practice
+ * layout and every practice route admit on `viewer.practice`, so
+ * keeping the two populations in separate fields means the sales lead
+ * cannot reach the delivery surface by a resolver oversight. The wall
+ * itself is the RLS predicate in migration 0044; this is the app-layer
+ * mirror of it.
+ */
+export interface SalesMembership {
+  practiceId: string
+  practiceName: string
+  practiceMemberId: string
+}
+
 export interface Viewer {
   user: User | null
   practice: PracticeMembership | null
   client: ClientMembership | null
+  sales: SalesMembership | null
 }
 
 async function readMemberships(
   supabase: SupabaseClient,
   userId: string
-): Promise<{ practice: PracticeMembership | null; client: ClientMembership | null }> {
+): Promise<{
+  practice: PracticeMembership | null
+  client: ClientMembership | null
+  sales: SalesMembership | null
+}> {
   const [pm, cm] = await Promise.all([
     supabase
       .from('practice_members')
-      .select('practice_id, role, practices(name)')
+      .select('id, practice_id, role, practices(name)')
       .eq('user_id', userId)
       .is('revoked_at', null)
       .limit(1)
@@ -55,13 +75,23 @@ async function readMemberships(
   ])
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
-  const practice = pm.data
-    ? {
-        practiceId: pm.data.practice_id as string,
-        practiceName: ((pm.data.practices as any)?.name as string) ?? '',
-        role: pm.data.role as 'owner' | 'consultant',
-      }
-    : null
+  const isSales = pm.data?.role === 'sales_lead'
+  const practice =
+    pm.data && !isSales
+      ? {
+          practiceId: pm.data.practice_id as string,
+          practiceName: ((pm.data.practices as any)?.name as string) ?? '',
+          role: pm.data.role as 'owner' | 'consultant',
+        }
+      : null
+  const sales =
+    pm.data && isSales
+      ? {
+          practiceId: pm.data.practice_id as string,
+          practiceName: ((pm.data.practices as any)?.name as string) ?? '',
+          practiceMemberId: pm.data.id as string,
+        }
+      : null
   const client = cm.data
     ? {
         practiceId: cm.data.practice_id as string,
@@ -71,7 +101,7 @@ async function readMemberships(
       }
     : null
   /* eslint-enable @typescript-eslint/no-explicit-any */
-  return { practice, client }
+  return { practice, client, sales }
 }
 
 /** Resolve the signed-in viewer and their memberships (claiming a
@@ -81,10 +111,10 @@ export async function getViewer(): Promise<Viewer> {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return { user: null, practice: null, client: null }
+  if (!user) return { user: null, practice: null, client: null, sales: null }
 
   let m = await readMemberships(supabase, user.id)
-  if (!m.practice && !m.client) {
+  if (!m.practice && !m.client && !m.sales) {
     // First sign-in on an invite: claim, then re-read once.
     await supabase.rpc('keystone_claim_membership')
     m = await readMemberships(supabase, user.id)

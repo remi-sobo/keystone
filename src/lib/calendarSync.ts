@@ -87,13 +87,18 @@ function eventInput(row: SessionRow, attendees: string[]): CalendarEventInput {
   }
 }
 
-/** Active client-team emails per client of the practice (gate 4I-2). */
+/** Active CLAIMED client-team emails per client of the practice (gate
+ *  4I-2, narrowed on Remi's word 2026-08-04): a calendar invite goes to
+ *  people who have actually claimed their seat, so an unclaimed
+ *  membership (Liesl, gate 10 open) rides no invite until the day
+ *  someone deliberately brings them in. */
 async function attendeeMap(practiceId: string): Promise<Map<string, string[]>> {
   const { data } = await supabaseAdmin
     .from('client_members')
     .select('client_id, email')
     .eq('practice_id', practiceId)
     .is('revoked_at', null)
+    .not('user_id', 'is', null)
   const map = new Map<string, string[]>()
   for (const m of data ?? []) {
     if (!m.email) continue

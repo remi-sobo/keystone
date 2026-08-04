@@ -58,6 +58,16 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* A press is a press: buttons never turn a tap into a text selection
+   (the Sync-now-feels-dead finding from Remi's phone) and never wait
+   out the double-tap zoom delay. */
+button,
+[role='button'] {
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
 /* Display face: Cormorant, with the ligatures that make it read set. */
 .font-display {
   font-family: var(--font-display);

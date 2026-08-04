@@ -23,6 +23,8 @@ import {
   Coins,
   Receipt,
   LogOut,
+  Menu,
+  X,
   PanelLeftClose,
   PanelLeftOpen,
   type LucideIcon,
@@ -84,6 +86,7 @@ export default function Sidebar({
 }) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     // Rehydrate the persisted preference once on mount. The server
@@ -93,6 +96,20 @@ export default function Sidebar({
       setCollapsed(true)
     }
   }, [])
+
+  useEffect(() => {
+    // Navigating closes the sheet; Escape closes it too.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMenuOpen(false)
+  }, [pathname])
+  useEffect(() => {
+    if (!menuOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [menuOpen])
 
   function toggle() {
     setCollapsed((c) => {
@@ -186,6 +203,85 @@ export default function Sidebar({
           </button>
         </div>
       </aside>
+
+      {/* The mobile hamburger: every room, not just the bar's five. A
+          quiet circle above the tab bar's reach, opening a right-hand
+          sheet with the FULL nav (the desktop rail's list), the person,
+          and sign out. Phones stop being second-class citizens of the
+          rooms that never fit the five. */}
+      <button
+        type="button"
+        onClick={() => setMenuOpen(true)}
+        aria-label="Open menu"
+        aria-expanded={menuOpen}
+        className="fixed top-3 right-3 z-40 flex h-10 w-10 items-center justify-center rounded-full border border-ink/15 bg-paper-raised text-ink shadow-sm transition-colors duration-200 hover:text-forest md:hidden"
+      >
+        <Menu size={20} strokeWidth={1.75} aria-hidden />
+      </button>
+      {menuOpen ? (
+        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+          <button
+            type="button"
+            aria-label="Close menu"
+            onClick={() => setMenuOpen(false)}
+            className="absolute inset-0 bg-ink/40"
+          />
+          <div className="keystone-paper-grain absolute inset-y-0 right-0 flex w-72 max-w-[85vw] flex-col overflow-y-auto border-l border-ink/10 bg-paper-deep pb-[env(safe-area-inset-bottom)]">
+            <div className="flex items-center justify-between px-5 py-4">
+              <div className="eyebrow">{practiceName}</div>
+              <button
+                type="button"
+                onClick={() => setMenuOpen(false)}
+                aria-label="Close menu"
+                className="text-ink-dim transition-colors duration-200 hover:text-ink"
+              >
+                <X size={20} strokeWidth={1.75} aria-hidden />
+              </button>
+            </div>
+            <nav className="flex flex-1 flex-col gap-1">
+              {items.map((item) => {
+                const Icon = ICONS[item.icon]
+                const active = isActive(item.href)
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={active ? 'page' : undefined}
+                    className={`relative flex items-center gap-3 px-5 py-2.5 text-[0.95rem] transition-colors duration-200 ${
+                      active
+                        ? 'bg-paper-raised font-medium text-forest'
+                        : 'text-ink-dim hover:bg-paper-raised hover:text-ink'
+                    }`}
+                  >
+                    {active ? (
+                      <span aria-hidden className="absolute inset-y-1 left-0 w-[3px] bg-brass" />
+                    ) : null}
+                    <Icon size={18} strokeWidth={1.75} aria-hidden />
+                    <span>{item.label}</span>
+                  </Link>
+                )
+              })}
+            </nav>
+            <div className="border-t border-ink/10 px-5 py-4">
+              {clientName ? (
+                <div className="mb-1 inline-block rounded-full border border-ink/15 px-2 py-0.5 text-xs text-ink-dim">
+                  {clientName}
+                </div>
+              ) : null}
+              <div className="truncate text-xs text-ink-dim">{personEmail}</div>
+              <form action="/auth/signout" method="post" className="mt-2">
+                <button
+                  type="submit"
+                  className="flex items-center gap-2 text-xs text-ink-dim transition-colors duration-200 hover:text-ink"
+                >
+                  <LogOut size={16} strokeWidth={1.75} aria-hidden />
+                  <span>Sign out</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* The 390px transform: bottom tab bar, five items max. */}
       <nav

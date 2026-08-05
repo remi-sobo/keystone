@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { getViewer } from '@/lib/membership'
 import { RoomShell } from '@/components/RoomShell'
 import { KeystoneCard } from '@/components/KeystoneCard'
+import { SubmitButton } from '@/components/SubmitButton'
 import {
   addBlackout,
   addWindow,
@@ -437,13 +438,11 @@ export default async function SettingsPage({
                     }).format(new Date(connection.busy_pulled_at))}. Offered slots respect them.`
                   : 'Busy times have not been pulled yet. Sync to make offered slots respect your real calendar.'}
               </p>
-              <form action={syncNow} className="mt-3">
-                <button
-                  type="submit"
-                  className="rounded-lg bg-forest px-4 py-2 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98]"
-                >
-                  Sync now
-                </button>
+              <form action={syncNow}>
+                {/* Pending state out loud: the sync holds several Google
+                    round trips, and a silent button reads as broken on a
+                    phone (Remi hit exactly this on session day). */}
+                <SubmitButton label="Sync now" pendingLabel="Syncing with Google…" />
               </form>
             </>
           ) : (

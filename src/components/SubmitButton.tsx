@@ -23,7 +23,7 @@ export function SubmitButton({
     <button
       type="submit"
       disabled={pending}
-      className="mt-3 rounded-lg bg-forest px-4 py-2 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+      className="mt-3 select-none rounded-lg bg-forest px-4 py-2 text-sm font-medium text-paper transition-colors duration-200 [touch-action:manipulation] hover:bg-forest-deep active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending ? pendingLabel : label}
     </button>

@@ -250,6 +250,23 @@ test.describe('the sales surface is pure RLS', () => {
     expect(membership).toContain('pm.data && !isSales')
   })
 
+  test('the role is an ordinary invite, not a SQL console job', () => {
+    const actions = read('src/app/(practice)/settings/members/actions.ts')
+    expect(actions).toContain("const RoleShape = z.enum(['owner', 'consultant', 'sales_lead'])")
+    // Any move off owner is a demotion, whichever role it lands on:
+    // guarding only the consultant case would let the last owner become
+    // a sales lead and lock the practice out of its own settings.
+    expect(actions).toContain("if (target.role === 'owner' && role.data !== 'owner')")
+    expect(actions).toContain(
+      "if (role.data !== 'owner' && (await activeOwnerCount(ctx.practiceId)) === 0)"
+    )
+    const page = read('src/app/(practice)/settings/members/page.tsx')
+    expect(
+      (page.match(/<option value="sales_lead">/g) ?? []).length,
+      'both the roster select and the invite select must offer the role'
+    ).toBe(2)
+  })
+
   test('the practice ledger is owner-only at the page and in the action', () => {
     expect(read('src/app/(practice)/sales-ledger/page.tsx')).toContain(
       "viewer.practice.role !== 'owner'"

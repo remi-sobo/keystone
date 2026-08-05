@@ -212,6 +212,7 @@ export default async function MembersPage({
                 >
                   <option value="owner">owner</option>
                   <option value="consultant">consultant</option>
+                  <option value="sales_lead">sales lead</option>
                 </select>
                 <button type="submit" className="text-sm text-ink-dim underline hover:text-ink">
                   Save
@@ -241,8 +242,13 @@ export default async function MembersPage({
             >
               <option value="consultant">consultant</option>
               <option value="owner">owner</option>
+              <option value="sales_lead">sales lead</option>
             </select>
           </label>
+          <p className="basis-full text-xs text-ink-dim">
+            A sales lead is a contractor seat. It reaches registration and commission only, and
+            never an engagement, a session, a note, a client roster or a message.
+          </p>
           <button
             type="submit"
             className="rounded-lg bg-forest px-4 py-2 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98]"

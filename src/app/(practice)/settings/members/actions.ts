@@ -24,7 +24,16 @@ const PAGE = '/settings/members'
 
 const EmailShape = z.string().trim().toLowerCase().email().max(320)
 const SideShape = z.enum(['practice', 'client'])
-const RoleShape = z.enum(['owner', 'consultant'])
+/**
+ * sales_lead joined the roles in migration 0044 (specs/keystone-sales.md).
+ * It is not a delivery role: assigning it strips the member of every
+ * engagement, session, note, client and message in the practice the
+ * moment it is saved, because private.is_practice_member excludes it.
+ * That is the point, and it is why the role belongs in this form rather
+ * than in a SQL console: adding a contractor should be an ordinary,
+ * audited invite like any other.
+ */
+const RoleShape = z.enum(['owner', 'consultant', 'sales_lead'])
 const IdShape = z.string().uuid()
 
 type Owner = { viewer: Viewer; practiceId: string; userId: string; email: string }
@@ -236,7 +245,8 @@ export async function changeRole(formData: FormData): Promise<void> {
   if (!target) leave('invalid')
   if (target.role === role.data) leave('no_change')
 
-  if (target.role === 'owner' && role.data === 'consultant') {
+  // Any move OFF owner is a demotion, whichever role it lands on.
+  if (target.role === 'owner' && role.data !== 'owner') {
     if ((await activeOwnerCount(ctx.practiceId)) <= 1) leave('last_owner')
   }
 
@@ -250,7 +260,7 @@ export async function changeRole(formData: FormData): Promise<void> {
   // The count check above runs before the write, so two owners demoting
   // each other at once could both pass it. Re-check after and restore:
   // the safe terminal state is two owners, never zero.
-  if (role.data === 'consultant' && (await activeOwnerCount(ctx.practiceId)) === 0) {
+  if (role.data !== 'owner' && (await activeOwnerCount(ctx.practiceId)) === 0) {
     await supabaseAdmin
       .from('practice_members')
       .update({ role: 'owner' })

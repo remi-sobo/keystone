@@ -115,3 +115,30 @@ verification, so a dedicated project publishes to production cleanly.
       no-access state.
 - [ ] The "Client Login" nav link on soboconsulting.com: one-line PR in that repo (kept out of this build by the quarry rule).
 - [x] CONFIRM 1 landed (app.soboconsulting.com): DNS is pointed, vercel.json carries the domain. Covered by sections 0, 1, and 3 above.
+
+## 6. The client hub (EPA Young Life, specs/epayl-fundraising-hub.md; added 2026-09-02)
+
+Migration 0046 and the EPA seed are ALREADY APPLIED to the live project
+(build session 2026-09-02): the org (slug epayl, the exact tokens), the
+two members (kendrasobo@gmail.com, remi@soboconsulting.com), the five
+strategies, the blockers, and the hours. What remains is verification
+and operator steps this sandbox cannot do:
+
+- [ ] Live door run: signed out, open app.soboconsulting.com/epayl and
+      confirm the acid-black locked screen renders with zero figures
+      (curl the URL and search the response for `$` if being thorough;
+      the build session proved this against a local stub only, since
+      its sandbox cannot reach supabase.co).
+- [ ] Send yourself the link from the door (remi@soboconsulting.com is
+      a seeded hub member) and confirm it lands on the five-section
+      shell wearing EPA's system, not Keystone's.
+- [ ] Confirm kendrasobo@gmail.com is the right address for Kendra
+      before she is invited to look (it came from the design
+      reference's allowlist). A wrong address is one row update on
+      hub_members.
+- [ ] The wordmark's exact campaign wording: correct the vocabulary row
+      on hub_orgs when the real wording is settled (no deploy needed).
+- [ ] Custom domain: decided LATER (2026-09-02). When wanted, it is a
+      Vercel domain + CNAME step like section 0, pointed at /epayl.
+- [ ] 390px live run on the hub door and shell, owed with the other
+      rings' runs.

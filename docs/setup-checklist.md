@@ -142,6 +142,12 @@ and operator steps this sandbox cannot do:
       Vercel domain + CNAME step like section 0, pointed at /epayl.
 - [ ] 390px live run on the hub door and shell, owed with the other
       rings' runs.
+- [ ] Phase three live run (2026-09-02): on Money, upload
+      sources/epayl/EPA_YoungLife_Three_Year_Budget.xlsx, read the
+      preview (expect 127 lines, $191,869 first-year cost, $199,245 to
+      raise), press Bring it in, and confirm the four figures, the
+      cash calendar, and the details fold fill in. Then open Plan and
+      spot check the gift table and one playbook.
 - [ ] Phase two live run (2026-09-02): sign in at /epayl, open People,
       upload sources/epayl/Top_100_List_CA495.xlsx, read the diff
       (expect 99 households, 4 warnings), press Bring it in, and spot

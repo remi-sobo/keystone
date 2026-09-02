@@ -29,7 +29,7 @@ export default async function HubHomePage({
     homeFigures(supabase, hub.orgId, hub.fiscalYearStart),
     supabase
       .from('hub_tasks')
-      .select('id, title, why, owner, due_date, pinned_slot')
+      .select('id, title, why, owner, due_date, due_label, pinned_slot')
       .eq('org_id', hub.orgId)
       .is('done_at', null)
       .order('pinned_slot', { ascending: true, nullsFirst: false })
@@ -135,7 +135,7 @@ export default async function HubHomePage({
                       marginTop: 10,
                     }}
                   >
-                    {[t.due_date, t.owner].filter(Boolean).join(' · ')}
+                    {[t.due_date ?? t.due_label, t.owner].filter(Boolean).join(' · ')}
                   </div>
                 </Card>
               </div>

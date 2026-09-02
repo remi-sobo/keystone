@@ -136,20 +136,25 @@ and operator steps this sandbox cannot do:
       before she is invited to look (it came from the design
       reference's allowlist). A wrong address is one row update on
       hub_members.
-- [ ] The wordmark's exact campaign wording: correct the vocabulary row
-      on hub_orgs when the real wording is settled (no deploy needed).
+- [x] The wordmark's exact campaign wording: settled by the v2 design
+      reference 2026-09-02 ("For God So Loved East Palo Alto", So Loved
+      in gold) and applied to the live vocabulary row.
 - [ ] Custom domain: decided LATER (2026-09-02). When wanted, it is a
       Vercel domain + CNAME step like section 0, pointed at /epayl.
 - [ ] 390px live run on the hub door and shell, owed with the other
       rings' runs.
-- [ ] Phase three live run (2026-09-02): on Money, upload
-      sources/epayl/EPA_YoungLife_Three_Year_Budget.xlsx, read the
-      preview (expect 127 lines, $191,869 first-year cost, $199,245 to
-      raise), press Bring it in, and confirm the four figures, the
-      cash calendar, and the details fold fill in. Then open Plan and
-      spot check the gift table and one playbook.
-- [ ] Phase two live run (2026-09-02): sign in at /epayl, open People,
-      upload sources/epayl/Top_100_List_CA495.xlsx, read the diff
-      (expect 99 households, 4 warnings), press Bring it in, and spot
-      check one household against the workbook. Then click the footer
-      export link and confirm the zip opens with donors.csv inside.
+- [x] The data import: DONE LIVE 2026-09-02 in the v2 session, not
+      through the upload UI. The fresh Top 100 and budget workbook were
+      parsed by the same src/lib parsers, validated on the scratch
+      database, and applied to the live project: 99 households (11
+      donors, 1 do-not-contact), 66 export gifts, 127 budget lines
+      exact to the cent ($191,868.91 operating, $199,244.73 to raise),
+      the v2 relationship notes on 11 households (only where notes were
+      empty), and the Dillabough research profile. A future export
+      lands through the upload flow on People; the parser's delete is
+      scoped to source = 'yl_export', so hand-entered gifts and notes
+      survive.
+- [ ] Live spot check (was the phase two and three live runs): sign in
+      at /epayl and confirm People shows 99 households, Money shows the
+      four figures and the cash calendar, Plan's cards carry committed
+      amounts, and the footer export zip opens with donors.csv inside.

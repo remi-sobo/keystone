@@ -23,9 +23,9 @@ const label = {
 }
 
 const METHOD_FIELDS: [key: 'precondition' | 'dependency' | 'failure_mode' | 'done_means', title: string, gap: string][] = [
-  ['precondition', 'The precondition', 'What has to exist before this can start. Not written yet.'],
-  ['dependency', 'The dependency', 'Who else has to do something. Not written yet.'],
-  ['failure_mode', 'The failure mode', 'The specific way this goes wrong. Not written yet.'],
+  ['precondition', 'Has to exist first', 'What has to exist before this can start. Not written yet.'],
+  ['dependency', 'Depends on', 'Who else has to do something. Not written yet.'],
+  ['failure_mode', 'Goes wrong when', 'The specific way this goes wrong. Not written yet.'],
   ['done_means', 'Done means', 'What has to be true to call it complete. Not written yet.'],
 ]
 

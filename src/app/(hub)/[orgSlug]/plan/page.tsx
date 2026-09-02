@@ -11,10 +11,10 @@ import ContentBlocks from '@/components/hub/ContentBlocks'
 /**
  * PLAN: where the money comes from. The fundraising plan itself, not
  * a page about it: five strategy cards, the gift table (the
- * arithmetic underneath major gifts and monthly), the seven strands
- * the plan names, and at the bottom the risks and open questions,
- * where everything the build refused to invent is visible instead of
- * silent. Opening a card gives that strategy's full playbook.
+ * arithmetic underneath major gifts and monthly together), and at the
+ * bottom the risks and open questions, where everything the build
+ * refused to invent is visible instead of silent. Opening a card
+ * gives that strategy's full playbook.
  */
 export default async function HubPlanPage({
   params,
@@ -153,7 +153,6 @@ export default async function HubPlanPage({
       )}
 
       <ContentBlocks orgId={hub.orgId} section="plan-gift-table" heading="The gift table" />
-      <ContentBlocks orgId={hub.orgId} section="plan-strands" heading="The seven strands" />
       <ContentBlocks orgId={hub.orgId} section="plan-risks" heading="Risks" />
       <ContentBlocks orgId={hub.orgId} section="plan-open-questions" heading="Open questions" />
     </div>

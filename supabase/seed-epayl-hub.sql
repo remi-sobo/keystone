@@ -40,8 +40,9 @@ select
   '{
     "org_noun": "area",
     "wordmark": [
-      { "text": "East Palo Alto Young Life" },
-      { "text": "So Loved", "tone": "gold" }
+      { "text": "For God" },
+      { "text": "So Loved", "tone": "gold" },
+      { "text": "East Palo Alto" }
     ],
     "tagline": "Fundraising Hub",
     "door_headline": "This page is for East Palo Alto Young Life leadership",
@@ -118,23 +119,8 @@ where o.slug = 'epayl'
     select 1 from public.hub_capacity x where x.org_id = o.id and x.person = c.person
   );
 
--- PLAN's open questions: where the things the build refused to invent
--- become visible instead of silent.
-insert into public.hub_content_blocks (org_id, practice_id, section, kind, payload, sort)
-select o.id, o.practice_id, 'plan-open-questions', 'table',
-  '{
-    "columns": ["What is not settled", "Who owns it", "What the plan assumes meanwhile"],
-    "rows": [
-      ["The wordmark''s exact wording", "Remi", "The handoff names So Loved in gold; the full campaign name is not in the bundle. The header shows the org name with So Loved until this is corrected in the vocabulary row."],
-      ["Weekly hours for church partners and grants", "Remi and Kendra", "Major gifts, brunch, and monthly have stated hours. The other two do not, so the hours total under Work reads lower than the real ask."],
-      ["Each strategy''s goal", "Remi", "No goal is typed in anywhere. Goals land with a trust level when the plan figures are entered, and the gift table arithmetic sits under major gifts and monthly."],
-      ["The fiscal year", "Kendra", "The budget workbook models August through July and the answer sheet says October through September. The hub runs October through September until corrected."]
-    ]
-  }',
-  0
-from public.hub_orgs o
-where o.slug = 'epayl'
-  and not exists (
-    select 1 from public.hub_content_blocks x
-    where x.org_id = o.id and x.section = 'plan-open-questions'
-  );
+-- PLAN's open questions live in seed-epayl-plan-content.sql, which
+-- owns and replaces the plan-open-questions section. The bootstrap
+-- block that used to sit here is gone: it predated the v2 design
+-- reference, which settled the wordmark, the hours, and the goals it
+-- listed as open.

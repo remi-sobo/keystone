@@ -6,6 +6,7 @@ import SectionTitle from '@/components/hub/SectionTitle'
 import Card from '@/components/hub/Card'
 import Tag from '@/components/hub/Tag'
 import { addHousehold } from './actions'
+import ContentBlocks from '@/components/hub/ContentBlocks'
 import { confirmYlImport, dismissImport, uploadHubDocument } from '../uploads'
 
 /**
@@ -375,6 +376,8 @@ export default async function HubPeoplePage({
           </button>
         </form>
       </details>
+
+      <ContentBlocks orgId={hub.orgId} section="stewardship" heading="Stewardship" />
     </div>
   )
 }

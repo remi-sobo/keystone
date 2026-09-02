@@ -1,0 +1,2019 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<![CDATA[<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EPA YL Fundraising Hub</title>
+<link rel="stylesheet" href="_ds/epa-young-life-design-system-cb412f7c-9a95-4ac1-a338-62b5c6c3f7bb/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/epa-young-life-design-system-cb412f7c-9a95-4ac1-a338-62b5c6c3f7bb/tokens/colors.css">
+<link rel="stylesheet" href="_ds/epa-young-life-design-system-cb412f7c-9a95-4ac1-a338-62b5c6c3f7bb/tokens/typography.css">
+<link rel="stylesheet" href="_ds/epa-young-life-design-system-cb412f7c-9a95-4ac1-a338-62b5c6c3f7bb/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/epa-young-life-design-system-cb412f7c-9a95-4ac1-a338-62b5c6c3f7bb/styles.css">
+<script src="_ds/epa-young-life-design-system-cb412f7c-9a95-4ac1-a338-62b5c6c3f7bb/_ds_bundle.js"></script>
+<style>
+  html,body{margin:0;padding:0;background:var(--paper);}
+  *{box-sizing:border-box;}
+  a{color:var(--gold-ink);text-decoration:none;border-bottom:1px solid var(--line-on-paper);}
+  a:hover{color:var(--acid-black);border-bottom-color:var(--gold);}
+  input,textarea,select{font-family:'Archivo',Helvetica,Arial,sans-serif;}
+  textarea{resize:vertical;}
+  ::placeholder{color:var(--stone);}
+</style>
+</helmet>
+
+<div style="font-family:'Archivo',Helvetica,Arial,sans-serif;color:var(--acid-black);background:var(--paper);min-height:100vh;">
+
+  <sc-if value="{{ isLocked }}" hint-placeholder-val="{{ true }}">
+    <div style="background:var(--acid-black);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px;">
+      <div style="width:100%;max-width:520px;">
+        <div>
+          <div style="font-family:'Abril Fatface',Georgia,serif;font-size:26px;line-height:.98;letter-spacing:.005em;text-transform:uppercase;color:var(--bone);">For God <span style="color:var(--gold);">So Loved</span> East Palo Alto</div>
+          <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);margin-top:9px;">Fundraising Hub</div>
+        </div>
+        <div style="height:3px;background:var(--gold);margin:28px 0;width:60px;"></div>
+        <div style="font-family:'Abril Fatface',Georgia,serif;font-size:34px;line-height:1.05;color:var(--bone);text-transform:uppercase;">This page is for East Palo Alto Young Life leadership</div>
+        <div style="font-size:15px;line-height:1.65;color:var(--bone-dim);margin-top:16px;">Put in your email and we'll send you a link that signs you in. No password to remember. The link only works for the people on the list.</div>
+        <div style="margin-top:26px;">
+          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--stone);">Your email</div>
+          <input value="{{ email }}" onChange="{{ setEmail }}" placeholder="you@example.com" style="width:100%;margin-top:8px;padding:14px 16px;background:var(--acid-black-raised);border:1px solid var(--line-on-black);color:var(--bone);font-size:16px;">
+        </div>
+        <div style="margin-top:16px;">
+          <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="loud" variant="primary" onClick="{{ sendLink }}" hint-size="auto,48px">Send me the link</x-import>
+        </div>
+        <div style="font-size:14px;line-height:1.6;color:var(--terracotta);margin-top:14px;">{{ authNote }}</div>
+        <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);margin-top:40px;line-height:1.8;">Not public · Not indexed · Kendra and Remi only</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isSent }}" hint-placeholder-val="{{ false }}">
+    <div style="background:var(--acid-black);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px;">
+      <div style="width:100%;max-width:520px;">
+        <div>
+          <div style="font-family:'Abril Fatface',Georgia,serif;font-size:26px;line-height:.98;letter-spacing:.005em;text-transform:uppercase;color:var(--bone);">For God <span style="color:var(--gold);">So Loved</span> East Palo Alto</div>
+          <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);margin-top:9px;">Fundraising Hub</div>
+        </div>
+        <div style="height:3px;background:var(--gold);margin:28px 0;width:60px;"></div>
+        <div style="font-family:'Abril Fatface',Georgia,serif;font-size:34px;line-height:1.05;color:var(--bone);text-transform:uppercase;">Check your email</div>
+        <div style="font-size:15px;line-height:1.65;color:var(--bone-dim);margin-top:16px;">If {{ sentTo }} is on the list, a sign-in link is on its way. It works once and expires in an hour.</div>
+        <sc-if value="{{ linkArrived }}" hint-placeholder-val="{{ true }}">
+          <div style="border:1px solid var(--line-on-black);background:var(--acid-black-raised);padding:22px;margin-top:26px;">
+            <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);">The email she'd get</div>
+            <div style="font-size:15px;line-height:1.65;color:var(--bone);margin-top:12px;">Subject: Your sign-in link for the fundraising hub</div>
+            <div style="font-size:15px;line-height:1.65;color:var(--bone-dim);margin-top:10px;">Click below to open the hub. The link is good for one hour.</div>
+            <div style="margin-top:16px;">
+              <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="loud" variant="primary" onClick="{{ enter }}" hint-size="auto,48px">Open the hub</x-import>
+            </div>
+          </div>
+        </sc-if>
+        <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);margin-top:26px;line-height:1.8;">An address that isn't on the list sees this exact screen and gets no email.</div>
+        <div style="margin-top:20px;">
+          <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="loud" variant="ghost" onClick="{{ signOut }}" hint-size="auto,40px">Use a different email</x-import>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isOpen }}" hint-placeholder-val="{{ false }}">
+    <div>
+
+      <sc-if value="{{ addOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ closeAdd }}" style="position:fixed;inset:0;background:rgba(33,31,28,.86);z-index:70;display:flex;align-items:flex-start;justify-content:center;padding:80px 40px 40px 40px;">
+          <div style="background:var(--paper);border:1px solid var(--acid-black);max-width:620px;width:100%;">
+            <div style="background:var(--acid-black);padding:20px 24px;display:flex;justify-content:space-between;align-items:center;gap:20px;">
+              <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);">Add something</div>
+              <div onClick="{{ closeAdd }}" style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);cursor:pointer;">Close</div>
+            </div>
+            <div style="padding:22px 24px 26px 24px;">
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <sc-for list="{{ addKinds }}" as="k" hint-placeholder-count="5">
+                  <div onClick="{{ k.pick }}" style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;padding:10px 13px;border:1px solid var(--acid-black);background:{{ k.bg }};color:{{ k.fg }};cursor:pointer;">{{ k.label }}</div>
+                </sc-for>
+              </div>
+              <div style="font-size:14px;color:var(--stone-ink);line-height:1.55;margin-top:16px;">{{ addHint }}</div>
+              <div style="margin-top:18px;">
+                <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">{{ addFieldOne }}</div>
+                <input value="{{ addA }}" onChange="{{ setAddA }}" placeholder="{{ addPlaceOne }}" style="width:100%;margin-top:6px;padding:12px;border:1px solid var(--line-on-paper);background:var(--paper-raised);font-size:15px;">
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;">
+                <div>
+                  <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">{{ addFieldTwo }}</div>
+                  <input value="{{ addB }}" onChange="{{ setAddB }}" placeholder="{{ addPlaceTwo }}" style="width:100%;margin-top:6px;padding:12px;border:1px solid var(--line-on-paper);background:var(--paper-raised);font-size:15px;">
+                </div>
+                <div>
+                  <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">{{ addFieldThree }}</div>
+                  <input value="{{ addC }}" onChange="{{ setAddC }}" placeholder="{{ addPlaceThree }}" style="width:100%;margin-top:6px;padding:12px;border:1px solid var(--line-on-paper);background:var(--paper-raised);font-size:15px;">
+                </div>
+              </div>
+              <sc-if value="{{ addIsGift }}" hint-placeholder-val="{{ false }}">
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:14px;">
+                  <div>
+                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">In hand or promised</div>
+                    <select value="{{ gKind }}" onChange="{{ setGKind }}" style="width:100%;margin-top:6px;padding:12px;border:1px solid var(--line-on-paper);background:var(--paper-raised);font-size:15px;">
+                      <option>Gift received</option>
+                      <option>Pledge, dated</option>
+                      <option>Pledge, no date</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">Which strategy</div>
+                    <select value="{{ gStrategy }}" onChange="{{ setGStrategy }}" style="width:100%;margin-top:6px;padding:12px;border:1px solid var(--line-on-paper);background:var(--paper-raised);font-size:15px;">
+                      <option>Major gifts</option>
+                      <option>Monthly partners</option>
+                      <option>The fall brunch</option>
+                      <option>Church partners</option>
+                      <option>Grants</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">What it's for</div>
+                    <select value="{{ gFor }}" onChange="{{ setGFor }}" style="width:100%;margin-top:6px;padding:12px;border:1px solid var(--line-on-paper);background:var(--paper-raised);font-size:15px;">
+                      <option>Wherever needed</option>
+                      <option>Camp</option>
+                      <option>The house</option>
+                      <option>Leaders</option>
+                    </select>
+                  </div>
+                </div>
+              </sc-if>
+              <div style="margin-top:20px;">
+                <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="quiet" variant="primary" onClick="{{ commitAdd }}" hint-size="auto,46px">Save it</x-import>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="background:var(--acid-black);color:var(--bone);padding:26px 40px 0 40px;">
+        <div style="max-width:1280px;margin:0 auto;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:30px;flex-wrap:wrap;">
+            <div>
+              <div style="font-family:'Abril Fatface',Georgia,serif;font-size:19px;line-height:.98;letter-spacing:.005em;text-transform:uppercase;color:var(--bone);">For God <span style="color:var(--gold);">So Loved</span> East Palo Alto</div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);margin-top:7px;">Fundraising Hub</div>
+            </div>
+            <div style="display:flex;gap:14px;align-items:center;">
+              <div onClick="{{ openAdd }}" style="font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;background:var(--gold);color:var(--acid-black);padding:11px 20px;cursor:pointer;border:1px solid var(--gold);">Add</div>
+              <div onClick="{{ toggleMore }}" style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--stone);cursor:pointer;padding:8px 4px;">More</div>
+            </div>
+          </div>
+
+          <sc-if value="{{ moreOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="border:1px solid var(--line-on-black);background:var(--acid-black-raised);padding:18px 20px;margin-top:14px;display:flex;gap:34px;flex-wrap:wrap;">
+              <div>
+                <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);">Files</div>
+                <div style="font-size:14px;color:var(--bone-dim);line-height:1.6;margin-top:8px;max-width:280px;">Upload the latest Young Life report or the budget and the numbers update. You'll see what changed before it saves.</div>
+                <div style="margin-top:12px;">
+                  <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="loud" variant="outline" size="sm" onClick="{{ noop }}" hint-size="auto,36px">Upload a file</x-import>
+                </div>
+              </div>
+              <div>
+                <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);">Print</div>
+                <div style="font-size:14px;color:var(--bone-dim);line-height:1.6;margin-top:8px;max-width:260px;">The plan and the money print as one document for the committee.</div>
+              </div>
+              <div>
+                <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);">Account</div>
+                <div style="font-size:14px;color:var(--bone-dim);line-height:1.6;margin-top:8px;">Signed in as {{ sentTo }}</div>
+                <div style="margin-top:12px;">
+                  <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="loud" variant="ghost" size="sm" onClick="{{ signOut }}" hint-size="auto,36px">Sign out</x-import>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <div style="display:flex;flex-wrap:wrap;margin-top:24px;border-bottom:3px solid var(--gold);">
+            <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+              <div onClick="{{ t.select }}" style="font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;padding:13px 22px;cursor:pointer;background:{{ t.bg }};color:{{ t.fg }};border:1px solid var(--line-on-black);border-bottom:none;margin-right:2px;">{{ t.label }}</div>
+            </sc-for>
+          </div>
+          <div style="font-size:13px;color:var(--stone);padding:12px 0 20px 0;">{{ tabHint }}</div>
+        </div>
+      </div>
+
+      <div style="max-width:1280px;margin:0 auto;padding:34px 40px 90px 40px;">
+
+        <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line-on-paper);border:1px solid var(--line-on-paper);">
+              <sc-for list="{{ homeFigures }}" as="f" hint-placeholder-count="3">
+                <div style="background:var(--paper-raised);padding:20px 22px;">
+                  <div style="display:flex;align-items:baseline;gap:8px;">
+                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--stone-ink);">{{ f.label }}</div>
+                    <div onClick="{{ f.toggle }}" style="font-family:'Space Mono',monospace;font-size:11px;color:var(--gold-ink);cursor:pointer;border:1px solid var(--line-on-paper);width:16px;height:16px;line-height:14px;text-align:center;">?</div>
+                  </div>
+                  <div style="font-family:'Abril Fatface',Georgia,serif;font-size:38px;line-height:1.05;margin-top:10px;color:{{ f.color }};">{{ f.value }}</div>
+                  <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone-ink);margin-top:6px;">{{ f.trust }}</div>
+                  <sc-if value="{{ f.open }}" hint-placeholder-val="{{ false }}">
+                    <div style="font-size:14px;line-height:1.6;margin-top:12px;padding-top:12px;border-top:1px solid var(--line-on-paper);">{{ f.explain }}</div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+
+            <sc-if value="{{ hasCommitments }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:14px;">
+                <div style="display:flex;height:34px;border:1px solid var(--line-on-paper);">
+                  <div style="background:var(--forest-ink);width:{{ committedW }};"></div>
+                  <div style="background:var(--line-on-paper);flex:1;"></div>
+                </div>
+                <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone-ink);margin-top:8px;">{{ committedPct }} of the goal is committed · from {{ commitmentCount }} recorded gifts and pledges</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ noCommitments }}" hint-placeholder-val="{{ true }}">
+              <div style="border:1px solid var(--line-on-paper);background:var(--paper-raised);padding:18px 20px;margin-top:14px;">
+                <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">The year hasn't started</div>
+                <div style="font-size:15px;line-height:1.6;margin-top:10px;max-width:820px;">There's no progress bar yet because nothing has been committed for this year. Last year eleven households gave {{ lastYearFmt }}, and that's history, not a commitment. Record the first gift or pledge with the Add button and the bar appears.</div>
+              </div>
+            </sc-if>
+
+            <div style="display:grid;grid-template-columns:1.35fr 1fr;gap:44px;margin-top:44px;align-items:start;">
+              <div>
+                <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">Your next three moves</div>
+                <div style="font-size:14px;color:var(--stone-ink);line-height:1.55;margin-top:8px;">Chosen by rules, not by a guess. The reason is on every card. Pin one and it stays until you unpin it.</div>
+                <div style="margin-top:18px;">
+                  <sc-for list="{{ moves }}" as="m" hint-placeholder-count="3">
+                    <div style="border:1px solid {{ m.border }};background:{{ m.bg }};padding:20px 22px;margin-bottom:10px;">
+                      <div style="display:grid;grid-template-columns:26px 1fr auto;gap:16px;align-items:start;">
+                        <div onClick="{{ m.toggle }}" style="width:22px;height:22px;border:1px solid var(--acid-black);background:{{ m.boxBg }};cursor:pointer;color:var(--bone);font-size:14px;line-height:20px;text-align:center;">{{ m.mark }}</div>
+                        <div>
+                          <div style="display:flex;align-items:baseline;gap:10px;">
+                            <div style="font-family:'Abril Fatface',Georgia,serif;font-size:20px;color:var(--gold);">{{ m.num }}</div>
+                            <div style="font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--terracotta);">{{ m.verb }}</div>
+                          </div>
+                          <div style="font-size:19px;font-weight:600;line-height:1.35;margin-top:8px;">{{ m.subject }}</div>
+                          <div style="font-size:15px;line-height:1.55;margin-top:6px;">{{ m.reason }}</div>
+                          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);margin-top:10px;">{{ m.strategy }} · {{ m.owner }} · {{ m.when }}</div>
+                        </div>
+                        <div onClick="{{ m.pin }}" style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:{{ m.pinColor }};cursor:pointer;white-space:nowrap;">{{ m.pinLabel }}</div>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone-ink);">Picked in this order · overdue thank-yous, then blockers, then the strategy furthest behind, then the oldest untouched household</div>
+
+                <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:44px;">Where the money will come from</div>
+                <div style="margin-top:14px;border-top:2px solid var(--acid-black);">
+                  <div style="display:grid;grid-template-columns:1.3fr 100px 100px 100px 1fr;gap:16px;padding:10px 0;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);border-bottom:1px solid var(--line-on-paper);">
+                    <div>Strategy</div><div>Goal</div><div>Committed</div><div>Gap</div><div>Where it stands</div>
+                  </div>
+                  <sc-for list="{{ strategyRows }}" as="s" hint-placeholder-count="5">
+                    <div onClick="{{ s.go }}" style="display:grid;grid-template-columns:1.3fr 100px 100px 100px 1fr;gap:16px;padding:15px 0;border-bottom:1px solid var(--line-on-paper);align-items:baseline;cursor:pointer;">
+                      <div style="font-weight:600;font-size:15px;">{{ s.name }}</div>
+                      <div style="font-family:'Space Mono',monospace;font-size:14px;">{{ s.goalFmt }}</div>
+                      <div style="font-family:'Space Mono',monospace;font-size:14px;color:var(--forest-ink);">{{ s.committedFmt }}</div>
+                      <div style="font-family:'Space Mono',monospace;font-size:14px;color:var(--terracotta);">{{ s.gapFmt }}</div>
+                      <div style="font-size:14px;line-height:1.45;color:{{ s.statusColor }};">{{ s.status }}</div>
+                    </div>
+                  </sc-for>
+                  <div style="display:grid;grid-template-columns:1.3fr 100px 100px 100px 1fr;gap:16px;padding:15px 0;border-bottom:2px solid var(--acid-black);font-weight:700;">
+                    <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;">Total</div>
+                    <div style="font-family:'Space Mono',monospace;font-size:14px;">{{ goalFmt }}</div>
+                    <div style="font-family:'Space Mono',monospace;font-size:14px;">{{ committedFmt }}</div>
+                    <div style="font-family:'Space Mono',monospace;font-size:14px;">{{ gapFmt }}</div>
+                    <div></div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">The work</div>
+                <div style="border:1px solid var(--line-on-paper);background:var(--paper-raised);padding:20px;margin-top:12px;">
+                  <div style="display:flex;gap:30px;">
+                    <div>
+                      <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">Open</div>
+                      <div style="font-family:'Abril Fatface',Georgia,serif;font-size:32px;margin-top:6px;">{{ openCount }}</div>
+                    </div>
+                    <div>
+                      <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">Overdue</div>
+                      <div style="font-family:'Abril Fatface',Georgia,serif;font-size:32px;margin-top:6px;color:{{ overdueColor }};">{{ overdueCount }}</div>
+                    </div>
+                    <div>
+                      <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">Done</div>
+                      <div style="font-family:'Abril Fatface',Georgia,serif;font-size:32px;margin-top:6px;color:var(--stone-ink);">{{ doneCount }}</div>
+                    </div>
+                  </div>
+                  <div style="font-size:15px;line-height:1.6;margin-top:14px;padding-top:14px;border-top:1px solid var(--line-on-paper);">{{ workSentence }}</div>
+                  <div style="margin-top:14px;">
+                    <div onClick="{{ goWork }}" style="display:inline-block;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;border:1px solid var(--acid-black);padding:11px 18px;cursor:pointer;">Open the list</div>
+                  </div>
+                </div>
+
+                <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--terracotta);margin-top:38px;">Needs follow-up · {{ followUpCount }}</div>
+                <div style="font-size:14px;color:var(--stone-ink);line-height:1.55;margin-top:8px;">Households the rules flagged. Anything overdue here can become a move above.</div>
+                <div style="margin-top:12px;">
+                  <sc-for list="{{ followUpTop }}" as="f" hint-placeholder-count="3">
+                    <div onClick="{{ f.go }}" style="border:1px solid var(--line-on-paper);background:var(--paper-raised);padding:14px 16px;margin-bottom:8px;cursor:pointer;">
+                      <div style="font-weight:600;font-size:15px;">{{ f.name }}</div>
+                      <div style="font-size:13px;color:var(--stone-ink);line-height:1.5;margin-top:4px;">{{ f.why }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+
+                <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--terracotta);margin-top:38px;">What's in the way</div>
+                <div style="margin-top:12px;">
+                  <sc-for list="{{ blockerTop }}" as="b" hint-placeholder-count="2">
+                    <div style="border-left:3px solid var(--terracotta);padding:4px 0 4px 16px;margin-bottom:16px;">
+                      <div style="font-weight:600;font-size:15px;">{{ b.name }}</div>
+                      <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone-ink);margin-top:4px;">{{ b.owner }} · {{ b.due }}</div>
+                      <div style="font-size:14px;line-height:1.5;margin-top:6px;">{{ b.blocks }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isPeople }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <div style="font-family:'Abril Fatface',Georgia,serif;font-size:40px;line-height:1;text-transform:uppercase;">{{ peopleCount }} households</div>
+            <div style="font-size:16px;line-height:1.6;margin-top:12px;max-width:760px;">Everyone in one list. Giving history is verified from the Young Life report. The relationship notes are blank until somebody fills them in, and a blank is more useful than a guess.</div>
+
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:24px;">
+              <input value="{{ q }}" onChange="{{ setQ }}" placeholder="Search a name, a city, a company" style="flex:1;min-width:240px;padding:12px 14px;border:1px solid var(--line-on-paper);background:var(--paper-raised);font-size:15px;">
+              <sc-for list="{{ peopleFilters }}" as="f" hint-placeholder-count="6">
+                <div onClick="{{ f.select }}" style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;padding:12px 13px;border:1px solid var(--acid-black);background:{{ f.bg }};color:{{ f.fg }};cursor:pointer;">{{ f.label }}</div>
+              </sc-for>
+            </div>
+            <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);margin-top:14px;">Showing {{ peopleShown }}</div>
+
+            <div style="margin-top:12px;">
+              <div style="display:grid;grid-template-columns:1.5fr 1.1fr 130px 1.3fr 70px;gap:16px;padding:10px 18px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">
+                <div>Household</div><div>Where they stand</div><div>Last gift</div><div>Next move</div><div></div>
+              </div>
+              <sc-for list="{{ people }}" as="p" hint-placeholder-count="10">
+                <div style="border:1px solid {{ p.border }};background:{{ p.bg }};margin-bottom:8px;">
+                  <div onClick="{{ p.toggle }}" style="display:grid;grid-template-columns:1.5fr 1.1fr 130px 1.3fr 70px;gap:16px;padding:16px 18px;align-items:center;cursor:pointer;">
+                    <div>
+                      <div style="font-weight:600;font-size:16px;">{{ p.name }}</div>
+                      <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone-ink);margin-top:4px;">{{ p.sub }}</div>
+                    </div>
+                    <div style="font-size:14px;line-height:1.4;color:{{ p.standColor }};">{{ p.stand }}</div>
+                    <div style="font-family:'Space Mono',monospace;font-size:14px;">{{ p.lastFmt }}</div>
+                    <div style="font-size:14px;line-height:1.45;">{{ p.next }}</div>
+                    <div style="text-align:right;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-ink);">{{ p.chev }}</div>
+                  </div>
+
+                  <sc-if value="{{ p.open }}" hint-placeholder-val="{{ false }}">
+                    <div style="border-top:1px solid var(--line-on-paper);padding:24px 20px;">
+                      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:30px;">
+                        <div>
+                          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">Snapshot</div>
+                          <sc-for list="{{ p.snapshot }}" as="s" hint-placeholder-count="6">
+                            <div style="display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid var(--line-on-paper);font-size:13px;">
+                              <div style="color:var(--stone-ink);">{{ s.k }}</div>
+                              <div style="text-align:right;font-family:'Space Mono',monospace;">{{ s.v }}</div>
+                            </div>
+                          </sc-for>
+                        </div>
+                        <div>
+                          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">Giving</div>
+                          <div style="display:flex;align-items:flex-end;gap:5px;height:56px;margin-top:12px;">
+                            <sc-for list="{{ p.spark }}" as="b" hint-placeholder-count="7">
+                              <div style="flex:1;">
+                                <div style="height:{{ b.h }};background:{{ b.color }};"></div>
+                              </div>
+                            </sc-for>
+                          </div>
+                          <div style="display:flex;gap:5px;margin-top:5px;">
+                            <sc-for list="{{ p.spark }}" as="b" hint-placeholder-count="7">
+                              <div style="flex:1;text-align:center;font-family:'Space Mono',monospace;font-size:9px;color:var(--stone-ink);">{{ b.year }}</div>
+                            </sc-for>
+                          </div>
+                          <sc-for list="{{ p.giving }}" as="g" hint-placeholder-count="4">
+                            <div style="display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid var(--line-on-paper);font-size:13px;">
+                              <div style="color:var(--stone-ink);">{{ g.k }}</div>
+                              <div style="text-align:right;font-family:'Space Mono',monospace;">{{ g.v }}</div>
+                            </div>
+                          </sc-for>
+                        </div>
+                        <div>
+                          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">Relationship</div>
+                          <div style="font-size:14px;line-height:1.6;margin-top:10px;">{{ p.care }}</div>
+                          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:18px;">Still open</div>
+                          <div style="font-size:14px;line-height:1.6;margin-top:8px;">{{ p.threads }}</div>
+                          <sc-if value="{{ p.hasFlag }}" hint-placeholder-val="{{ false }}">
+                            <div>
+                              <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--terracotta);margin-top:18px;">Rule in force</div>
+                              <div style="font-size:14px;line-height:1.6;margin-top:8px;color:var(--terracotta);">{{ p.flags }}</div>
+                            </div>
+                          </sc-if>
+                        </div>
+                      </div>
+
+                      <div style="margin-top:26px;padding-top:20px;border-top:1px solid var(--line-on-paper);">
+                        <div onClick="{{ p.toggleResearch }}" style="display:flex;justify-content:space-between;align-items:center;gap:20px;cursor:pointer;">
+                          <div>
+                            <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">Research</div>
+                            <div style="font-size:15px;line-height:1.5;margin-top:6px;">{{ p.researchState }}</div>
+                          </div>
+                          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-ink);white-space:nowrap;">{{ p.researchChev }}</div>
+                        </div>
+
+                        <sc-if value="{{ p.researchOpen }}" hint-placeholder-val="{{ false }}">
+                          <div style="margin-top:22px;">
+                            <sc-if value="{{ p.hasProfile }}" hint-placeholder-val="{{ true }}">
+                              <div>
+                                <div style="font-size:17px;line-height:1.55;font-weight:600;max-width:820px;">{{ p.profile.headline }}</div>
+                                <div style="display:grid;grid-template-columns:1fr 1.1fr;gap:34px;margin-top:24px;align-items:start;">
+                                  <div>
+                                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">The short version</div>
+                                    <div style="margin-top:10px;border-top:1px solid var(--line-on-paper);">
+                                      <sc-for list="{{ p.profile.snapshot }}" as="s" hint-placeholder-count="8">
+                                        <div style="display:grid;grid-template-columns:150px 1fr;gap:14px;padding:9px 0;border-bottom:1px solid var(--line-on-paper);">
+                                          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone-ink);padding-top:2px;">{{ s.k }}</div>
+                                          <div style="font-size:13px;line-height:1.5;">{{ s.v }}</div>
+                                        </div>
+                                      </sc-for>
+                                    </div>
+                                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:26px;">How much to ask for, eventually</div>
+                                    <div style="margin-top:10px;border-top:1px solid var(--line-on-paper);">
+                                      <sc-for list="{{ p.profile.ladder }}" as="l" hint-placeholder-count="4">
+                                        <div style="display:grid;grid-template-columns:130px 130px 1fr;gap:14px;padding:10px 0;border-bottom:1px solid var(--line-on-paper);align-items:baseline;">
+                                          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone-ink);">{{ l.a }}</div>
+                                          <div style="font-family:'Space Mono',monospace;font-size:14px;">{{ l.b }}</div>
+                                          <div style="font-size:13px;color:var(--stone-ink);line-height:1.5;">{{ l.c }}</div>
+                                        </div>
+                                      </sc-for>
+                                    </div>
+                                    <div style="font-size:14px;line-height:1.6;margin-top:12px;background:var(--paper-raised);border-left:3px solid var(--gold);padding:14px 16px;">{{ p.profile.ladderNote }}</div>
+                                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:26px;">Where the relationship sits</div>
+                                    <div style="margin-top:10px;border-top:1px solid var(--line-on-paper);">
+                                      <sc-for list="{{ p.profile.rce }}" as="r" hint-placeholder-count="5">
+                                        <div style="display:grid;grid-template-columns:130px 1fr;gap:14px;padding:9px 0;border-bottom:1px solid var(--line-on-paper);">
+                                          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone-ink);padding-top:2px;">{{ r.k }}</div>
+                                          <div style="font-size:13px;line-height:1.5;">{{ r.v }}</div>
+                                        </div>
+                                      </sc-for>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">What's public about them</div>
+                                    <sc-for list="{{ p.profile.publicNotes }}" as="n" hint-placeholder-count="3">
+                                      <div style="font-size:14px;line-height:1.65;margin-top:10px;">{{ n }}</div>
+                                    </sc-for>
+                                    <div style="border:1px solid var(--acid-black);padding:16px;margin-top:16px;">
+                                      <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--terracotta);">How to read that</div>
+                                      <div style="font-size:14px;line-height:1.6;margin-top:8px;">{{ p.profile.read }}</div>
+                                    </div>
+                                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:26px;">The part of the story most likely to land</div>
+                                    <div style="font-size:14px;line-height:1.65;margin-top:10px;">{{ p.profile.caseFit }}</div>
+                                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:26px;">The first move</div>
+                                    <div style="font-size:14px;line-height:1.65;margin-top:10px;">{{ p.profile.firstMove }}</div>
+                                  </div>
+                                </div>
+
+                                <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:32px;">Questions to ask them</div>
+                                <div style="font-size:13px;color:var(--stone-ink);line-height:1.5;margin-top:6px;">{{ p.profile.questionNote }}</div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 34px;margin-top:12px;">
+                                  <sc-for list="{{ p.profile.questions }}" as="q" hint-placeholder-count="10">
+                                    <div style="display:grid;grid-template-columns:24px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid var(--line-on-paper);">
+                                      <div style="font-family:'Abril Fatface',Georgia,serif;font-size:18px;color:var(--gold);">{{ q.n }}</div>
+                                      <div>
+                                        <div style="font-size:14px;line-height:1.5;">{{ q.q }}</div>
+                                        <div style="font-size:12px;color:var(--stone-ink);line-height:1.5;margin-top:4px;">{{ q.why }}</div>
+                                      </div>
+                                    </div>
+                                  </sc-for>
+                                </div>
+
+                                <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:32px;">Ways to ask, when it's time</div>
+                                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:12px;">
+                                  <sc-for list="{{ p.profile.proposals }}" as="pr" hint-placeholder-count="6">
+                                    <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Card" volume="quiet" raised="{{ yes }}" rule="{{ pr.primary }}" hint-size="100%,280px">
+                                      <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Tag" volume="quiet" tone="{{ pr.tone }}" hint-size="auto,26px">{{ pr.fit }}</x-import>
+                                      <div style="font-family:'Abril Fatface',Georgia,serif;font-size:20px;line-height:1.1;margin-top:12px;">{{ pr.name }}</div>
+                                      <div style="font-family:'Space Mono',monospace;font-size:13px;margin-top:8px;">{{ pr.ask }}</div>
+                                      <div style="font-size:13px;line-height:1.55;margin-top:10px;">{{ pr.what }}</div>
+                                      <div style="font-size:13px;line-height:1.55;margin-top:10px;padding-top:10px;border-top:1px solid var(--line-on-paper);color:var(--forest-ink);">{{ pr.line }}</div>
+                                    </x-import>
+                                  </sc-for>
+                                </div>
+
+                                <div style="display:grid;grid-template-columns:1fr 1.1fr;gap:34px;margin-top:32px;align-items:start;">
+                                  <div>
+                                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">The order to do it in</div>
+                                    <div style="margin-top:10px;border-top:1px solid var(--line-on-paper);">
+                                      <sc-for list="{{ p.profile.sequence }}" as="s" hint-placeholder-count="8">
+                                        <div style="display:grid;grid-template-columns:24px 120px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid var(--line-on-paper);align-items:baseline;">
+                                          <div style="font-family:'Abril Fatface',Georgia,serif;font-size:16px;color:var(--gold);">{{ s.n }}</div>
+                                          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone-ink);">{{ s.when }}</div>
+                                          <div style="font-size:13px;line-height:1.5;">{{ s.what }}</div>
+                                        </div>
+                                      </sc-for>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">The words to use</div>
+                                    <sc-for list="{{ p.profile.askPath }}" as="a" hint-placeholder-count="3">
+                                      <div style="border-left:3px solid var(--gold);padding:4px 0 4px 16px;margin-top:16px;">
+                                        <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">{{ a.when }}</div>
+                                        <div style="font-family:'Abril Fatface',Georgia,serif;font-size:19px;line-height:1.3;margin-top:6px;">{{ a.line }}</div>
+                                      </div>
+                                    </sc-for>
+                                    <div style="font-size:14px;line-height:1.6;margin-top:20px;background:var(--acid-black);color:var(--bone);padding:16px;">{{ p.profile.closing }}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            </sc-if>
+                            <sc-if value="{{ p.noProfile }}" hint-placeholder-val="{{ false }}">
+                              <div style="border:1px solid var(--line-on-paper);background:var(--paper-raised);padding:20px;">
+                                <div style="font-size:15px;line-height:1.6;">No research written yet. The template has ten sections: the short version, what's public, how much to ask for, where the relationship sits, the part of the story most likely to land, questions to ask, ways to ask, the first move, the order to do it in, and the words to use. Gary and Michelle Dillabough is the worked example.</div>
+                                <div style="margin-top:14px;">
+                                  <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="quiet" variant="outline" size="sm" onClick="{{ noop }}" hint-size="auto,38px">Start the research</x-import>
+                                </div>
+                              </div>
+                            </sc-if>
+                          </div>
+                        </sc-if>
+                      </div>
+
+                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:26px;padding-top:20px;border-top:1px solid var(--line-on-paper);">
+                        <div>
+                          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">Notes</div>
+                          <textarea value="{{ p.note }}" onChange="{{ p.setNote }}" placeholder="What they said. What you promised. Anything you'd forget." style="width:100%;height:110px;margin-top:10px;padding:12px;border:1px solid var(--line-on-paper);background:var(--paper);font-size:14px;line-height:1.55;"></textarea>
+                        </div>
+                        <div>
+                          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">Next move</div>
+                          <input value="{{ p.nextEdit }}" onChange="{{ p.setNext }}" placeholder="One sentence, with a date" style="width:100%;margin-top:10px;padding:11px;border:1px solid var(--line-on-paper);background:var(--paper);font-size:14px;">
+                          <div style="font-size:13px;color:var(--stone-ink);line-height:1.55;margin-top:10px;">Whatever you put here shows on the row above, and it's what the rules read when they pick your three moves.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:54px;">What every donor hears, and when</div>
+            <div style="font-size:15px;line-height:1.6;margin-top:8px;max-width:820px;">Getting a gift is the easy half. Most donors leave because nobody told them what happened with their money. This is the minimum for each level, and it is a real commitment, so do not promise more than you will do.</div>
+            <div style="margin-top:16px;border-top:2px solid var(--acid-black);">
+              <div style="display:grid;grid-template-columns:170px 140px 1.8fr 1.1fr;gap:18px;padding:10px 0;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);border-bottom:1px solid var(--line-on-paper);">
+                <div>Gift size</div><div>How often</div><div>What they get</div><div>Who does it</div>
+              </div>
+              <sc-for list="{{ cadence }}" as="c" hint-placeholder-count="5">
+                <div style="display:grid;grid-template-columns:170px 140px 1.8fr 1.1fr;gap:18px;padding:15px 0;border-bottom:1px solid var(--line-on-paper);align-items:baseline;">
+                  <div style="font-weight:600;font-size:15px;">{{ c.a }}</div>
+                  <div style="font-family:'Space Mono',monospace;font-size:13px;">{{ c.b }}</div>
+                  <div style="font-size:14px;line-height:1.55;">{{ c.c }}</div>
+                  <div style="font-size:13px;color:var(--stone-ink);">{{ c.d }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="font-size:15px;line-height:1.6;margin-top:16px;max-width:820px;padding:16px 18px;background:var(--paper-raised);border-left:3px solid var(--gold);">Three rules. Thank people faster than feels necessary. Report on the money before anyone asks. And never let a thank-you carry an ask inside it, because donors can feel it and it costs more than the gift is worth.</div>
+
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:54px;">Research still to write</div>
+            <div style="font-size:15px;line-height:1.6;margin-top:8px;max-width:820px;">Every name here gets the same ten sections as the Dillabough profile. The first three matter more than anything on the prospect list, because they have already given.</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:16px;">
+              <sc-for list="{{ profileQueue }}" as="q" hint-placeholder-count="6">
+                <div style="border:1px solid var(--line-on-paper);background:var(--paper-raised);padding:16px;">
+                  <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:{{ q.color }};">{{ q.priority }}</div>
+                  <div style="font-weight:600;font-size:16px;margin-top:8px;line-height:1.3;">{{ q.name }}</div>
+                  <div style="font-size:13px;color:var(--stone-ink);line-height:1.55;margin-top:6px;">{{ q.why }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isPlan }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <div style="font-family:'Abril Fatface',Georgia,serif;font-size:40px;line-height:1;text-transform:uppercase;max-width:900px;">The plan for raising {{ goalFmt }}</div>
+            <div style="font-size:16px;line-height:1.6;margin-top:12px;max-width:780px;">Five strategies. Open one for its playbook: what has to exist first, who else has to move, the way it goes wrong, and what done means.</div>
+
+            <div style="margin-top:30px;">
+              <sc-for list="{{ strategies }}" as="s" hint-placeholder-count="5">
+                <div style="border:1px solid {{ s.border }};background:{{ s.bg }};margin-bottom:10px;">
+                  <div onClick="{{ s.toggle }}" style="display:grid;grid-template-columns:1.5fr 110px 110px 110px 1fr 70px;gap:18px;padding:20px 22px;align-items:center;cursor:pointer;">
+                    <div>
+                      <div style="font-family:'Abril Fatface',Georgia,serif;font-size:24px;line-height:1.1;">{{ s.name }}</div>
+                      <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone-ink);margin-top:6px;">{{ s.owner }}</div>
+                    </div>
+                    <div>
+                      <div style="font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone-ink);">Goal</div>
+                      <div style="font-family:'Space Mono',monospace;font-size:15px;margin-top:3px;">{{ s.goalFmt }}</div>
+                    </div>
+                    <div>
+                      <div style="font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone-ink);">Committed</div>
+                      <div style="font-family:'Space Mono',monospace;font-size:15px;margin-top:3px;color:var(--forest-ink);">{{ s.committedFmt }}</div>
+                    </div>
+                    <div>
+                      <div style="font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone-ink);">In the pipeline</div>
+                      <div style="font-family:'Space Mono',monospace;font-size:15px;margin-top:3px;">{{ s.pipeline }}</div>
+                    </div>
+                    <div style="font-size:14px;line-height:1.45;">{{ s.nextMove }}</div>
+                    <div style="text-align:right;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-ink);">{{ s.chev }}</div>
+                  </div>
+
+                  <sc-if value="{{ s.open }}" hint-placeholder-val="{{ false }}">
+                    <div style="border-top:1px solid var(--line-on-paper);padding:24px 22px;">
+                      <div style="font-size:16px;line-height:1.65;max-width:820px;">{{ s.what }}</div>
+                      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:22px;">
+                        <sc-for list="{{ s.method }}" as="m" hint-placeholder-count="4">
+                          <div style="border:1px solid var(--line-on-paper);background:var(--paper);padding:16px;">
+                            <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:{{ m.color }};">{{ m.k }}</div>
+                            <div style="font-size:14px;line-height:1.6;margin-top:8px;">{{ m.v }}</div>
+                          </div>
+                        </sc-for>
+                      </div>
+
+                      <sc-if value="{{ s.hasSteps }}" hint-placeholder-val="{{ true }}">
+                        <div>
+                          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:26px;">The steps</div>
+                          <div style="margin-top:10px;border-top:1px solid var(--line-on-paper);">
+                            <sc-for list="{{ s.steps }}" as="r" hint-placeholder-count="5">
+                              <div style="display:grid;grid-template-columns:1.2fr 130px 1.7fr 1fr;gap:18px;padding:13px 0;border-bottom:1px solid var(--line-on-paper);align-items:baseline;">
+                                <div style="font-weight:600;font-size:14px;line-height:1.4;">{{ r.a }}</div>
+                                <div style="font-family:'Space Mono',monospace;font-size:12px;color:var(--stone-ink);">{{ r.b }}</div>
+                                <div style="font-size:13px;line-height:1.5;">{{ r.c }}</div>
+                                <div style="font-size:12px;color:var(--stone-ink);line-height:1.5;">{{ r.d }}</div>
+                              </div>
+                            </sc-for>
+                          </div>
+                        </div>
+                      </sc-if>
+
+                      <sc-if value="{{ s.hasExtra }}" hint-placeholder-val="{{ false }}">
+                        <div>
+                          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:26px;">{{ s.extraHead }}</div>
+                          <div style="margin-top:10px;border-top:1px solid var(--line-on-paper);">
+                            <div style="display:grid;grid-template-columns:1.1fr 140px 1.7fr 1.2fr;gap:18px;padding:9px 0;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);border-bottom:1px solid var(--line-on-paper);">
+                              <sc-for list="{{ s.extraCols }}" as="c" hint-placeholder-count="4">
+                                <div>{{ c }}</div>
+                              </sc-for>
+                            </div>
+                            <sc-for list="{{ s.extraRows }}" as="r" hint-placeholder-count="5">
+                              <div style="display:grid;grid-template-columns:1.1fr 140px 1.7fr 1.2fr;gap:18px;padding:13px 0;border-bottom:1px solid var(--line-on-paper);align-items:baseline;">
+                                <div style="font-weight:600;font-size:14px;line-height:1.4;">{{ r.a }}</div>
+                                <div style="font-family:'Space Mono',monospace;font-size:13px;">{{ r.b }}</div>
+                                <div style="font-size:13px;line-height:1.5;">{{ r.c }}</div>
+                                <div style="font-size:12px;color:var(--stone-ink);line-height:1.5;">{{ r.d }}</div>
+                              </div>
+                            </sc-for>
+                          </div>
+                        </div>
+                      </sc-if>
+
+                      <sc-if value="{{ s.hasTable }}" hint-placeholder-val="{{ false }}">
+                        <div>
+                          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:26px;">The arithmetic underneath</div>
+                          <div style="font-size:13px;color:var(--stone-ink);line-height:1.55;margin-top:6px;max-width:760px;">{{ s.tableNote }}</div>
+                          <div style="margin-top:12px;border-top:2px solid var(--acid-black);">
+                            <div style="display:grid;grid-template-columns:110px 80px 110px 110px 1fr;gap:16px;padding:9px 0;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);border-bottom:1px solid var(--line-on-paper);">
+                              <div>Gift size</div><div>How many</div><div>Adds up to</div><div>Names needed</div><div>Who</div>
+                            </div>
+                            <sc-for list="{{ s.levels }}" as="l" hint-placeholder-count="5">
+                              <div style="display:grid;grid-template-columns:110px 80px 110px 110px 1fr;gap:16px;padding:14px 0;border-bottom:1px solid var(--line-on-paper);align-items:baseline;">
+                                <div style="font-family:'Abril Fatface',Georgia,serif;font-size:20px;">{{ l.level }}</div>
+                                <div style="font-family:'Space Mono',monospace;font-size:14px;">{{ l.count }}</div>
+                                <div style="font-family:'Space Mono',monospace;font-size:14px;">{{ l.totalFmt }}</div>
+                                <div style="font-family:'Space Mono',monospace;font-size:14px;color:var(--stone-ink);">{{ l.pool }}</div>
+                                <div>
+                                  <div style="font-size:13px;line-height:1.5;">{{ l.who }}</div>
+                                  <div style="height:7px;background:var(--line-on-paper);margin-top:7px;max-width:300px;"><div style="height:7px;background:{{ l.covColor }};width:{{ l.cov }};"></div></div>
+                                  <div style="font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone-ink);margin-top:4px;">{{ l.covLabel }}</div>
+                                </div>
+                              </div>
+                            </sc-for>
+                          </div>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:50px;">When to ask, month by month</div>
+            <div style="font-size:15px;line-height:1.6;margin-top:8px;max-width:820px;">The asks have to happen before the money is needed, not in the same month. Every one of last year's four big gifts came in between October and March, so the fall is not a warm-up.</div>
+            <div style="margin-top:16px;border-top:2px solid var(--acid-black);">
+              <div style="display:grid;grid-template-columns:150px 1fr 150px;gap:20px;padding:10px 0;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);border-bottom:1px solid var(--line-on-paper);">
+                <div>Month</div><div>What gets asked</div><div>Target</div>
+              </div>
+              <sc-for list="{{ askCalendar }}" as="m" hint-placeholder-count="10">
+                <div style="display:grid;grid-template-columns:150px 1fr 150px;gap:20px;padding:14px 0;border-bottom:1px solid var(--line-on-paper);align-items:baseline;">
+                  <div style="font-family:'Abril Fatface',Georgia,serif;font-size:19px;line-height:1.15;">{{ m.a }}</div>
+                  <div style="font-size:14px;line-height:1.55;">{{ m.b }}</div>
+                  <div style="font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-ink);">{{ m.c }}</div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--terracotta);margin-top:50px;">Risks</div>
+            <div style="font-size:15px;line-height:1.6;margin-top:8px;max-width:780px;">Four ways this year goes wrong. Naming them is not pessimism, it's the only way they get watched.</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px;margin-top:16px;">
+              <sc-for list="{{ risks }}" as="r" hint-placeholder-count="4">
+                <div style="border:1px solid var(--terracotta);padding:18px;">
+                  <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--terracotta);">{{ r.kind }}</div>
+                  <div style="font-weight:600;font-size:16px;margin-top:10px;line-height:1.35;">{{ r.name }}</div>
+                  <div style="font-size:14px;line-height:1.6;margin-top:8px;">{{ r.what }}</div>
+                  <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone-ink);margin-top:12px;">Watch · {{ r.watch }}</div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:50px;">Open questions · {{ openQCount }}</div>
+            <div style="font-size:15px;line-height:1.6;margin-top:8px;max-width:780px;">This build never invents a number. When something isn't known, it shows up here instead of getting filled in with a plausible figure. Answer one and check it off.</div>
+            <div style="margin-top:18px;">
+              <sc-for list="{{ openQuestions }}" as="q" hint-placeholder-count="6">
+                <div style="border:1px solid var(--line-on-paper);background:{{ q.bg }};padding:18px 20px;margin-bottom:8px;">
+                  <div style="display:grid;grid-template-columns:26px 1fr;gap:16px;align-items:start;">
+                    <div onClick="{{ q.toggle }}" style="width:22px;height:22px;border:1px solid var(--acid-black);background:{{ q.boxBg }};cursor:pointer;color:var(--bone);font-size:14px;line-height:20px;text-align:center;">{{ q.mark }}</div>
+                    <div>
+                      <div style="font-size:17px;font-weight:600;line-height:1.4;">{{ q.q }}</div>
+                      <div style="display:flex;gap:26px;flex-wrap:wrap;margin-top:10px;">
+                        <div style="flex:1;min-width:220px;">
+                          <div style="font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">Who owns it</div>
+                          <div style="font-size:13px;margin-top:4px;">{{ q.owner }}</div>
+                        </div>
+                        <div style="flex:2;min-width:280px;">
+                          <div style="font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">What the plan assumes meanwhile</div>
+                          <div style="font-size:13px;line-height:1.5;margin-top:4px;">{{ q.assume }}</div>
+                        </div>
+                      </div>
+                      <textarea value="{{ q.answer }}" onChange="{{ q.setAnswer }}" placeholder="Type the answer here, in your own words." style="width:100%;height:60px;margin-top:12px;padding:11px;border:1px solid var(--line-on-paper);background:var(--paper);font-size:14px;line-height:1.55;"></textarea>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isMoney }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <div style="font-family:'Abril Fatface',Georgia,serif;font-size:40px;line-height:1;text-transform:uppercase;max-width:900px;">What it costs, and when the money is needed</div>
+            <div style="font-size:16px;line-height:1.6;margin-top:12px;max-width:800px;">Young Life takes 17 cents of every dollar before it reaches this area, so the goal is bigger than the cost. Camp gifts are the exception, as long as the donor writes camp on the gift.</div>
+
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line-on-paper);border:1px solid var(--line-on-paper);margin-top:28px;">
+              <sc-for list="{{ moneyFigures }}" as="f" hint-placeholder-count="3">
+                <div style="background:var(--paper-raised);padding:18px 20px;">
+                  <div style="display:flex;align-items:baseline;gap:8px;">
+                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--stone-ink);">{{ f.label }}</div>
+                    <div onClick="{{ f.toggle }}" style="font-family:'Space Mono',monospace;font-size:11px;color:var(--gold-ink);cursor:pointer;border:1px solid var(--line-on-paper);width:16px;height:16px;line-height:14px;text-align:center;">?</div>
+                  </div>
+                  <div style="font-family:'Abril Fatface',Georgia,serif;font-size:30px;line-height:1.05;margin-top:10px;color:{{ f.color }};">{{ f.value }}</div>
+                  <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone-ink);margin-top:6px;">{{ f.trust }}</div>
+                  <sc-if value="{{ f.open }}" hint-placeholder-val="{{ false }}">
+                    <div style="font-size:14px;line-height:1.6;margin-top:12px;padding-top:12px;border-top:1px solid var(--line-on-paper);">{{ f.explain }}</div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:44px;">How much has to be in the bank by when</div>
+            <div style="font-size:15px;line-height:1.6;margin-top:8px;max-width:820px;">One number for the year is too big to act on. These are the same number cut into four dates, each one the cost of everything up to that point. Measured against cash on hand plus everything committed.</div>
+            <div style="font-size:15px;line-height:1.6;margin-top:12px;padding:16px 18px;background:var(--paper-raised);border-left:3px solid var(--gold);max-width:820px;">{{ checkSentence }}</div>
+            <div style="margin-top:18px;border-top:2px solid var(--acid-black);">
+              <div style="display:grid;grid-template-columns:150px 120px 120px 1fr;gap:18px;padding:10px 0;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);border-bottom:1px solid var(--line-on-paper);">
+                <div>Deadline</div><div>Needed by then</div><div>Short by</div><div>Covers</div>
+              </div>
+              <sc-for list="{{ checkpoints }}" as="c" hint-placeholder-count="4">
+                <div style="display:grid;grid-template-columns:150px 120px 120px 1fr;gap:18px;padding:16px 0;border-bottom:1px solid var(--line-on-paper);align-items:baseline;">
+                  <div style="font-family:'Abril Fatface',Georgia,serif;font-size:19px;line-height:1.15;">{{ c.by }}</div>
+                  <div style="font-family:'Space Mono',monospace;font-size:15px;">{{ c.needFmt }}</div>
+                  <div style="font-family:'Space Mono',monospace;font-size:15px;color:{{ c.shortColor }};">{{ c.shortFmt }}</div>
+                  <div>
+                    <div style="font-size:14px;line-height:1.45;">{{ c.covers }}</div>
+                    <div style="height:8px;background:var(--line-on-paper);margin-top:8px;max-width:340px;"><div style="height:8px;background:{{ c.barColor }};width:{{ c.w }};"></div></div>
+                    <div style="font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone-ink);margin-top:4px;">{{ c.pctLabel }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:48px;">Month by month</div>
+            <div style="font-size:15px;line-height:1.6;margin-top:8px;max-width:820px;">Black bars are money going out each month. The gold line is the {{ cashFmt }} in the bank on day one. This is the reason the November brunch matters and the reason the O'Hara renewal can't slip to spring.</div>
+            <div style="border:1px solid var(--line-on-paper);background:var(--paper-raised);padding:24px 22px 16px 22px;margin-top:16px;">
+              <div style="display:flex;align-items:flex-end;gap:8px;height:220px;position:relative;">
+                <div style="position:absolute;left:0;right:0;bottom:{{ cashLine }};height:2px;background:var(--gold);"></div>
+                <sc-for list="{{ runway }}" as="r" hint-placeholder-count="12">
+                  <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;">
+                    <div style="background:{{ r.color }};height:{{ r.h }};"></div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:8px;">
+                <sc-for list="{{ runway }}" as="r" hint-placeholder-count="12">
+                  <div style="flex:1;text-align:center;">
+                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:{{ r.labelColor }};">{{ r.month }}</div>
+                    <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--stone-ink);margin-top:3px;">{{ r.outFmt }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--terracotta);margin-top:18px;padding-top:14px;border-top:1px solid var(--line-on-paper);">Cash on hand covers about two and a half months · after that the money has to have arrived</div>
+            </div>
+
+            <div style="margin-top:34px;">
+              <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="quiet" variant="outline" onClick="{{ toggleDetails }}" hint-size="auto,46px">{{ detailsLabel }}</x-import>
+              <div style="font-size:14px;color:var(--stone-ink);line-height:1.55;margin-top:10px;max-width:760px;">Committee and planning material. Not a Monday morning.</div>
+            </div>
+
+            <sc-if value="{{ detailsOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:34px;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:start;">
+                  <div>
+                    <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">Where the money goes</div>
+                    <div style="margin-top:14px;border-top:1px solid var(--line-on-paper);">
+                      <sc-for list="{{ expense }}" as="e" hint-placeholder-count="5">
+                        <div style="padding:14px 0;border-bottom:1px solid var(--line-on-paper);">
+                          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+                            <div style="font-weight:600;font-size:15px;">{{ e.name }}</div>
+                            <div style="font-family:'Space Mono',monospace;font-size:14px;">{{ e.amountFmt }} <span style="color:var(--stone-ink);font-size:12px;">{{ e.pctFmt }}</span></div>
+                          </div>
+                          <div style="height:10px;background:var(--line-on-paper);margin-top:8px;"><div style="height:10px;background:{{ e.color }};width:{{ e.w }};"></div></div>
+                          <div style="font-size:13px;color:var(--stone-ink);line-height:1.5;margin-top:6px;">{{ e.note }}</div>
+                        </div>
+                      </sc-for>
+                    </div>
+
+                    <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:36px;">How the cost becomes the goal</div>
+                    <div style="margin-top:14px;border:1px solid var(--line-on-paper);background:var(--paper-raised);">
+                      <sc-for list="{{ grossUp }}" as="g" hint-placeholder-count="6">
+                        <div style="display:flex;justify-content:space-between;gap:16px;padding:13px 16px;border-bottom:1px solid var(--line-on-paper);font-size:14px;">
+                          <div style="color:{{ g.color }};font-weight:{{ g.weight }};">{{ g.label }}</div>
+                          <div style="font-family:'Space Mono',monospace;white-space:nowrap;color:{{ g.color }};font-weight:{{ g.weight }};">{{ g.amountFmt }}</div>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">How the spending is classified</div>
+                    <div style="display:flex;height:42px;margin-top:14px;border:1px solid var(--line-on-paper);">
+                      <sc-for list="{{ functional }}" as="f" hint-placeholder-count="3">
+                        <div style="width:{{ f.w }};background:{{ f.color }};color:{{ f.fg }};font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;">{{ f.label }}</div>
+                      </sc-for>
+                    </div>
+                    <div style="font-size:14px;line-height:1.6;margin-top:12px;">Program comes out at 49 percent and most funders want 65. Two things cause it. Sixty percent of Kendra's week is admin work, and half the house counts as admin. Don't re-cut the numbers to fix it. Say plainly that this is what the second staff hire fixes.</div>
+
+                    <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:36px;">Three years out</div>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line-on-paper);border:1px solid var(--line-on-paper);margin-top:14px;">
+                      <sc-for list="{{ arc }}" as="y" hint-placeholder-count="3">
+                        <div style="background:var(--paper-raised);padding:16px;">
+                          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;color:var(--stone-ink);">{{ y.year }}</div>
+                          <div style="font-family:'Abril Fatface',Georgia,serif;font-size:26px;margin-top:6px;">{{ y.amountFmt }}</div>
+                          <div style="font-size:12px;color:var(--stone-ink);line-height:1.45;margin-top:6px;">{{ y.note }}</div>
+                        </div>
+                      </sc-for>
+                    </div>
+
+                    <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:36px;">What a gift pays for</div>
+                    <div style="font-size:13px;color:var(--stone-ink);line-height:1.55;margin-top:8px;">Full cost includes staff time and the house. Direct cost is only the activity. Use full cost with a big donor and direct cost with a first-time donor. Never say both to the same person without explaining the difference.</div>
+                    <div style="margin-top:14px;border-top:1px solid var(--line-on-paper);">
+                      <div style="display:grid;grid-template-columns:1.2fr 90px 90px;gap:14px;padding:9px 0;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);border-bottom:1px solid var(--line-on-paper);">
+                        <div>Ask</div><div>Full</div><div>Direct</div>
+                      </div>
+                      <sc-for list="{{ menu }}" as="k" hint-placeholder-count="7">
+                        <div style="display:grid;grid-template-columns:1.2fr 90px 90px;gap:14px;padding:12px 0;border-bottom:1px solid var(--line-on-paper);align-items:baseline;">
+                          <div style="font-size:14px;line-height:1.4;">{{ k.name }}</div>
+                          <div style="font-family:'Space Mono',monospace;font-size:14px;">{{ k.fullFmt }}</div>
+                          <div style="font-family:'Space Mono',monospace;font-size:13px;color:var(--stone-ink);">{{ k.directFmt }}</div>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:44px;">Figures that aren't settled</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px;margin-top:14px;">
+                  <sc-for list="{{ openItems }}" as="o" hint-placeholder-count="6">
+                    <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Card" volume="quiet" raised="{{ yes }}" hint-size="100%,160px">
+                      <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Tag" volume="quiet" tone="{{ o.tone }}" hint-size="auto,26px">{{ o.trust }}</x-import>
+                      <div style="font-weight:600;font-size:15px;margin-top:12px;line-height:1.35;">{{ o.title }}</div>
+                      <div style="font-size:13px;color:var(--stone-ink);line-height:1.55;margin-top:6px;">{{ o.note }}</div>
+                    </x-import>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isWork }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:30px;flex-wrap:wrap;">
+              <div>
+                <div style="font-family:'Abril Fatface',Georgia,serif;font-size:40px;line-height:1;text-transform:uppercase;">{{ openCount }} things to do</div>
+                <div style="font-size:16px;line-height:1.6;margin-top:12px;max-width:760px;">Everything from every strategy, every gift, and anything you added by hand. Overdue first. Check one off and it drops to the bottom.</div>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <sc-for list="{{ workViews }}" as="v" hint-placeholder-count="3">
+                  <div onClick="{{ v.select }}" style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;padding:10px 14px;border:1px solid var(--acid-black);background:{{ v.bg }};color:{{ v.fg }};cursor:pointer;">{{ v.label }}</div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:20px;">
+              <sc-for list="{{ workFilters }}" as="f" hint-placeholder-count="6">
+                <div onClick="{{ f.select }}" style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;padding:9px 12px;border:1px solid {{ f.border }};background:{{ f.bg }};color:{{ f.fg }};cursor:pointer;">{{ f.label }} · {{ f.count }}</div>
+              </sc-for>
+            </div>
+
+            <sc-if value="{{ flatView }}" hint-placeholder-val="{{ true }}">
+              <div style="margin-top:22px;">
+                <sc-for list="{{ flatTasks }}" as="t" hint-placeholder-count="8">
+                  <div style="display:grid;grid-template-columns:26px 1fr auto;gap:16px;padding:16px 20px;border:1px solid {{ t.border }};background:{{ t.bg }};margin-bottom:6px;align-items:start;">
+                    <div onClick="{{ t.toggle }}" style="width:22px;height:22px;border:1px solid var(--acid-black);background:{{ t.boxBg }};cursor:pointer;color:var(--bone);font-size:14px;line-height:20px;text-align:center;">{{ t.mark }}</div>
+                    <div>
+                      <div style="font-size:17px;font-weight:600;line-height:1.35;">{{ t.title }}</div>
+                      <div style="font-size:14px;color:var(--stone-ink);line-height:1.55;margin-top:5px;">{{ t.why }}</div>
+                    </div>
+                    <div style="text-align:right;white-space:nowrap;">
+                      <div style="font-family:'Space Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:{{ t.whenColor }};">{{ t.when }}</div>
+                      <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone-ink);margin-top:5px;">{{ t.owner }}</div>
+                      <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-ink);margin-top:5px;">{{ t.strategy }}</div>
+                    </div>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ noTasks }}" hint-placeholder-val="{{ false }}">
+                  <div style="border:1px solid var(--line-on-paper);background:var(--paper-raised);padding:24px;font-size:16px;line-height:1.6;">Nothing open in this filter.</div>
+                </sc-if>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ byOwner }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:22px;">
+                <sc-for list="{{ ownerGroups }}" as="g" hint-placeholder-count="3">
+                  <div style="margin-bottom:32px;">
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:3px solid var(--gold);padding-bottom:8px;">
+                      <div style="font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;">{{ g.owner }}</div>
+                      <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">{{ g.count }}</div>
+                    </div>
+                    <sc-for list="{{ g.tasks }}" as="t" hint-placeholder-count="4">
+                      <div style="display:grid;grid-template-columns:26px 1fr auto;gap:16px;padding:16px 20px;border:1px solid var(--line-on-paper);border-top:none;background:{{ t.bg }};align-items:start;">
+                        <div onClick="{{ t.toggle }}" style="width:22px;height:22px;border:1px solid var(--acid-black);background:{{ t.boxBg }};cursor:pointer;color:var(--bone);font-size:14px;line-height:20px;text-align:center;">{{ t.mark }}</div>
+                        <div>
+                          <div style="font-size:17px;font-weight:600;line-height:1.35;">{{ t.title }}</div>
+                          <div style="font-size:14px;color:var(--stone-ink);line-height:1.55;margin-top:5px;">{{ t.why }}</div>
+                        </div>
+                        <div style="text-align:right;white-space:nowrap;">
+                          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:{{ t.strategyColor }};">{{ t.strategy }}</div>
+                          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone-ink);margin-top:5px;">{{ t.when }}</div>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ byWhen }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:18px;">
+                <sc-for list="{{ whenGroups }}" as="g" hint-placeholder-count="4">
+                  <div style="margin-bottom:32px;">
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:3px solid var(--gold);padding-bottom:8px;">
+                      <div style="font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;">{{ g.owner }}</div>
+                      <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">{{ g.count }}</div>
+                    </div>
+                    <sc-for list="{{ g.tasks }}" as="t" hint-placeholder-count="4">
+                      <div style="display:grid;grid-template-columns:26px 1fr auto;gap:16px;padding:16px 20px;border:1px solid var(--line-on-paper);border-top:none;background:{{ t.bg }};align-items:start;">
+                        <div onClick="{{ t.toggle }}" style="width:22px;height:22px;border:1px solid var(--acid-black);background:{{ t.boxBg }};cursor:pointer;color:var(--bone);font-size:14px;line-height:20px;text-align:center;">{{ t.mark }}</div>
+                        <div>
+                          <div style="font-size:17px;font-weight:600;line-height:1.35;">{{ t.title }}</div>
+                          <div style="font-size:14px;color:var(--stone-ink);line-height:1.55;margin-top:5px;">{{ t.why }}</div>
+                        </div>
+                        <div style="text-align:right;white-space:nowrap;">
+                          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:{{ t.strategyColor }};">{{ t.strategy }}</div>
+                          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone-ink);margin-top:5px;">{{ t.owner }}</div>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ anyDone }}" hint-placeholder-val="{{ false }}">
+              <div>
+                <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:20px;">Done · {{ doneCount }}</div>
+                <div style="margin-top:12px;border-top:1px solid var(--line-on-paper);">
+                  <sc-for list="{{ doneTasks }}" as="t" hint-placeholder-count="2">
+                    <div onClick="{{ t.toggle }}" style="display:grid;grid-template-columns:24px 1fr 160px;gap:16px;padding:12px 0;border-bottom:1px solid var(--line-on-paper);align-items:center;cursor:pointer;">
+                      <div style="width:20px;height:20px;border:1px solid var(--acid-black);background:{{ t.boxBg }};color:var(--bone);font-size:13px;line-height:18px;text-align:center;">{{ t.mark }}</div>
+                      <div style="font-size:15px;color:var(--stone-ink);">{{ t.title }}</div>
+                      <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone-ink);text-align:right;">{{ t.strategy }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--terracotta);margin-top:50px;">What's in the way</div>
+            <div style="font-size:15px;line-height:1.6;margin-top:8px;max-width:780px;">Not a list of documents. A list of things stopping other things.</div>
+            <div style="margin-top:18px;border-top:1px solid var(--line-on-paper);max-width:960px;">
+              <sc-for list="{{ blockers }}" as="b" hint-placeholder-count="4">
+                <div style="display:grid;grid-template-columns:1.2fr 1fr 1.6fr;gap:20px;padding:18px 0;border-bottom:1px solid var(--line-on-paper);align-items:baseline;">
+                  <div>
+                    <div style="font-weight:600;font-size:16px;line-height:1.35;">{{ b.name }}</div>
+                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:{{ b.dueColor }};margin-top:5px;">{{ b.due }}</div>
+                  </div>
+                  <div style="font-size:14px;">{{ b.owner }}</div>
+                  <div style="font-size:14px;line-height:1.55;color:var(--terracotta);">{{ b.blocks }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </sc-if>
+</div>]]>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:1000}}">
+const S = 'epa-hub-v2';
+const ALLOWED = ['kendrasobo@gmail.com', 'remi@soboconsulting.com'];
+const GOAL = 199245;
+const COST = 191869;
+const CASH = 28295;
+
+const money = n => {
+  const v = Math.round(+n || 0);
+  return '$' + v.toLocaleString('en-US');
+};
+const short = n => {
+  const v = Math.round(+n || 0);
+  if (v >= 1000000) return '$' + (v / 1000000).toFixed(v >= 10000000 ? 0 : 1) + 'M';
+  if (v >= 1000) return '$' + Math.round(v / 1000) + 'K';
+  return '$' + v;
+};
+
+const NEAR = ['Menlo Park', 'East Palo Alto', 'Palo Alto', 'Atherton', 'Portola Valley', 'Woodside', 'Redwood City', 'Emerald Hills', 'Foster City', 'Los Altos', 'Los Altos Hills', 'Mountain View', 'San Carlos', 'Belmont', 'Stanford', 'San Mateo', 'Hillsborough', 'Burlingame'];
+
+const CARE = {
+  "Butcher": { care: 'Gave $50,000 in October 2025, the biggest single gift this area has ever received, and it was the first gift from this household. Nobody has written down what moved them.', threads: 'A second Butcher record gave $25,000 in 2024 under Carolyn alone. Find out whether that is the same money, the same family, or two households.', flags: 'No email and no phone on file.' },
+  "O'Hara": { care: 'John and Lynn gave $25,000 again this year, so this is now a repeat gift rather than a one-off. There was a condition attached to the first one. Write down exactly what it was, because it probably still applies.', threads: 'This household is the proof that the renewal strategy works. Ask them why they gave the second time, and whether they would consider a multi-year commitment.', flags: 'Runs a foundation with about $8M in assets. That is a separate ask, not the same conversation.' },
+  "Brandon": { care: 'Gave $17,000 in March 2026, first gift. Also offered to introduce other people, which is worth more than the check.', threads: 'Get the referral names on paper. Ask for three, with permission to use his name.', flags: 'Connected to a foundation with over $500M in assets. Do not confuse the household ask with the foundation ask.' },
+  "Allen": { care: 'Ken and Sarah gave $10,000 again this year, so this is a repeat gift now. The household is listed as a Silicon Valley consulting principal.', threads: 'Two years in a row at the same amount is the moment to ask why, and whether they would go to $15,000 or commit for three years. Still no email on file.', flags: 'No email on file. Get one before the next ask.' },
+  "Young": { care: 'Two records under the same name. One gave $20,000 in 2008, one gave $3,000 in 2026. Probably the same family, twenty years apart.', threads: 'Confirm whether these are one household. If they are, this is a returning donor and the ask should reflect the older gift.', flags: '' },
+  "Frank": { care: 'Has given every year since 2014, small and steady, about $100 a month. 148 gifts on record.', threads: 'This is the model monthly partner. Ask him why he keeps giving, then use his answer to recruit others.', flags: '' },
+  "Sobomehin": { care: 'Dele and Kesle have given $100 a month all year, $1,200 in total. This is the household running the ministry, giving to it monthly.', threads: 'Worth saying out loud in an ask. A donor who hears that the family leading this gives every month hears something a case statement cannot say.', flags: 'Do not let the plan lean on this gift. It is the one household that cannot be asked for more.' },
+  "Spates": { care: 'Gave 163 times since 2009, $12,500 in small amounts. Loyalty like this is rare.', threads: 'Never got a thank you at the level this deserves. Fix that before asking for anything.', flags: '' },
+  "Davidson": { care: 'Gave 164 times since 2013, $25 at a time. Long-time Young Life person.', threads: '', flags: '' },
+  "Taylor": { care: 'Monthly partner at about $51 a month since 2022.', threads: '', flags: '' },
+  "Snow": { care: 'Small gift in 2026.', threads: '', flags: '' }
+};
+
+const PROFILE = {
+  donorKey: 'Dillabough',
+  headline: 'Gave $25,000 once, in 2005, and nobody has talked to them since. High capacity, no relationship. The whole job this year is getting one conversation.',
+  snapshot: [
+    ['Where they live', 'Atherton, California'],
+    ['Where things stand', 'Lapsed donor. Last gift 2005.'],
+    ['What they gave', '$25,000 total, a $20,000 gift and a $5,000 gift. Verify before using with them.'],
+    ['Warm connection', 'None right now. This is the biggest problem.'],
+    ['Capacity signal', 'High. Marked hidden gem and strong planned giving prospect in the screening file.'],
+    ['Right stage', 'Discovery and re-engagement. Not a solicitation.'],
+    ['Goal for now', 'One conversation, and permission to keep them updated.'],
+    ['What to talk about', 'Rebuilding a community, youth, leadership, long-term stability.']
+  ],
+  publicNotes: [
+    'Gary is co-founder and CEO of Urban Community and works on downtown San Jose. Before that, Navitas Capital, The Westly Group, and eBay, where he was Vice President of Sustainability.',
+    'He was elected to the board of the Lucile Packard Foundation for Children\u2019s Health and is described publicly as an active fundraiser for Packard Children\u2019s Hospital and a supporter of the Las Lomitas Education Foundation.',
+    'He co-founded the Urban Vibrancy Institute, a San Jose nonprofit about the cultural, economic, and social life of the city. Local coverage describes his work as being about people and places, not just buildings.'
+  ],
+  read: 'Do not pitch him on running programs. Pitch him on rebuilding the thing that helps young people belong, lead, and stay in their own community. That is the language he already uses about San Jose.',
+  ladder: [
+    ['Re-entry ask', '$25,000 to $50,000', 'Only after a first conversation goes well.'],
+    ['Five-year target', '$250,000', 'Carry this as the real strategy number.'],
+    ['Stretch', '$500,000 over 5 years', 'Only if they get genuinely involved.'],
+    ['Screening ceiling', 'About $700,000', 'Only if the $140,676 field is annual capacity. Never lead here.']
+  ],
+  ladderNote: 'Put them in the system at $250,000 over five years, with a $500,000 stretch and a separate planned-giving note. But the first invitation is $25,000 to $50,000 toward one clear thing, not $250,000.',
+  rce: [
+    ['Attributes', 'Probably strong. Public record shows generosity and interest in youth, health, and education.'],
+    ['Engagement', 'Dormant. Maybe aware of Young Life, not involved.'],
+    ['Relationship', 'Very low. There is no warm connection at all.'],
+    ['Strategy', 'Thank them, get curious, find shared values, then invite.'],
+    ['Do not do', 'Do not lead with wealth, planned giving, or a big ask.']
+  ],
+  caseFit: 'Young Life was in East Palo Alto for more than forty years, went quiet for about five, and is being rebuilt now with local leadership and a house in the neighborhood. That is a rebuild story about a place, which is exactly the kind of thing he already funds.',
+  questions: [
+    ['When you think back on supporting Young Life before, what do you remember about what moved you to give?', 'Reconnects them to their own story with no pressure.'],
+    ['What kinds of youth or community work feel most important to you right now?', 'Finds out what they fund today.'],
+    ['You\u2019ve put a lot of energy into community vitality. What do you think makes a community healthier for young people?', 'Connects East Palo Alto to how he already thinks.'],
+    ['What have you seen make the biggest difference for young people: programs, places, mentors, education, faith, something else?', 'Tells you which proposal to bring.'],
+    ['What values shape the giving decisions you and Michelle make together?', 'The core values question.'],
+    ['What would you need to see from Young Life East Palo Alto to feel confident this is well led?', 'Surfaces what they need to trust you.'],
+    ['We want to go from 34 kids known by name to 225 in three years. What part of that feels most compelling, or most difficult?', 'Lets them react to the real plan.'],
+    ['When you make a big gift, what do you hope to hear back about?', 'Tells you how to report later.'],
+    ['Would it mean something to see the house or meet a leader before you consider anything?', 'Offers involvement instead of an ask.'],
+    ['Who else should be in this conversation if the goal is a strong youth ministry in East Palo Alto?', 'Opens the door to introductions without using them.']
+  ],
+  questionNote: 'Pick four or five, not ten. Listen about seventy percent of the time.',
+  proposals: [
+    { name: 'East Palo Alto Rebuild Fund', ask: '$250,000 over 5 years', fit: 'Primary proposal', what: 'Rebuild three connected ministries: WyldLife, high school, college. Funds growth, leaders, and the systems that keep the area stable.', line: 'Your five-year partnership would help rebuild a ministry that went quiet and is becoming a steady presence for kids again.' },
+    { name: 'Known by Name Leadership Pipeline', ask: '$150,000 to $250,000', fit: 'If they care about leadership', what: 'Funds the path from middle school kid to high school kid to college student to volunteer leader.', line: 'Your investment would help young people here come back as leaders for the next generation.' },
+    { name: 'The House as Home Fund', ask: '$100,000 to $200,000', fit: 'If they care about place', what: 'Funds the house as the place kids belong. Club, Campaigners, food, leader care.', line: 'Your gift would make the house a home base where kids are known, fed, and welcomed.' },
+    { name: 'Camp Access Fund', ask: '$125,000 to $200,000', fit: 'If they want concrete impact', what: 'Camp scholarships plus leader costs, so no kid is at camp without their leader in the cabin.', line: 'Your gift would remove what keeps East Palo Alto students from the deepest week of the year.' },
+    { name: 'High School Launch Fund', ask: '$150,000 to $250,000', fit: 'If they like hard problems', what: 'Launches high school ministry for kids who scatter across several campuses after eighth grade.', line: 'Your investment would reach East Palo Alto high schoolers even after they scatter across the Peninsula.' },
+    { name: 'Lead Sustainability Partner', ask: '$500,000 over 5 years', fit: 'Only after strong engagement', what: 'Funds the whole buildout, including the second staff position and donor systems.', line: 'Your leadership gift would move this from a fragile restart to a ministry that lasts.' }
+  ],
+  firstMove: 'Do not send a proposal. Send a short re-introduction letter, then ask for a conversation. The ask is: would you and Michelle be open to a short conversation? I\u2019d love to thank you for your past support, hear what you care about now, and tell you what is being rebuilt in East Palo Alto.',
+  sequence: [
+    ['Week 1', 'Send a gratitude letter.'],
+    ['Week 3', 'Follow up by email or phone.'],
+    ['First meeting', 'Ask the discovery questions. Mostly listen.'],
+    ['Within 48 hours', 'Handwritten thank-you note.'],
+    ['Month 2', 'Send the one-page rebuild summary.'],
+    ['Month 3', 'Invite them to see the house or come to a small gathering.'],
+    ['Month 4 to 5', 'Present one proposal, the one that fits.'],
+    ['Month 5 to 6', 'Ask for a re-entry gift or a multi-year commitment.']
+  ],
+  askPath: [
+    ['First invitation, after cultivation', 'Would you consider a $50,000 gift this year to help rebuild Young Life East Palo Alto?'],
+    ['Second, after they are engaged', 'Would you extend that into a five-year commitment of $250,000, so this ministry can grow from restart to steady?'],
+    ['Stretch, only if strongly aligned', 'Would you and Michelle consider a $500,000 lead commitment over five years to fund the full rebuild?']
+  ],
+  closing: 'Gratitude first, curiosity second, vision third, invitation fourth. In that order, every time.'
+};
+
+const STRATEGIES = [
+  {
+    id: 'major', name: 'Major gifts', goal: 130000, owner: 'Kendra', hours: '3 hrs',
+    what: 'Gifts of $10,000 and up. Four households gave $102,000 last year, so this is not a new idea, it is the thing that already works. It is also where the year is won or lost, and it is almost entirely renewals plus a small number of new names.',
+    method: [
+      ['Has to exist first', 'A one-page case for support. You cannot ask for $25,000 with nothing to leave behind.'],
+      ['Depends on', 'Remi for the case for support. Brandon for the referral names.'],
+      ['Goes wrong when', 'The renewal asks slide to spring. Every one of last year\u2019s four gifts came in between October and March, so a late ask is a missed year.'],
+      ['Done means', 'Six households have said yes in writing, and the four renewals happened before March.']
+    ],
+    steps: [
+      ['Write down the O\u2019Hara condition', 'This week', 'Whatever was attached to the first $25,000. They have now given twice and it still exists only in Kendra\u2019s memory.', 'Kendra'],
+      ['Thank the Butchers properly', 'This week', 'Handwritten, plus a one-page report on what the $50,000 did. Before any second ask.', 'Kendra'],
+      ['Ask the Butchers to renew the $50,000', 'By October 15', 'In person. Now the biggest single renewal left on the board.', 'Kendra'],
+      ['Ask Brandon for three names', 'By October 10', 'He offered. Ask for names and permission to use his name.', 'Kendra'],
+      ['Pick 12 prospects to research', 'By October 1', 'Twelve is a real number of intro conversations for one fall. A hundred is not.', 'Kendra and Remi'],
+      ['Ask Young to renew, asked up', 'By December', '$3,000 to $5,000 if the two records turn out to be one family.', 'Kendra'],
+      ['Get an email address for the Allens', 'This month', 'Two $10,000 gifts and no email on file. Everything has to go through Kendra personally until that is fixed.', 'Remi']
+    ],
+    hasTable: true,
+    tableNote: 'This is the arithmetic under major gifts and monthly partners together. Read it top down, because the biggest gifts do most of the work.',
+    tableNoteOld: 'This is the arithmetic under major gifts and monthly partners together. Read it top down, because the biggest gifts do most of the work. Names needed uses the standard rule, three real candidates for every gift you plan to close.'
+  },
+  {
+    id: 'monthly', name: 'Monthly partners', goal: 18000, owner: 'Remi',
+    hours: '1 hr',
+    what: 'Monthly gifts are the only money you can count on before it arrives. One household is confirmed, Dele and Kesle at $100 a month, and about five more give monthly according to their gift counts. Nobody has verified that list. Fix the counting first, then grow it. Thirty households at $50 a month is $18,000 and one recruiting conversation a week.',
+    method: [
+      ['Has to exist first', 'The real list from the region. Exact names, exact amounts, exact dates.'],
+      ['Depends on', 'The region\u2019s donor services team, who hold the recurring gift records.'],
+      ['Goes wrong when', 'The estimated total gets used in the goal. Then the plan rests on a number nobody verified.'],
+      ['Done means', 'Thirty households giving monthly, the list is accurate, and every one of them has heard from you this quarter.']
+    ],
+    steps: [
+      ['Get the real list from the region', 'September', 'You cannot ask people to upgrade if you do not know what they give.', 'Remi'],
+      ['Ask Nathan Frank why he gives', 'September', 'He has given 148 times. His reason, in his words, is the best recruiting line you will get.', 'Kendra'],
+      ['Add a monthly option to every ask', 'October', '$50 a month instead of $600 once. Same money, easier yes, and it renews itself.', 'Kendra'],
+      ['Ask every leader parent once', 'November', 'Parents of kids in the ministry are the most natural monthly partners and the least asked.', 'Kendra'],
+      ['Thank monthly partners by name', 'Quarterly', 'A short note with one story. Monthly partners quit when they feel like a bank transfer.', 'Remi']
+    ]
+  },
+  {
+    id: 'brunch', name: 'The fall brunch', goal: 15000, owner: 'Kendra', hours: '2 hrs',
+    what: 'Early November. Fifteen women in a room, hosted by one of them. Budget is $2,500 and the target is $15,000. The host matters more than the venue and the invitation matters more than the program.',
+    method: [
+      ['Has to exist first', 'A host. A woman with a home, a network, and real belief in this ministry, who invites, opens the room, and gives first.'],
+      ['Depends on', 'The host for the guest list. House photography for the invitation.'],
+      ['Goes wrong when', 'The ministry sends the invitations instead of the host. A peer invitation fills a room and an organizational one does not.'],
+      ['Done means', 'Fifteen guests in the room, every one contacted within 48 hours afterward, and $15,000 raised or pledged.']
+    ],
+    steps: [
+      ['Pick the host', 'This week', 'The single most important decision in this strategy.', 'Kendra'],
+      ['Set the date', 'This week', 'Early November, weekday late morning. Avoid Thanksgiving week.', 'Kendra'],
+      ['Build the guest list', 'Late September', 'Twenty names to get fifteen in the room. The host owns the list.', 'Host and Kendra'],
+      ['Send invitations', 'Early October', 'Paper or a personal note, not a mass email. Four weeks of lead time.', 'Host'],
+      ['Rehearse the ask', 'Late October', 'Out loud, twice. Ninety seconds, once, near the end. The ask is the part everybody skips practicing.', 'Kendra and Remi'],
+      ['Follow up with every guest', 'Within 48 hours', 'Whether they gave or not.', 'Remi drafts, Kendra signs']
+    ],
+    extra: {
+      head: 'The shape of the day',
+      cols: ['Piece', 'Target', 'What it is', 'Notes'],
+      rows: [
+        ['Guests', '15 women', 'Invited by the host, not by the ministry. A personal invitation from a peer is what fills the room.', 'Aim for 20 invitations to get 15 in the room.'],
+        ['Average gift', '$1,000', 'Fifteen guests at an average of $1,000 gets you to $15,000. Some will give $5,000, most will give less.', 'Do not set a minimum. It shrinks the room.'],
+        ['The ask', '90 seconds', 'One person asks, once, clearly, near the end. Everyone leaves with a card and a way to give.', 'Kendra asks. Nobody else.'],
+        ['The story', '5 minutes', 'One story about one kid, told with permission. No slideshow, no statistics.', 'Written parental consent before any kid is named.'],
+        ['Follow-up', '48 hours', 'Every guest gets a note within two days, whether they gave or not.', 'Remi drafts, Kendra signs.']
+      ]
+    }
+  },
+  {
+    id: 'church', name: 'Church partners', goal: 5000, owner: 'Kendra', hours: '0.5 hrs',
+    what: 'Nothing is committed from a church today. The relationships exist and have never been asked. Church money is smaller than a major gift and steadier than an event, and the real prize is volunteer leaders, not dollars.',
+    method: [
+      ['Has to exist first', 'A list of churches where a leader, a family, or a committee member already attends. Start with people, not buildings.'],
+      ['Depends on', 'The volunteer leaders, who are the actual connection to most of these congregations.'],
+      ['Goes wrong when', 'You ask for money before anybody there knows who you are, or you miss the annual mission budget cycle and wait a year.'],
+      ['Done means', 'Two or three churches giving, and at least two churches sending volunteer leaders.']
+    ],
+    steps: [
+      ['List every connected church', 'By October', 'Ask the leaders where they go. That is the list.', 'Kendra'],
+      ['Ask for a speaking slot, not money', 'Fall', 'Five minutes in front of the congregation, or a table after the service.', 'Kendra'],
+      ['Ask for one line in the mission budget', 'Winter', 'Church budgets get set months ahead. Missing the calendar means waiting a year.', 'Kendra'],
+      ['Ask for leaders too', 'Ongoing', 'A church that sends two volunteer leaders is worth more than one that sends $2,500.', 'Kendra']
+    ]
+  },
+  {
+    id: 'grants', name: 'Grants', goal: 10000, owner: 'Kendra\u2019s mother', hours: '0.5 hrs',
+    what: 'One $10,000 Young Life grant is the only thing here so far. Grants are slow and they are not a rescue plan. What makes them worth working is that three of last year\u2019s donors are already connected to foundations.',
+    method: [
+      ['Has to exist first', 'A warm connection. Do not write to a foundation where nobody knows anybody.'],
+      ['Depends on', 'Kendra\u2019s mother, who is taking on grant research, and the donors who can open their own foundation doors.'],
+      ['Goes wrong when', 'Cold grant writing eats a month and returns nothing. It is the slowest fundraising there is.'],
+      ['Done means', 'The Young Life grant is confirmed for this year, and two warm foundation conversations have happened.']
+    ],
+    steps: [
+      ['Confirm the Young Life grant repeats', 'September', 'And find out what it requires. It is the only grant on record.', 'Remi'],
+      ['Ask O\u2019Hara how his foundation decides', 'After the renewal', 'About $8M in assets. Separate conversation from the personal gift, never the same meeting.', 'Kendra'],
+      ['Ask Brandon whether his foundation is the right door', 'Fall', 'Over $500M in assets. He may say no, and that is useful.', 'Kendra'],
+      ['Research three local funders', 'By November', 'Two hours. Pick three that fund youth work in San Mateo County.', 'Grant research']
+    ],
+    extra: {
+      head: 'What is on the board',
+      cols: ['Source', 'Size', 'Status', 'Next step'],
+      rows: [
+        ['Young Life area grant', '$10,000', 'Received. The only grant money on record.', 'Confirm whether it repeats this year and what it requires.'],
+        ['Foundation connected to the O\u2019Hara household', 'About $8M in assets', 'Not approached. Shows up in the donor file, not from a conversation.', 'Ask John how the foundation makes decisions. Not in the same meeting as a personal ask.'],
+        ['Foundation connected to the Brandon household', 'Over $500M in assets', 'Not approached. Large, and probably has its own process.', 'Ask him whether it is even the right door. He may say no, and that is useful.'],
+        ['Foundation connected to the Allen household', 'Large fund on record', 'Not approached.', 'Research only. No ask this year.'],
+        ['Local Peninsula funders', 'Unknown', 'Not researched.', 'Two hours of research. Pick three that fund youth work in San Mateo County.']
+      ]
+    }
+  }
+];
+
+const LEVELS = [
+  { level: '$50,000', count: 1, named: 1, total: 50000, who: 'Butcher renewal. Everything else in the plan assumes this one repeats.' },
+  { level: '$25,000', count: 2, named: 2, total: 50000, who: 'O\u2019Hara is in. Brandon asked up from $17,000 is the other one.' },
+  { level: '$10,000', count: 3, named: 1, total: 30000, who: 'Allen is in. Two new households to find, and one should come from a Brandon introduction.' },
+  { level: '$5,000', count: 6, named: 1, total: 30000, who: 'Young asked up from $3,000, plus five new. The brunch and the prospect list both feed this row.' },
+  { level: '$2,500', count: 6, named: 0, total: 15000, who: 'Nobody yet. Churches and brunch guests are the most likely source.' },
+  { level: '$1,000', count: 12, named: 0, total: 12000, who: 'The newsletter list and the spring event. Twelve at a thousand is a target, not a stretch.' },
+  { level: 'Under $1,000', count: 25, named: 6, total: 12245, who: 'Monthly partners and the small-gift crowd. Six households already give here every year.' }
+];
+
+const EXPENSE = [
+  { name: 'Staff pay and payroll taxes', amount: 90475, note: 'One full-time salary of $77,131, plus 17.3 percent in payroll costs.' },
+  { name: 'Program: clubs, camp, leaders', amount: 50900, note: 'Camp is the biggest piece at $19,350. WyldLife is $12,828.' },
+  { name: 'The house', amount: 28850, note: 'Power, water, garbage, insurance, cleaning, repairs. Rent income covers most of it.' },
+  { name: 'Fundraising and events', amount: 11700, note: 'The brunch, the spring event, the newsletter, donor thank-yous, committee meetings.' },
+  { name: 'Office and operations', amount: 9944, note: 'Supplies, printing, insurance, training. Technology and mileage are still at zero and should not be.' }
+];
+
+const GROSS = [
+  { label: 'Cost of running the ministry for the year', amount: 191869 },
+  { label: 'Minus house rent and transfers in', amount: -35200 },
+  { label: 'What gifts have to cover', amount: 156669, bold: true },
+  { label: 'Plus the 17 percent Young Life takes off every gift', amount: 32089, red: true },
+  { label: 'Plus the capital work not yet funded', amount: 10487 },
+  { label: 'Total to raise', amount: 199245, bold: true }
+];
+
+const RUN = [
+  ['Oct', 11006, 11006], ['Nov', 15184, 26190], ['Dec', 18207, 44397], ['Jan', 18258, 62655],
+  ['Feb', 13212, 75867], ['Mar', 27362, 103229], ['Apr', 28177, 131406], ['May', 17820, 149226],
+  ['Jun', 19459, 168685], ['Jul', 17316, 186001], ['Aug', 15110, 201111], ['Sep', 11240, 212351]
+];
+
+const MENU = [
+  { name: 'Send one kid to camp', full: 2343, direct: 1290 },
+  { name: 'Sponsor a leader for a year', full: 1995, direct: 1098 },
+  { name: 'Pay for WyldLife for a year', full: 23304, direct: 12828 },
+  { name: 'Pay for college and Wednesday nights', full: 19533, direct: 10753 },
+  { name: 'Pay for high school', full: 2507, direct: 1380 },
+  { name: 'Cover one club night', full: 218, direct: 120 },
+  { name: 'Cover the whole camp season', full: 35152, direct: 19350 }
+];
+
+const OPEN_ITEMS = [
+  { tone: 'terracotta', trust: 'Placeholder', title: 'Second staff position, $35,000', note: 'This number was invented, not given. Kendra said part time starting around August of year two and that housing does not change the pay. Nobody has said what part time means in hours or dollars. It is the largest unconfirmed figure in the budget.' },
+  { tone: 'terracotta', trust: 'Not priced', title: 'Getting kids to camp, $0', note: 'Kids carpool today. Kendra wants a shared bus with other Peninsula areas and floated $5,000 a year. Until that is priced, the camp number is low.' },
+  { tone: 'terracotta', trust: 'Not priced', title: 'Technology and mileage, $0', note: 'Kendra says about $2,000 covers mileage and the phone bill, and that some tech is already inside the service charge. Gas is roughly $200 a month, untracked.' },
+  { tone: 'gold', trust: 'Stated', title: 'Cash on hand, $28,295', note: 'Kendra\u2019s figure, $28,294.76, with about $10,000 more expected from capital. She says the split between restricted and usable is handled at the region and she cannot see it.' },
+  { tone: 'muted', trust: 'Settled', title: 'The year runs October to September', note: 'Kendra chose the region\u2019s calendar over the school year. The budget tabs were built on August to July, so the month columns are shifted by two.' },
+  { tone: 'muted', trust: 'Verified', title: 'Camp rates', note: '$750 per kid at Woodleaf June 19 to 23, $175 per kid for weekend camps. Both confirmed by Kendra. All-in cost per kid at camp is $1,290.' }
+];
+
+const RISKS = [
+  { kind: 'Concentration', name: 'Four households are most of the money', what: 'Last year four gifts made up $102,000 of $108,187. Two of the four have already given again this year. The Butcher $50,000 has not, and it is the single largest number in the plan.', watch: 'The Butcher renewal ask in October' },
+  { kind: 'Capacity', name: 'About seven hours a week against a $199,245 goal', what: 'Kendra has roughly seven hours a week for fundraising and club and camp cannot move. So anything unplanned comes out of the fundraising, and nobody has timed the work to know whether seven is enough.', watch: 'The overdue count on the task list' },
+  { kind: 'Timing', name: 'March is the wall, not December', what: 'Cash on hand plus what is committed covers October through December. It falls about $39,000 short of what the year needs by the end of March, which is when Woodleaf deposits and the WyldLife weekend land.', watch: 'The checkpoints in MONEY' },
+  { kind: 'Key person', name: 'The relationships live in one head', what: 'What each big donor cares about, why the Butchers gave, what condition came with the O\u2019Hara gift. None of it is written down. If Kendra is unavailable for a month, nobody can carry the asks.', watch: 'The relationship notes on each household' }
+];
+
+const OPEN_QS = [
+  { q: 'What condition came with the O\u2019Hara gift?', owner: 'Kendra', assume: 'They have now given $25,000 twice, so the plan treats the condition as satisfied. Nobody has checked whether it still applies.' },
+  { q: 'Why did the Butchers give $50,000, and who asked?', owner: 'Kendra', assume: 'The gift table assumes this repeats. Nothing supports that assumption yet.' },
+  { q: 'How many monthly partners are there, and what do they give in total?', owner: 'Remi', assume: 'One is confirmed, Dele and Kesle at $100 a month. About five more are guessed from gift counts, and their amounts are unknown.' },
+  { q: 'Are the two Butcher records and the two Young records the same families?', owner: 'Remi', assume: 'Treated as separate, which understates two lifetime giving totals.' },
+  { q: 'What does part time mean for the second staff hire, in hours and dollars?', owner: 'Kendra and Remi', assume: '$35,000 starting August of year two. This is a placeholder and year two rests on it.' },
+  { q: 'Who is on the fundraising committee today, by name?', owner: 'Kendra', assume: 'The budget says three people. An earlier correction said one. The plan assumes no committee capacity.' },
+  { q: 'What does getting kids to camp actually cost?', owner: 'Kendra', assume: 'Zero, because kids carpool. The camp figure is low by whatever a bus costs.' },
+  { q: 'Which churches already have people connected to this ministry?', owner: 'Kendra', assume: '$5,000 from two or three churches, with no names behind it.' },
+  { q: 'Is seven hours a week enough to run this plan?', owner: 'Kendra and Remi', assume: 'That it is. Nobody has timed the work, and there is no margin if a week goes sideways.' },
+  { q: 'What did the O\u2019Hara and Allen gifts actually arrive as, and on what dates?', owner: 'Remi', assume: 'January and February, entered by hand. If the dates are wrong the overdue thank-you flags are wrong too.' }
+];
+
+const BLOCKERS = [
+  { name: 'Case for support', owner: 'Remi', due: 'Due Sep 8', blocks: 'Blocks church asks and major donor follow-up', overdue: false },
+  { name: 'House photography', owner: 'Owner unassigned', due: 'No date set', blocks: 'Blocks the case for support and the brunch invitation', overdue: true },
+  { name: 'The real monthly partner list', owner: 'Remi', due: 'Due Sep 30', blocks: 'Blocks the monthly upgrade asks and makes the monthly goal an estimate', overdue: false },
+  { name: 'A named brunch host', owner: 'Kendra', due: 'Due this week', blocks: 'Blocks the guest list, the invitations, and the whole November event', overdue: true }
+];
+
+const CADENCE = [
+  ['$10,000 and up', '6 times a year', 'A handwritten thank-you inside a week. A call from Kendra twice a year. One in-person visit. A one-page report on what the gift did.', 'Kendra'],
+  ['$1,000 to $9,999', '4 times a year', 'A thank-you inside two weeks with one specific detail about what the money covered. The newsletter. One personal note that is not an ask.', 'Kendra'],
+  ['Monthly partners', 'Every quarter', 'A short note with one story. An annual total for taxes. Never an ask disguised as a thank-you.', 'Remi'],
+  ['Under $1,000', '3 times a year', 'A thank-you inside two weeks. The newsletter. A year-end note.', 'Remi'],
+  ['Brunch and event guests', 'Twice', 'A note within 48 hours, whether they gave or not. One follow-up in the spring.', 'Remi drafts, Kendra signs']
+];
+
+const ASK_CALENDAR = [
+  ['October', 'Butcher renewal ask. Brunch invitations out. Report to O\u2019Hara and Allen on this year\u2019s gifts.', '$50,000 asked'],
+  ['November', 'The brunch itself. Ask the Brandon referrals.', '$15,000 target'],
+  ['December', 'Year-end appeal to the whole list. December is the biggest giving month of the year everywhere.', '$10,000 target'],
+  ['January', 'Close anything that slipped from the fall. Start monthly recruiting in earnest.', 'Catch-up'],
+  ['February', 'Camp-specific asks. Camp gifts skip the 17 percent if the donor writes camp on the gift.', '$12,000 target'],
+  ['March', 'Second half of the big-gift asks. Grant research turns into two real conversations.', '$30,000 asked'],
+  ['April', 'Be a Kid for a Day. Kids raising their own camp money starts here.', '$6,000 target'],
+  ['May', 'Final camp gap ask. Fifteen kids at $750 each, minus what the kids raise.', '$8,000 target'],
+  ['June', 'Nothing new. This month is for showing up with kids at Woodleaf.', 'No asks'],
+  ['July to September', 'Report to every donor. Set next year\u2019s plan in August, not September.', 'No asks']
+];
+
+const PROFILE_QUEUE = [
+  { name: 'Carolyn and Preston Butcher', why: 'The $50,000 gift, and the renewal ask is in October. Nobody has written down what moved them.', priority: 'Do this first' },
+  { name: 'John and Nancy Brandon', why: 'Gave $17,000 and offered introductions. Needs a profile before you use the referrals.', priority: 'Do this first' },
+  { name: 'John and Lynn O\u2019Hara', why: 'Two gifts of $25,000. Time to ask about a multi-year commitment, and about the foundation.', priority: 'Do this first' },
+  { name: 'John and Dena Mumford', why: 'Portola Valley. Gave $24,933 through 2010, then stopped. Capacity is high.', priority: 'Next' },
+  { name: 'Wally and Alex Hawley', why: 'Atherton. $25,000 lifetime, last gift 2010. Runs a foundation.', priority: 'Next' },
+  { name: 'Bill and Brenda Younger', why: 'Atherton. $17,500 lifetime, last gift 2006.', priority: 'Next' }
+];
+
+const SEED_GIFTS = [
+  { who: 'John and Lynn O\u2019Hara', amount: 25000, date: '2026-01-15', kind: 'Gift received', strategy: 'Major gifts', forWhat: 'Wherever needed' },
+  { who: 'Ken and Sarah Allen', amount: 10000, date: '2026-02-10', kind: 'Gift received', strategy: 'Major gifts', forWhat: 'Wherever needed' },
+  { who: 'Dele and Kesle Sobomehin', amount: 1200, date: '2026-08-01', kind: 'Gift received', strategy: 'Monthly partners', forWhat: 'Wherever needed', monthly: 100 }
+];
+
+class Component extends DCLogic {
+  state = {
+    auth: 'locked', email: '', authNote: '', tab: 'home', raw: null,
+    open: {}, research: {}, checks: {}, notes: {}, nexts: {}, answers: {},
+    logged: [], todos: [], people: [], pins: {},
+    q: '', filter: 'All', workView: 'One list', workFilter: 'Everything',
+    figOpen: {}, detailsOpen: false, moreOpen: false, stratOpen: {},
+    addOpen: false, addKind: 'Task', addA: '', addB: '', addC: '',
+    gKind: 'Gift received', gStrategy: 'Major gifts', gFor: 'Wherever needed'
+  };
+
+  componentDidMount() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(S) || '{}');
+      if (saved && typeof saved === 'object') this.setState(saved);
+      if (localStorage.getItem(S + '-session') === 'open') this.setState({ auth: 'open' });
+    } catch (e) {}
+    import('./epa-prospects.js').then(m => this.setState({ raw: m.default })).catch(() => {});
+  }
+
+  save(patch) {
+    this.setState(patch, () => {
+      const s = this.state;
+      try {
+        localStorage.setItem(S, JSON.stringify({
+          checks: s.checks, notes: s.notes, nexts: s.nexts, answers: s.answers,
+          logged: s.logged, todos: s.todos, people: s.people, pins: s.pins
+        }));
+      } catch (e) {}
+    });
+  }
+
+  flip(bag, k) {
+    const cur = this.state[bag] || {};
+    this.setState({ [bag]: Object.assign({}, cur, { [k]: !cur[k] }) });
+  }
+  check(k) { this.save({ checks: Object.assign({}, this.state.checks, { [k]: !this.state.checks[k] }) }); }
+  setNote(k, v) { this.save({ notes: Object.assign({}, this.state.notes, { [k]: v }) }); }
+  setNext(k, v) { this.save({ nexts: Object.assign({}, this.state.nexts, { [k]: v }) }); }
+  setAnswer(k, v) { this.save({ answers: Object.assign({}, this.state.answers, { [k]: v }) }); }
+  pin(k) { this.save({ pins: Object.assign({}, this.state.pins, { [k]: !this.state.pins[k] }) }); }
+
+  sendLink() {
+    const e = (this.state.email || '').trim().toLowerCase();
+    if (!/.+@.+\..+/.test(e)) { this.setState({ authNote: 'That does not look like an email address.' }); return; }
+    this.setState({ auth: 'sent', authNote: '' });
+  }
+  enter() {
+    try { localStorage.setItem(S + '-session', 'open'); } catch (e) {}
+    this.setState({ auth: 'open' });
+  }
+  signOut() {
+    try { localStorage.setItem(S + '-session', 'closed'); } catch (e) {}
+    this.setState({ auth: 'locked', email: '', authNote: '', moreOpen: false });
+  }
+
+  daysSince(iso) {
+    const t = Date.parse(iso);
+    if (!t) return 0;
+    return Math.max(0, Math.round((Date.now() - t) / 86400000));
+  }
+
+  commitAdd() {
+    const st = this.state;
+    const a = (st.addA || '').trim();
+    if (!a) return;
+    void 0;
+    if (st.addKind === 'Gift or pledge') {
+      const amt = +String(st.addB).replace(/[^0-9.]/g, '') || 0;
+      if (!amt) return;
+      this.save({
+        logged: (st.logged || []).concat([{
+          who: a, amount: amt, date: (st.addC || '').trim() || new Date().toISOString().slice(0, 10),
+          kind: st.gKind, strategy: st.gStrategy, forWhat: st.gFor
+        }]),
+        addOpen: false, addA: '', addB: '', addC: ''
+      });
+      return;
+    }
+    if (st.addKind === 'Person') {
+      this.save({
+        people: (st.people || []).concat([{ name: a, city: (st.addB || '').trim(), note: (st.addC || '').trim() }]),
+        addOpen: false, addA: '', addB: '', addC: ''
+      });
+      return;
+    }
+    this.save({
+      todos: (st.todos || []).concat([{
+        title: a, owner: (st.addB || '').trim() || 'Kendra', when: (st.addC || '').trim() || 'No date set',
+        strategy: st.addKind === 'Note' ? 'Note' : 'Added by hand'
+      }]),
+      addOpen: false, addA: '', addB: '', addC: ''
+    });
+  }
+
+  renderVals() {
+    const st = this.state;
+    const raw = st.raw || [];
+    const tab = st.tab;
+    const logged = SEED_GIFTS.concat((st.logged || []).filter(g =>
+      !SEED_GIFTS.some(s => s.who === g.who && s.amount === g.amount && s.date === g.date)
+    ));
+
+    const tabDefs = [
+      ['home', 'Home', 'What matters right now'],
+      ['people', 'People', 'Who are we moving'],
+      ['plan', 'Plan', 'Where the money comes from'],
+      ['money', 'Money', 'Are we funded'],
+      ['work', 'Work', 'What needs doing']
+    ];
+    const tabs = tabDefs.map(([id, label]) => ({
+      id, label,
+      bg: tab === id ? 'var(--gold)' : 'transparent',
+      fg: tab === id ? 'var(--acid-black)' : 'var(--bone-dim)',
+      select: () => this.setState({ tab: id })
+    }));
+    const tabHint = (tabDefs.find(t => t[0] === tab) || [, , ''])[2];
+
+    const committed = logged.reduce((a, g) => a + g.amount, 0);
+    const commitmentCount = logged.length;
+    const gap = Math.max(0, GOAL - committed);
+    const fyGivers = raw.filter(p => p.fy && p.fy['2026'] > 0).sort((a, b) => b.fy['2026'] - a.fy['2026']);
+    const lastYear = fyGivers.reduce((a, p) => a + p.fy['2026'], 0);
+
+    const figToggle = k => () => this.flip('figOpen', k);
+    const homeFigures = [
+      {
+        label: 'The goal', value: money(GOAL), trust: 'Verified · from the budget', color: 'var(--acid-black)',
+        explain: 'Running the ministry costs ' + money(COST) + ' for the year. Young Life takes 17 cents of every dollar before it reaches this area, and there is capital work still to fund, so the amount you raise has to be bigger than the amount you spend.',
+        open: !!st.figOpen.g1, toggle: figToggle('g1')
+      },
+      {
+        label: 'Committed', value: money(committed), trust: commitmentCount ? 'From ' + commitmentCount + ' recorded gifts and pledges' : 'Nothing recorded yet', color: committed ? 'var(--forest-ink)' : 'var(--stone-ink)',
+        explain: 'Only gifts and pledges that have actually been recorded, for this year. Not last year\u2019s giving, not capacity estimates, not anything anybody expects. If it is not recorded, it is not here.',
+        open: !!st.figOpen.g2, toggle: figToggle('g2')
+      },
+      {
+        label: 'Still to raise', value: money(gap), trust: 'The goal minus what is committed', color: 'var(--terracotta)',
+        explain: 'The goal minus what has been committed. This is the honest number, and it starts out equal to the whole goal because nothing has been committed yet. It goes down when a gift or a pledge gets recorded.',
+        open: !!st.figOpen.g3, toggle: figToggle('g3')
+      }
+    ];
+
+    const stratCommitted = {};
+    logged.forEach(g => { stratCommitted[g.strategy] = (stratCommitted[g.strategy] || 0) + g.amount; });
+
+    const pipelineFor = id => {
+      if (id === 'major') return fyGivers.filter(p => p.fy['2026'] >= 10000).length;
+      if (id === 'monthly') return logged.filter(g => g.monthly).length || 6;
+      if (id === 'brunch') return 0;
+      if (id === 'church') return 0;
+      return 1;
+    };
+    const nextMoveFor = id => {
+      if (id === 'major') return 'Thank the Butchers, then ask them to renew';
+      if (id === 'monthly') return 'Get the real list from the region';
+      if (id === 'brunch') return 'Pick the host';
+      if (id === 'church') return 'List the connected churches';
+      return 'Confirm the Young Life grant repeats';
+    };
+
+    const strategyRows = STRATEGIES.map(s => {
+      const c = stratCommitted[s.name] || 0;
+      const g = Math.max(0, s.goal - c);
+      const pct = s.goal ? c / s.goal : 0;
+      return {
+        name: s.name, goalFmt: money(s.goal), committedFmt: money(c), gapFmt: money(g),
+        status: c === 0 ? 'Nothing committed yet' : pct >= 1 ? 'Fully committed' : pct >= 0.5 ? 'On the way' : 'Behind',
+        statusColor: c === 0 ? 'var(--terracotta)' : pct >= 1 ? 'var(--forest-ink)' : 'var(--acid-black)',
+        go: () => this.setState({ tab: 'plan' })
+      };
+    });
+
+    const strategies = STRATEGIES.map(s => {
+      const c = stratCommitted[s.name] || 0;
+      const isOpen = !!st.stratOpen[s.id];
+      return {
+        name: s.name, owner: s.owner, hours: s.hours, what: s.what,
+        goalFmt: money(s.goal), committedFmt: money(c), pipeline: pipelineFor(s.id) || '\u2014',
+        nextMove: nextMoveFor(s.id),
+        open: isOpen, chev: isOpen ? 'Close' : 'Open',
+        bg: isOpen ? 'var(--paper-raised)' : 'var(--paper)',
+        border: isOpen ? 'var(--acid-black)' : 'var(--line-on-paper)',
+        toggle: () => this.flip('stratOpen', s.id),
+        method: s.method.map((m, i) => ({ k: m[0], v: m[1], color: i === 2 ? 'var(--terracotta)' : i === 3 ? 'var(--forest-ink)' : 'var(--gold-ink)' })),
+        hasSteps: !!(s.steps && s.steps.length),
+        steps: (s.steps || []).map(r => ({ a: r[0], b: r[1], c: r[2], d: r[3] })),
+        hasExtra: !!s.extra,
+        extraHead: s.extra ? s.extra.head : '',
+        extraCols: s.extra ? s.extra.cols : [],
+        extraRows: s.extra ? s.extra.rows.map(r => ({ a: r[0], b: r[1], c: r[2], d: r[3] })) : [],
+        hasTable: !!s.hasTable, tableNote: s.tableNote || '',
+        levels: LEVELS.map(l => {
+          const cov = Math.min(100, Math.round((l.named / l.count) * 100));
+          return {
+            level: l.level, count: l.count, totalFmt: money(l.total),
+            pool: l.count >= 12 ? '\u2014' : l.count * 3, who: l.who,
+            cov: cov + '%',
+            covColor: cov >= 100 ? 'var(--forest-ink)' : cov > 0 ? 'var(--acid-black)' : 'var(--line-on-paper)',
+            covLabel: l.named + ' of ' + l.count + ' named'
+          };
+        })
+      };
+    });
+
+    const flagged = [];
+    logged.forEach((g, i) => {
+      if (g.kind !== 'Gift received') {
+        flagged.push({ key: 'p' + i, name: g.who, why: 'Pledged ' + money(g.amount) + ' with nothing in writing yet.', verb: 'Confirm', subject: g.who + '\u2019s ' + money(g.amount) + ' pledge in writing', reason: 'A pledge with no paperwork is a hope. Get the amount and the date.', strategy: g.strategy, owner: 'Kendra', when: 'this week', rank: 1 });
+        return;
+      }
+      if (g.monthly) {
+        flagged.push({ key: 'q' + i, name: g.who, why: 'Monthly partner at ' + money(g.monthly) + ' a month. Due a quarterly note.', verb: 'Write', subject: g.who + ' a quarterly note', reason: 'Monthly partners get a short note with one story every quarter. They quit when they start feeling like a bank transfer.', strategy: g.strategy, owner: 'Remi', when: 'this quarter', rank: 4 });
+        return;
+      }
+      const d = this.daysSince(g.date);
+      if (d > 7) flagged.push({ key: 't' + i, name: g.who, why: 'Gave ' + money(g.amount) + ' ' + d + ' days ago and has not been thanked.', verb: 'Thank', subject: g.who + ' for ' + money(g.amount), reason: 'Logged ' + d + ' days ago. Handwritten, today. This is already late.', strategy: g.strategy, owner: 'Kendra', when: 'overdue', rank: 0 });
+      else flagged.push({ key: 't' + i, name: g.who, why: 'Gave ' + money(g.amount) + '. Thank-you due inside seven days.', verb: 'Thank', subject: g.who + ' for ' + money(g.amount), reason: 'Handwritten, inside seven days. Not an email.', strategy: g.strategy, owner: 'Kendra', when: 'within 7 days', rank: 1 });
+      if (g.amount >= 10000) flagged.push({ key: 'r' + i, name: g.who, why: 'Gift of ' + money(g.amount) + ' needs a report inside ninety days.', verb: 'Report to', subject: g.who + ' on what the ' + money(g.amount) + ' did', reason: 'Gifts this size get a one-page report inside ninety days, whether or not they ask.', strategy: g.strategy, owner: 'Kendra', when: 'within 90 days', rank: 3 });
+    });
+    if (!logged.length) {
+      flagged.push({ key: 'butcher-thanks', name: 'Carolyn and Preston Butcher', why: 'Gave $50,000 last October. No thank-you on record.', verb: 'Thank', subject: 'the Butchers for their $50,000', reason: 'Largest gift this area has ever received and there is no thank-you on record. Handwritten, plus a report on what it did.', strategy: 'Major gifts', owner: 'Kendra', when: 'overdue', rank: 0 });
+      flagged.push({ key: 'spates-thanks', name: 'Sylvia Spates', why: 'Has given 163 times since 2009 and never been thanked at that level.', verb: 'Call', subject: 'Sylvia Spates to say thank you', reason: '163 gifts since 2009. Loyalty like that has never been acknowledged properly.', strategy: 'Monthly partners', owner: 'Kendra', when: 'this month', rank: 4 });
+    }
+
+    const blockerMoves = BLOCKERS.filter(b => b.overdue).map((b, i) => ({
+      key: 'b' + i, verb: b.name === 'A named brunch host' ? 'Pick' : 'Assign',
+      subject: b.name === 'A named brunch host' ? 'the brunch host' : b.name.toLowerCase(),
+      reason: b.blocks + '. ' + (b.owner === 'Owner unassigned' ? 'Nobody owns it yet.' : b.owner + ' owns it.'),
+      strategy: b.name === 'A named brunch host' ? 'The fall brunch' : 'Collateral',
+      owner: b.owner === 'Owner unassigned' ? 'unassigned' : b.owner, when: b.due.toLowerCase(), rank: 2
+    }));
+
+    const behind = strategyRows.slice().sort((a, b) => {
+      const ga = +String(a.gapFmt).replace(/[^0-9]/g, ''), gb = +String(b.gapFmt).replace(/[^0-9]/g, '');
+      return gb - ga;
+    })[0];
+    const strategyMove = behind ? [{
+      key: 'sm', verb: 'Work', subject: behind.name.toLowerCase() + ', furthest behind at ' + behind.gapFmt + ' short',
+      reason: 'It has the biggest gap of the five strategies. ' + nextMoveFor((STRATEGIES.find(s => s.name === behind.name) || {}).id) + '.',
+      strategy: behind.name, owner: (STRATEGIES.find(s => s.name === behind.name) || {}).owner || 'Kendra', when: 'this week', rank: 5
+    }] : [];
+
+    const coldRich = raw.filter(p => !(p.fy && p.fy['2026'] > 0) && NEAR.indexOf(p.city) >= 0 && p.cap5 >= 250000)
+      .sort((a, b) => (Date.parse(a.last) || 0) - (Date.parse(b.last) || 0))[0];
+    const oldestMove = coldRich ? [{
+      key: 'om', verb: 'Research', subject: coldRich.name.replace(/ Household$/, '') + ' in ' + coldRich.city,
+      reason: 'Capacity around ' + short(coldRich.cap5) + ' and no gift since ' + (coldRich.last ? coldRich.last.slice(0, 4) : 'ever') + '. Oldest untouched household above the capacity line.',
+      strategy: 'Major gifts', owner: 'Kendra', when: 'this month', rank: 6
+    }] : [];
+
+    const allMoves = flagged.concat(blockerMoves).concat(strategyMove).concat(oldestMove)
+      .filter(m => !st.checks[m.key]);
+    const pinned = allMoves.filter(m => st.pins[m.key]);
+    const rest = allMoves.filter(m => !st.pins[m.key]).sort((a, b) => a.rank - b.rank);
+    const moves = pinned.concat(rest).slice(0, 3).map((m, i) => ({
+      num: '0' + (i + 1), verb: m.verb, subject: m.subject, reason: m.reason,
+      strategy: m.strategy, owner: m.owner, when: m.when,
+      bg: st.pins[m.key] ? 'var(--paper-raised)' : 'var(--paper)',
+      border: st.pins[m.key] ? 'var(--gold)' : 'var(--line-on-paper)',
+      boxBg: 'transparent', mark: '',
+      toggle: () => this.check(m.key),
+      pin: () => this.pin(m.key),
+      pinLabel: st.pins[m.key] ? 'Pinned' : 'Pin',
+      pinColor: st.pins[m.key] ? 'var(--gold-ink)' : 'var(--stone-ink)'
+    }));
+
+    const followUpAll = flagged.filter(f => f.name && !st.checks[f.key]);
+    const followUpTop = followUpAll.slice(0, 3).map(f => ({
+      name: f.name, why: f.why, go: () => this.setState({ tab: 'people', filter: 'Needs follow-up' })
+    }));
+
+    const manualTasks = (st.todos || []).map((t, i) => ({
+      key: 'm' + i, title: t.title, why: 'Added by hand.', owner: t.owner, when: t.when, strategy: t.strategy
+    }));
+    const stratTasks = [];
+    STRATEGIES.forEach(s => {
+      (s.steps || []).forEach((r, i) => {
+        stratTasks.push({ key: s.id + i, title: r[0], why: r[2], when: r[1], owner: r[3], strategy: s.name });
+      });
+    });
+    const gifted = flagged.filter(f => f.verb).map(f => ({
+      key: f.key, title: f.verb + ' ' + f.subject, why: f.reason, when: f.when, owner: f.owner, strategy: f.strategy
+    }));
+    const allTasks = gifted.concat(manualTasks).concat(stratTasks);
+    const openT = allTasks.filter(t => !st.checks[t.key]);
+    const doneT = allTasks.filter(t => st.checks[t.key]);
+
+    const taskRow = t => ({
+      title: t.title, why: t.why, when: t.when, owner: t.owner, strategy: t.strategy,
+      strategyColor: /overdue/i.test(t.when) ? 'var(--terracotta)' : 'var(--gold-ink)',
+      boxBg: st.checks[t.key] ? 'var(--acid-black)' : 'transparent',
+      mark: st.checks[t.key] ? '\u2713' : '',
+      bg: st.checks[t.key] ? 'var(--line-on-paper)' : 'var(--paper-raised)',
+      toggle: () => this.check(t.key)
+    });
+
+    const whenRank = w => {
+      const s = String(w).toLowerCase();
+      if (/overdue/.test(s)) return 0;
+      if (/this week|within 7 days|due this week/.test(s)) return 1;
+      if (/this month|september|by october 1\b|by october 10|by october 15|early october|late september/.test(s)) return 2;
+      if (/this quarter|october|late october|within 48 hours|fall/.test(s)) return 3;
+      if (/november|by november|winter|by december|within 90 days/.test(s)) return 4;
+      if (/quarterly|ongoing|after the renewal/.test(s)) return 6;
+      if (/no date set/.test(s)) return 7;
+      return 5;
+    };
+
+    const workFilterDefs = ['Everything', 'Overdue', 'This week', 'Donors', 'Events', 'Thank-yous'];
+    const matchFilter = (t, f) => {
+      if (f === 'Everything') return true;
+      if (f === 'Overdue') return /overdue/i.test(t.when);
+      if (f === 'This week') return whenRank(t.when) <= 1;
+      if (f === 'Donors') return /major gifts|monthly partners|grants/i.test(t.strategy);
+      if (f === 'Events') return /brunch|church/i.test(t.strategy);
+      if (f === 'Thank-yous') return /^thank |^report to |quarterly note/i.test(t.title);
+      return true;
+    };
+    const wf = st.workFilter || 'Everything';
+    const workFilters = workFilterDefs.map(f => ({
+      label: f, count: openT.filter(t => matchFilter(t, f)).length,
+      bg: wf === f ? 'var(--acid-black)' : 'transparent',
+      fg: wf === f ? 'var(--bone)' : 'var(--acid-black)',
+      border: f === 'Overdue' && openT.some(t => /overdue/i.test(t.when)) && wf !== f ? 'var(--terracotta)' : 'var(--acid-black)',
+      select: () => this.setState({ workFilter: f })
+    }));
+    const filteredOpen = openT.filter(t => matchFilter(t, wf));
+    const flatTasks = filteredOpen.slice().sort((a, b) => whenRank(a.when) - whenRank(b.when)).map(t => {
+      const r = taskRow(t);
+      r.whenColor = /overdue/i.test(t.when) ? 'var(--terracotta)' : 'var(--acid-black)';
+      r.border = /overdue/i.test(t.when) ? 'var(--terracotta)' : 'var(--line-on-paper)';
+      return r;
+    });
+
+    const ownerNames = [];
+    openT.forEach(t => { if (ownerNames.indexOf(t.owner) < 0) ownerNames.push(t.owner); });
+    const ownerGroups = ownerNames.map(o => {
+      const list = filteredOpen.filter(t => t.owner === o);
+      return { owner: o, count: list.length + ' open', tasks: list.map(taskRow) };
+    });
+    const whenOrder = ['overdue', 'this week', 'Due this week', 'This week', 'within 7 days', 'September', 'By October 1', 'By October 10', 'By October 15', 'this month', 'October', 'Fall', 'November', 'Late September', 'Early October', 'Late October', 'Within 48 hours', 'By November', 'By December', 'within 90 days', 'Winter', 'Quarterly', 'Ongoing', 'After the renewal', 'No date set'];
+    const whenNames = [];
+    openT.forEach(t => { if (whenNames.indexOf(t.when) < 0) whenNames.push(t.when); });
+    whenNames.sort((a, b) => {
+      const ia = whenOrder.indexOf(a), ib = whenOrder.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
+    const whenNamesSorted = whenNames.slice().sort((a, b) => whenRank(a) - whenRank(b));
+    const whenGroups = whenNamesSorted.map(w => {
+      const list = filteredOpen.filter(t => t.when === w);
+      return { owner: w, count: list.length + ' open', tasks: list.map(taskRow) };
+    });
+
+    const overdueN = openT.filter(t => /overdue/i.test(t.when)).length;
+
+    const expTotal = EXPENSE.reduce((a, e) => a + e.amount, 0);
+    const expense = EXPENSE.map((e, i) => ({
+      name: e.name, note: e.note, amountFmt: money(e.amount),
+      pctFmt: Math.round((e.amount / expTotal) * 100) + '%',
+      w: Math.round((e.amount / expTotal) * 100) + '%',
+      color: i === 0 ? 'var(--acid-black)' : i === 1 ? 'var(--forest-ink)' : 'var(--gold-ink)'
+    }));
+    const grossUp = GROSS.map(g => ({
+      label: g.label,
+      amountFmt: (g.amount < 0 ? '\u2212' : '') + money(Math.abs(g.amount)),
+      color: g.red ? 'var(--terracotta)' : 'var(--acid-black)',
+      weight: g.bold ? '700' : '400'
+    }));
+    const runMax = RUN[RUN.length - 1][2];
+    const runway = RUN.map(r => ({
+      month: r[0], outFmt: short(r[1]),
+      h: Math.max(3, Math.round((r[2] / runMax) * 100)) + '%',
+      color: r[2] > CASH ? 'var(--terracotta)' : 'var(--acid-black)',
+      labelColor: r[2] > CASH ? 'var(--terracotta)' : 'var(--stone-ink)'
+    }));
+    const moneyFigures = [
+      { label: 'What the year costs', value: money(COST), trust: 'Verified \u00b7 from the budget', color: 'var(--acid-black)', explain: 'Everything it takes to run the ministry for twelve months. Staff pay of $90,475, program of $50,900, the house at $28,850, fundraising and events at $11,700, and office costs of $9,944.', open: !!st.figOpen.m1, toggle: figToggle('m1') },
+      { label: 'What Young Life takes', value: money(32089), trust: 'Verified \u00b7 17 percent of every gift', color: 'var(--terracotta)', explain: 'Eleven cents of every dollar pays for national services like accounting and gift processing. Six cents pays for the region. It comes off before the money reaches this area, which is why the goal has to be bigger than the cost. Camp gifts are the exception, as long as the donor writes camp on the gift.', open: !!st.figOpen.m2, toggle: figToggle('m2') },
+      { label: 'Cash on hand', value: money(CASH), trust: 'Stated \u00b7 not reconciled', color: 'var(--acid-black)', explain: 'Kendra\u2019s figure, $28,294.76, with about $10,000 more expected from capital that is not available yet. The split between restricted and usable is held at the region and she cannot see it, so treat this as a ceiling rather than spendable cash.', open: !!st.figOpen.m3, toggle: figToggle('m3') }
+    ];
+
+    const CHECKS = [
+      { by: 'By December 31', need: 44397, covers: 'the first three months, October through December' },
+      { by: 'By March 31', need: 103229, covers: 'the first six months, through the WyldLife camp weekend' },
+      { by: 'By June 30', need: 168685, covers: 'everything through Woodleaf, the biggest spend of the year' },
+      { by: 'By September 30', need: GOAL, covers: 'the whole year' }
+    ];
+    const checkpoints = CHECKS.map(c => {
+      const have = committed + CASH;
+      const short = Math.max(0, c.need - have);
+      const pct = Math.min(100, Math.round((have / c.need) * 100));
+      return {
+        by: c.by, needFmt: money(c.need), covers: c.covers,
+        shortFmt: short ? money(short) : 'covered',
+        shortColor: short ? 'var(--terracotta)' : 'var(--forest-ink)',
+        w: pct + '%',
+        barColor: short ? (pct >= 60 ? 'var(--gold)' : 'var(--terracotta)') : 'var(--forest-ink)',
+        pctLabel: pct + '% covered by cash on hand plus what is committed'
+      };
+    });
+    const have = committed + CASH;
+    const covered = CHECKS.filter(c => c.need <= have);
+    const nextWall = CHECKS.filter(c => c.need > have)[0];
+    const checkSentence = nextWall
+      ? 'Cash on hand plus everything committed comes to ' + money(have) + '. That covers ' + (covered.length ? covered[covered.length - 1].covers.replace(/^the /, '') + ', ' : 'nothing yet, ') + 'and falls ' + money(nextWall.need - have) + ' short of ' + nextWall.by.replace('By ', '') + '. That is the next wall.'
+      : 'Cash on hand plus everything committed covers the whole year. Verify it against the region before believing it.';
+
+    const filters = ['All', 'Current donors', 'Prospects', 'Monthly', 'Needs follow-up', 'Do not contact'];
+    const peopleFilters = filters.map(f => ({
+      label: f,
+      bg: st.filter === f ? 'var(--acid-black)' : 'transparent',
+      fg: st.filter === f ? 'var(--bone)' : 'var(--acid-black)',
+      select: () => this.setState({ filter: f })
+    }));
+
+    const flaggedNames = {};
+    followUpAll.forEach(f => { flaggedNames[f.name] = f.why; });
+
+    const enrich = p => {
+      const key = 'h:' + p.name + ':' + p.greet;
+      const surname = p.name.split(' ')[0];
+      const c = CARE[p.name] || CARE[surname] || {};
+      const gaveNow = p.fy && p.fy['2026'] > 0;
+      const monthly = p.gifts >= 40;
+      const yrs = p.last ? 2026 - +String(p.last).slice(0, 4) : null;
+      const stand = gaveNow ? (monthly ? 'Monthly partner' : 'Gave last year') : p.dnc ? 'Do not contact' : p.lifetime >= 1000 ? 'Lapsed donor, last gave ' + (yrs === null ? 'unknown' : yrs + ' yrs ago') : 'Never given';
+      const years = ['2020', '2021', '2022', '2023', '2024', '2025', '2026'];
+      const vals = years.map(y => (p.fy && p.fy[y]) || 0);
+      const mx = Math.max.apply(null, vals.concat([1]));
+      const isDilla = /Dillabough/.test(p.name);
+      const askGuess = gaveNow ? (p.fy['2026'] >= 25000 ? p.fy['2026'] : p.fy['2026'] >= 10000 ? Math.round(p.fy['2026'] * 1.5 / 1000) * 1000 : Math.round(p.fy['2026'] * 1.6 / 500) * 500) : (p.ask ? Math.round(p.ask / 500) * 500 : 0);
+      const flagWhy = flaggedNames[p.name] || '';
+      return {
+        raw: p, key, gaveNow, monthly, stand, isDilla, flagWhy,
+        name: p.name.replace(/ Household$/, ''),
+        sub: p.greet + (p.city ? ' \u00b7 ' + p.city : ''),
+        standColor: p.dnc ? 'var(--terracotta)' : gaveNow ? 'var(--forest-ink)' : 'var(--stone-ink)',
+        lastFmt: gaveNow ? money(p.fy['2026']) : p.lifetime ? money(p.lastAmt) : '\u2014',
+        next: st.nexts[key] || (flagWhy ? 'Needs follow-up' : 'Nobody has set one.'),
+        nextEdit: st.nexts[key] || '',
+        open: !!st.open[key], chev: st.open[key] ? 'Close' : 'Open',
+        bg: st.open[key] ? 'var(--paper-raised)' : 'var(--paper)',
+        border: flagWhy ? 'var(--terracotta)' : 'var(--line-on-paper)',
+        toggle: () => this.flip('open', key),
+        snapshot: [
+          { k: 'Where they live', v: (p.city || 'not on file') + (p.state ? ', ' + p.state : '') },
+          { k: 'Where things stand', v: stand },
+          { k: 'Ask this year', v: askGuess ? money(askGuess) : 'not set' },
+          { k: 'Capacity estimate', v: p.cap5 ? short(p.cap5) + ' over 5 yrs' : 'not scored' },
+          { k: 'Work', v: p.biz ? (p.biz + (p.role ? ', ' + p.role : '')) : 'not on file' },
+          { k: 'Email', v: p.email || 'none on file' },
+          { k: 'Phone', v: p.phone || 'none on file' }
+        ],
+        spark: years.map((y, i) => ({
+          year: y.slice(2),
+          h: Math.max(2, Math.round((vals[i] / mx) * 52)) + 'px',
+          color: i === 6 ? 'var(--acid-black)' : vals[i] ? 'var(--gold-ink)' : 'var(--line-on-paper)'
+        })),
+        giving: [
+          { k: 'Lifetime total', v: money(p.lifetime) },
+          { k: 'Number of gifts', v: String(p.gifts || 0) },
+          { k: 'First gift', v: (p.first || 'not on file') + (p.firstAmt ? ' \u00b7 ' + money(p.firstAmt) : '') },
+          { k: 'Biggest gift', v: p.big ? money(p.big) + ' \u00b7 ' + p.bigDate : 'not on file' }
+        ],
+        care: c.care || 'Nobody has written this down yet.',
+        threads: c.threads || (flagWhy || 'Nothing on record.'),
+        hasFlag: !!(p.dnc || !p.appeals || c.flags),
+        flags: p.dnc ? 'Marked do not contact. This is enforced, not a suggestion.' : !p.appeals ? 'Opted out of appeals. Do not add them to a mailing.' : (c.flags || ''),
+        note: st.notes[key] || '',
+        setNote: e => this.setNote(key, e.target.value),
+        setNext: e => this.setNext(key, e.target.value),
+        researchOpen: !!st.research[key],
+        researchChev: st.research[key] ? 'Collapse' : 'Open',
+        toggleResearch: () => this.flip('research', key),
+        researchState: isDilla ? 'Full profile written. Ten sections.' : 'Not written yet.',
+        hasProfile: isDilla, noProfile: !isDilla,
+        profile: {
+          headline: PROFILE.headline,
+          snapshot: PROFILE.snapshot.map(r => ({ k: r[0], v: r[1] })),
+          publicNotes: PROFILE.publicNotes,
+          read: PROFILE.read,
+          ladder: PROFILE.ladder.map(r => ({ a: r[0], b: r[1], c: r[2] })),
+          ladderNote: PROFILE.ladderNote,
+          rce: PROFILE.rce.map(r => ({ k: r[0], v: r[1] })),
+          caseFit: PROFILE.caseFit,
+          questions: PROFILE.questions.map((r, i) => ({ n: i + 1, q: r[0], why: r[1] })),
+          questionNote: PROFILE.questionNote,
+          proposals: PROFILE.proposals.map((pp, i) => ({ name: pp.name, ask: pp.ask, fit: pp.fit, what: pp.what, line: pp.line, primary: i === 0, tone: i === 0 ? 'gold' : 'muted' })),
+          firstMove: PROFILE.firstMove,
+          sequence: PROFILE.sequence.map((r, i) => ({ n: i + 1, when: r[0], what: r[1] })),
+          askPath: PROFILE.askPath.map(r => ({ when: r[0], line: r[1] })),
+          closing: PROFILE.closing
+        }
+      };
+    };
+
+    let pool = raw.slice();
+    if (st.filter === 'Current donors') pool = pool.filter(p => p.fy && p.fy['2026'] > 0);
+    else if (st.filter === 'Prospects') pool = pool.filter(p => !(p.fy && p.fy['2026'] > 0) && !p.dnc);
+    else if (st.filter === 'Monthly') pool = pool.filter(p => p.gifts >= 40);
+    else if (st.filter === 'Needs follow-up') pool = pool.filter(p => flaggedNames[p.name]);
+    else if (st.filter === 'Do not contact') pool = pool.filter(p => p.dnc || !p.appeals);
+
+    pool.sort((a, b) => {
+      const ag = (a.fy && a.fy['2026']) || 0, bg = (b.fy && b.fy['2026']) || 0;
+      if (ag !== bg) return bg - ag;
+      return (b.cap5 || 0) - (a.cap5 || 0);
+    });
+
+    const q = (st.q || '').trim().toLowerCase();
+    if (q) pool = pool.filter(p => (p.name + ' ' + p.greet + ' ' + p.city + ' ' + p.biz).toLowerCase().indexOf(q) >= 0);
+
+    const manualPeople = (st.people || []).map((p, i) => {
+      const key = 'mp' + i;
+      return {
+        name: p.name, sub: 'Added by hand' + (p.city ? ' \u00b7 ' + p.city : ''),
+        stand: 'Added by hand', standColor: 'var(--stone-ink)', lastFmt: '\u2014',
+        next: st.nexts[key] || p.note || 'Nobody has set one.', nextEdit: st.nexts[key] || '',
+        open: !!st.open[key], chev: st.open[key] ? 'Close' : 'Open',
+        bg: st.open[key] ? 'var(--paper-raised)' : 'var(--paper)', border: 'var(--line-on-paper)',
+        toggle: () => this.flip('open', key),
+        snapshot: [{ k: 'Source', v: 'added by hand' }, { k: 'Where they live', v: p.city || 'not set' }],
+        spark: [{ year: '', h: '2px', color: 'var(--line-on-paper)' }],
+        giving: [{ k: 'Lifetime total', v: 'nothing on record' }],
+        care: 'Nobody has written this down yet.', threads: p.note || 'Nothing on record.',
+        hasFlag: false, flags: '',
+        note: st.notes[key] || '', setNote: e => this.setNote(key, e.target.value),
+        setNext: e => this.setNext(key, e.target.value),
+        researchOpen: !!st.research[key], researchChev: st.research[key] ? 'Collapse' : 'Open',
+        toggleResearch: () => this.flip('research', key),
+        researchState: 'Not written yet.', hasProfile: false, noProfile: true,
+        profile: { headline: '', snapshot: [], publicNotes: [], read: '', ladder: [], ladderNote: '', rce: [], caseFit: '', questions: [], questionNote: '', proposals: [], firstMove: '', sequence: [], askPath: [], closing: '' }
+      };
+    });
+
+    const people = manualPeople.concat(pool.slice(0, 60).map(enrich));
+
+    const openQuestions = OPEN_QS.map((x, i) => {
+      const k = 'q' + i;
+      return {
+        q: x.q, owner: x.owner, assume: x.assume,
+        answer: st.answers[k] || '',
+        setAnswer: e => this.setAnswer(k, e.target.value),
+        boxBg: st.checks[k] ? 'var(--acid-black)' : 'transparent',
+        mark: st.checks[k] ? '\u2713' : '',
+        bg: st.checks[k] ? 'var(--line-on-paper)' : 'var(--paper-raised)',
+        toggle: () => this.check(k)
+      };
+    });
+
+    const addKinds = ['Task', 'Person', 'Gift or pledge', 'Note', 'Document'].map(k => ({
+      label: k,
+      bg: st.addKind === k ? 'var(--acid-black)' : 'transparent',
+      fg: st.addKind === k ? 'var(--bone)' : 'var(--acid-black)',
+      pick: () => this.setState({ addKind: k })
+    }));
+    const addCopy = {
+      'Task': ['Something that needs doing. It shows up under whoever owns it.', 'What needs doing', 'One sentence', 'Who owns it', 'Kendra', 'By when', 'Friday'],
+      'Person': ['A household not in the Young Life report yet.', 'Name', 'Household', 'City', 'Menlo Park', 'Who knows them', 'The person who can introduce you'],
+      'Gift or pledge': ['This is for planning. Young Life and BloomOS still hold the official record.', 'Who gave', 'Household', 'How much', '25000', 'When', '2026-10-15'],
+      'Note': ['Something you want to remember. It lands as a task with no date.', 'The note', 'What happened', 'Who it is about', 'Optional', 'When', 'Optional'],
+      'Document': ['Upload the latest Young Life report or the budget and the numbers update. You will see what changed before it saves.', 'What is it', 'Young Life report', 'Who uploaded it', 'Kendra', 'Date', 'Today']
+    };
+    const ac = addCopy[st.addKind] || addCopy['Task'];
+
+    return {
+      yes: true, wmSize: 19, noop: () => {},
+      isLocked: st.auth === 'locked', isSent: st.auth === 'sent', isOpen: st.auth === 'open',
+      email: st.email, authNote: st.authNote,
+      setEmail: e => this.setState({ email: e.target.value }),
+      sendLink: () => this.sendLink(), enter: () => this.enter(), signOut: () => this.signOut(),
+      sentTo: (st.email || '').trim().toLowerCase() || 'kendra',
+      linkArrived: ALLOWED.indexOf((st.email || '').trim().toLowerCase()) >= 0,
+      tabs, tabHint,
+      isHome: tab === 'home', isPeople: tab === 'people', isPlan: tab === 'plan',
+      isMoney: tab === 'money', isWork: tab === 'work',
+      moreOpen: st.moreOpen, toggleMore: () => this.setState({ moreOpen: !st.moreOpen }),
+      addOpen: st.addOpen, openAdd: () => this.setState({ addOpen: true }),
+      closeAdd: () => this.setState({ addOpen: false }),
+      addKinds, addHint: ac[0],
+      addFieldOne: ac[1], addPlaceOne: ac[2], addFieldTwo: ac[3], addPlaceTwo: ac[4],
+      addFieldThree: ac[5], addPlaceThree: ac[6],
+      addA: st.addA, addB: st.addB, addC: st.addC,
+      setAddA: e => this.setState({ addA: e.target.value }),
+      setAddB: e => this.setState({ addB: e.target.value }),
+      setAddC: e => this.setState({ addC: e.target.value }),
+      addIsGift: st.addKind === 'Gift or pledge',
+      gKind: st.gKind, gStrategy: st.gStrategy, gFor: st.gFor,
+      setGKind: e => this.setState({ gKind: e.target.value }),
+      setGStrategy: e => this.setState({ gStrategy: e.target.value }),
+      setGFor: e => this.setState({ gFor: e.target.value }),
+      commitAdd: () => this.commitAdd(),
+      homeFigures, moneyFigures, checkpoints, checkSentence,
+      goalFmt: money(GOAL), committedFmt: money(committed), gapFmt: money(gap),
+      lastYearFmt: lastYear ? money(lastYear) : '\u2014',
+      hasCommitments: commitmentCount > 0, noCommitments: commitmentCount === 0,
+      commitmentCount, committedW: Math.round((committed / GOAL) * 100) + '%',
+      committedPct: Math.round((committed / GOAL) * 100) + '%',
+      moves, strategyRows, strategies, risks: RISKS, openQuestions,
+      openQCount: openQuestions.filter(q => !q.mark).length,
+      followUpTop, followUpCount: followUpAll.length,
+      blockerTop: BLOCKERS.filter(b => b.overdue).map(b => ({ name: b.name, owner: b.owner, due: b.due, blocks: b.blocks })),
+      blockers: BLOCKERS.map(b => ({ name: b.name, owner: b.owner, due: b.due, blocks: b.blocks, dueColor: b.overdue ? 'var(--terracotta)' : 'var(--stone-ink)' })),
+      goWork: () => this.setState({ tab: 'work' }),
+      overdueCount: overdueN,
+      overdueColor: overdueN ? 'var(--terracotta)' : 'var(--stone-ink)',
+      workSentence: overdueN
+        ? overdueN === 1 ? 'One thing is overdue. It is at the top of the list.' : overdueN + ' things are overdue. They are at the top of the list.'
+        : 'Nothing overdue. The list is sorted so the soonest thing sits on top.',
+      workFilters, flatTasks, noTasks: flatTasks.length === 0,
+      flatView: st.workView !== 'By owner' && st.workView !== 'By when',
+      workViews: ['One list', 'By owner', 'By when'].map(v => ({
+        label: v,
+        bg: (st.workView || 'One list') === v ? 'var(--acid-black)' : 'transparent',
+        fg: (st.workView || 'One list') === v ? 'var(--bone)' : 'var(--acid-black)',
+        select: () => this.setState({ workView: v })
+      })),
+      byOwner: st.workView === 'By owner', byWhen: st.workView === 'By when',
+      ownerGroups, whenGroups,
+      openCount: openT.length, doneCount: doneT.length,
+      anyDone: doneT.length > 0, doneTasks: doneT.map(taskRow),
+      cadence: CADENCE.map(r => ({ a: r[0], b: r[1], c: r[2], d: r[3] })),
+      askCalendar: ASK_CALENDAR.map(r => ({ a: r[0], b: r[1], c: r[2] })),
+      profileQueue: PROFILE_QUEUE.map(x => ({
+        name: x.name, why: x.why, priority: x.priority,
+        color: x.priority === 'Do this first' ? 'var(--terracotta)' : 'var(--gold-ink)'
+      })),
+      people, peopleCount: raw.length ? raw.length + manualPeople.length : '\u2014',
+      peopleShown: people.length,
+      peopleFilters, q: st.q, setQ: e => this.setState({ q: e.target.value }),
+      expense, grossUp, runway, menu: MENU.map(k => ({ name: k.name, fullFmt: money(k.full), directFmt: money(k.direct) })),
+      openItems: OPEN_ITEMS,
+      cashFmt: money(CASH), cashLine: Math.round((CASH / runMax) * 100) + '%',
+      functional: [
+        { label: 'Program 49%', w: '49.2%', color: 'var(--acid-black)', fg: 'var(--bone)' },
+        { label: 'Admin 39%', w: '39.4%', color: 'var(--forest-ink)', fg: 'var(--bone)' },
+        { label: 'Fundraising 11%', w: '11.4%', color: 'var(--gold)', fg: 'var(--acid-black)' }
+      ],
+      arc: [
+        { year: 'Year one, FY27', amountFmt: '$199,245', note: 'One staff person. The year in front of you.' },
+        { year: 'Year two, FY28', amountFmt: '$297,255', note: 'The second hire starts. Costs jump 49 percent.' },
+        { year: 'Year three, FY29', amountFmt: '$373,861', note: 'Forty kids at camp, sixteen leaders.' }
+      ],
+      detailsOpen: st.detailsOpen,
+      detailsLabel: st.detailsOpen ? 'Hide budget details' : 'View budget details',
+      toggleDetails: () => this.setState({ detailsOpen: !st.detailsOpen })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -9,8 +9,14 @@ the handoff disagree, it wins), `CLIENT-HUB-IA-REVISION-PROMPT.md` (replaces
 the handoff's thirteen tabs with five sections; everything structural in the
 build prompt stays in force), `spec-epayl-fundraising-hub.md` (the handoff
 spec: data model, parsing rules, stewardship rules, AI drafting scope),
-`README.md` (design tokens, screens, copy, all final), and
-`fundraising-hub.dc.html` (the visual target; reference only, never ported).
+`README.md` (design tokens, screens, copy, all final),
+`fundraising-hub.dc.html` (the v1 visual target; reference only, never
+ported), and `fundraising-hub-v2.dc.html` (the v2 design reference,
+Remi's upload 2026-09-02; it settles the wordmark as "For God So Loved
+East Palo Alto" with So Loved in gold, confirms the October-September
+fiscal year in its own copy, and is the source the live plan content,
+relationship notes, and Dillabough research profile were generated
+from, mechanically, never retyped).
 **Voice and visual specs:** `docs/hub/house-voice.md` and
 `docs/hub/art-direction.md`. Every string follows them.
 **Source files, NEVER committed:** `sources/epayl/` (gitignored) holds the

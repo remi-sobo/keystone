@@ -173,9 +173,20 @@ export default async function HubLayout({
           letterSpacing: '0.2em',
           textTransform: 'uppercase',
           color: 'var(--hub-stone-ink)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: 16,
+          flexWrap: 'wrap',
         }}
       >
-        {vocab.door_footer ?? 'Not public · Not indexed'}
+        <span>{vocab.door_footer ?? 'Not public · Not indexed'}</span>
+        {/* The quiet overflow: never primary navigation. */}
+        <a
+          href={`/${orgSlug}/export`}
+          style={{ color: 'var(--hub-gold-ink)', textDecoration: 'none' }}
+        >
+          Take everything with you · one zip
+        </a>
       </footer>
     </div>
   )

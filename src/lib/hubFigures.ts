@@ -42,6 +42,26 @@ export function currentFiscalYear(fiscalYearStart: string | null): number | null
   return start.getUTCFullYear() + 1
 }
 
+/**
+ * The fiscal year a date falls in, by the org's own year start: an
+ * October 2026 start makes 2026-11-15 FY2027 and 2027-03-01 FY2027.
+ * Null when the org's fiscal year is unsettled or the date is not a
+ * date; the caller renders a gap rather than guessing a year.
+ */
+export function fiscalYearOf(dateISO: string, fiscalYearStart: string | null): number | null {
+  if (!fiscalYearStart) return null
+  const d = new Date(dateISO)
+  const s = new Date(fiscalYearStart)
+  if (Number.isNaN(d.getTime()) || Number.isNaN(s.getTime())) return null
+  const startMonth = s.getUTCMonth()
+  const startDay = s.getUTCDate()
+  if (startMonth === 0 && startDay === 1) return d.getUTCFullYear()
+  const past =
+    d.getUTCMonth() > startMonth ||
+    (d.getUTCMonth() === startMonth && d.getUTCDate() >= startDay)
+  return past ? d.getUTCFullYear() + 1 : d.getUTCFullYear()
+}
+
 export interface HubFigure {
   cents: number | null
   trust: string | null

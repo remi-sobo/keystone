@@ -3956,3 +3956,107 @@ end $$;
 reset role;
 
 select 'client hub isolation: all assertions passed' as result;
+
+-- =====================================================================
+-- Client hub, phase two: the documents bucket wall and the live proof
+-- that a manual gift survives an export re-parse (correction 2).
+-- =====================================================================
+
+reset role;
+
+insert into storage.objects (bucket_id, name) values
+  ('hub-documents', '80000000-0000-0000-0000-0000000000e1/seeded-export.xlsx'),
+  ('hub-documents', '80000000-0000-0000-0000-0000000000e2/other-org.xlsx');
+
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000d1","email":"kendra_h1@org-h1.test"}', false);
+
+-- The bucket wall: own org's objects only, and a write lands only
+-- under the member's own org path.
+do $$ begin
+  if (select count(*) from storage.objects where bucket_id = 'hub-documents') <> 1 then
+    raise exception 'LEAK cross-org: a hub member reads another org''s document objects';
+  end if;
+end $$;
+do $$ declare n int; begin
+  insert into storage.objects (bucket_id, name) values
+    ('hub-documents', '80000000-0000-0000-0000-0000000000e1/upload.xlsx');
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'a hub member must be able to upload into their own org folder'; end if;
+end $$;
+do $$ begin
+  insert into storage.objects (bucket_id, name) values
+    ('hub-documents', '80000000-0000-0000-0000-0000000000e2/sneak.xlsx');
+  raise exception 'HOLE hub: a hub member wrote into another org''s document folder';
+exception when insufficient_privilege then null; end $$;
+-- Append-only: no delete path for any session. Either shape proves
+-- it: the platform grant refuses outright, or RLS filters every row.
+do $$ declare n int; begin
+  delete from storage.objects where bucket_id = 'hub-documents';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE hub: a hub member deleted a stored document'; end if;
+exception when insufficient_privilege then null; end $$;
+
+-- Correction 2, proven live under the member's own session: the
+-- parser's whole write path is member RLS (upsert donors, delete
+-- gifts WHERE source = 'yl_export' and the org, insert fresh rows),
+-- and a manual gift survives it.
+do $$ declare manual_before int; manual_after int; export_after int; begin
+  insert into hub_gifts (org_id, practice_id, donor_id, fiscal_year, amount_cents, source) values
+    ('80000000-0000-0000-0000-0000000000e1', '10000000-0000-0000-0000-00000000000a',
+     '81000000-0000-0000-0000-0000000000d1', 2027, 777700, 'manual');
+  select count(*) into manual_before from hub_gifts where source = 'manual';
+
+  -- The re-parse: replace the export's rows, exactly the plan's scope.
+  delete from hub_gifts
+    where org_id = '80000000-0000-0000-0000-0000000000e1' and source = 'yl_export';
+  insert into hub_gifts (org_id, practice_id, donor_id, fiscal_year, amount_cents, source) values
+    ('80000000-0000-0000-0000-0000000000e1', '10000000-0000-0000-0000-00000000000a',
+     '81000000-0000-0000-0000-0000000000d1', 2026, 5000000, 'yl_export'),
+    ('80000000-0000-0000-0000-0000000000e1', '10000000-0000-0000-0000-00000000000a',
+     '81000000-0000-0000-0000-0000000000d1', 2027, 250000, 'yl_export');
+
+  select count(*) into manual_after from hub_gifts where source = 'manual';
+  select count(*) into export_after
+    from hub_gifts where source = 'yl_export'
+    and org_id = '80000000-0000-0000-0000-0000000000e1';
+  if manual_after <> manual_before then
+    raise exception 'HOLE hub: an export re-parse deleted a manual gift';
+  end if;
+  if export_after <> 2 then
+    raise exception 'the export replacement did not land its own rows';
+  end if;
+end $$;
+
+-- The other org's gifts were never in reach of that delete.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000d2","email":"member_h2@org-h2.test"}', false);
+do $$ begin
+  if (select count(*) from hub_gifts) <> 1 then
+    raise exception 'LEAK cross-org: the re-parse touched another org''s gifts';
+  end if;
+  if (select count(*) from storage.objects where bucket_id = 'hub-documents') <> 1 then
+    raise exception 'LEAK cross-org: org_h2''s member does not see exactly their own document';
+  end if;
+end $$;
+
+-- Nobody else, and not anon, reads the bucket.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from storage.objects where bucket_id = 'hub-documents') <> 0 then
+    raise exception 'LEAK hub: the practice owner reads hub document objects';
+  end if;
+end $$;
+select set_config('request.jwt.claims', '', false);
+reset role;
+set role anon;
+do $$ begin
+  if (select count(*) from storage.objects where bucket_id = 'hub-documents') <> 0 then
+    raise exception 'LEAK hub: anon reads hub document objects';
+  end if;
+end $$;
+reset role;
+
+select 'client hub phase two: bucket wall and manual-gift survival passed' as result;

@@ -192,6 +192,29 @@ test.describe('the hub schema wall (structural)', () => {
     expect(nsql).toMatch(/create\s+trigger\s+[a-z0-9_]*do_not_contact[a-z0-9_]*\s+before\s+insert/)
   })
 
+  test('the documents bucket is private, org-walled by the one predicate, and append-only', () => {
+    if (!armed) return
+    const bucket = sql.match(
+      /insert\s+into\s+storage\.buckets[^;]*'hub-documents'[^;]*;/i
+    )
+    if (!bucket) return // phase one tree; armed fully once 0047 lands
+    expect(bucket[0], 'the hub-documents bucket must be private').toMatch(/false/)
+    for (const dir of ['read', 'insert']) {
+      const pol = sql.match(
+        new RegExp(`create\\s+policy\\s+keystone_hub_documents_${dir}[\\s\\S]*?;`, 'i')
+      )
+      expect(pol, `bucket ${dir} policy missing`).toBeTruthy()
+      expect(pol![0]).toMatch(/is_hub_member/)
+      expect(pol![0], 'the wall is the first folder segment').toMatch(
+        /storage\.foldername\(name\)\)\[1\]/
+      )
+    }
+    expect(
+      /create\s+policy\s+keystone_hub_documents_(update|delete)/i.test(sql),
+      'the document store is append-only: no update or delete policy exists'
+    ).toBe(false)
+  })
+
   test('the LAST claim RPC definition claims hub membership too', () => {
     if (!armed) return
     const defs = [

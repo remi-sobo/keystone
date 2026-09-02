@@ -28,7 +28,15 @@ export async function proxy(req: NextRequest) {
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
   const isMachine = MACHINE_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
 
-  if (!hasUser && !isPublic && !isMachine) {
+  // The client hub's door (specs/epayl-fundraising-hub.md) renders
+  // signed-out at /<org-slug>, and slugs are rows, not code, so the
+  // coarse gate lets any single-segment path through. This narrows the
+  // proxy only: every Keystone layout still bounces a signed-out
+  // visitor itself (checked structurally), the hub layout 404s a slug
+  // the door RPC does not know, and RLS reads zero rows regardless.
+  const isDoorCandidate = /^\/[a-z0-9-]+$/.test(pathname)
+
+  if (!hasUser && !isPublic && !isMachine && !isDoorCandidate) {
     const url = req.nextUrl.clone()
     url.pathname = '/login'
     url.search = ''

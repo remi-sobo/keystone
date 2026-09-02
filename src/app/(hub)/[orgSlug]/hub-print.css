@@ -1,0 +1,63 @@
+/*
+  The hub's print face (specs/epayl-fundraising-hub.md, phase six).
+  Kendra is presenting to a committee: if the hub is the plan, the
+  plan has to be able to leave the screen. Black on white, no chrome,
+  no navigation, folds opened, page breaks between sections. PLAN and
+  MONEY print as a document.
+
+  The theme variables are set inline on the wrapper, so the print
+  overrides carry !important: a stylesheet custom property cannot
+  outrank an inline one without it. This file is the one place hub
+  color values may appear outside a database row, because print is
+  deliberately not themed: every org prints black on white.
+*/
+@media print {
+  .hub-root {
+    --hub-acid-black: #000000 !important;
+    --hub-acid-black-raised: #ffffff !important;
+    --hub-bone: #000000 !important;
+    --hub-bone-dim: #333333 !important;
+    --hub-paper: #ffffff !important;
+    --hub-paper-raised: #ffffff !important;
+    --hub-gold: #000000 !important;
+    --hub-gold-ink: #333333 !important;
+    --hub-forest: #333333 !important;
+    --hub-forest-ink: #333333 !important;
+    --hub-terracotta: #000000 !important;
+    --hub-stone: #555555 !important;
+    --hub-stone-ink: #555555 !important;
+    --hub-line-on-black: #bbbbbb !important;
+    --hub-line-on-paper: #bbbbbb !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .hub-root header,
+  .hub-root footer,
+  .hub-root nav,
+  .hub-root form,
+  .hub-root button,
+  .hub-root summary {
+    display: none !important;
+  }
+  .hub-root main {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+  .hub-root details,
+  .hub-root details > * {
+    display: block !important;
+  }
+  .hub-root section {
+    break-inside: avoid;
+    margin-top: 24px;
+  }
+  .hub-root h1,
+  .hub-root h2,
+  .hub-root h3 {
+    break-after: avoid;
+  }
+  .hub-root a {
+    color: #000000 !important;
+    text-decoration: none !important;
+  }
+}

@@ -8,6 +8,7 @@ import Door from '@/components/hub/Door'
 import Wordmark from '@/components/hub/Wordmark'
 import SectionNav from '@/components/hub/SectionNav'
 import { signInToHub, signOutOfHub } from './actions'
+import './hub-print.css'
 
 /**
  * The client hub shell (specs/epayl-fundraising-hub.md).
@@ -81,7 +82,7 @@ export default async function HubLayout({
     const org = Array.isArray(data) ? data[0] : null
     if (!org) notFound()
     return (
-      <div className={fontVars} style={hubWrapperStyle(org.theme ?? {})}>
+      <div className={`hub-root ${fontVars}`} style={hubWrapperStyle(org.theme ?? {})}>
         <Door
           vocabulary={(org.vocabulary ?? {}) as HubVocabulary}
           action={signInToHub.bind(null, orgSlug)}
@@ -101,7 +102,7 @@ export default async function HubLayout({
 
   return (
     <div
-      className={fontVars}
+      className={`hub-root ${fontVars}`}
       style={{
         ...hubWrapperStyle(viewer.hub.theme),
         minHeight: '100vh',

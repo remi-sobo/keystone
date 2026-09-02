@@ -4,7 +4,10 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import { hubContext } from '@/lib/hubPage'
 import { hubMoney } from '@/lib/hubTheme'
 import Tag from '@/components/hub/Tag'
-import { addNextMove, completeTask, logGift, saveNotes } from '../actions'
+import ThankYouDraft from '@/components/hub/ThankYouDraft'
+import { stewardshipFindings } from '@/lib/hubStewardship'
+import { addNextMove, addTouch, completeTask, logGift, makeStewardshipTask, saveNotes } from '../actions'
+import { draftThankYou } from '../draft-actions'
 
 /**
  * One household, six sections: Snapshot, Giving, Relationship,
@@ -95,7 +98,7 @@ export default async function HubDonorPage({
       .order('occurred_on', { ascending: false }),
     supabase
       .from('hub_tasks')
-      .select('id, title, why, due_date, done_at')
+      .select('id, title, why, due_date, done_at, rule_key')
       .eq('org_id', hub.orgId)
       .eq('donor_id', donorId)
       .order('created_at', { ascending: false }),
@@ -117,10 +120,31 @@ export default async function HubDonorPage({
   )
   const editedBy = d.updated_by ? (editorEmail.get(d.updated_by) ?? null) : null
 
+  const firedKeys = new Set(
+    (tasksRes.data ?? []).map((t) => t.rule_key).filter((k): k is string => !!k)
+  )
+  const findings = stewardshipFindings({
+    today: new Date().toISOString().slice(0, 10),
+    donors: [
+      {
+        id: d.id,
+        household: d.household,
+        do_not_contact: d.do_not_contact,
+        lifetime_cents: d.lifetime_cents === null ? null : Number(d.lifetime_cents),
+        last_gift_date: d.last_gift_date,
+        last_gift_cents: d.last_gift_cents === null ? null : Number(d.last_gift_cents),
+      },
+    ],
+    touches: touches.map((t) => ({ donor_id: d.id, kind: t.kind, occurred_on: t.occurred_on })),
+  }).filter((f) => !firedKeys.has(f.ruleKey))
+
   const notesAction = saveNotes.bind(null, orgSlug)
   const moveAction = addNextMove.bind(null, orgSlug)
   const doneAction = completeTask.bind(null, orgSlug)
   const giftAction = logGift.bind(null, orgSlug)
+  const touchAction = addTouch.bind(null, orgSlug)
+  const stewardAction = makeStewardshipTask.bind(null, orgSlug)
+  const draftAction = draftThankYou.bind(null, orgSlug)
 
   return (
     <div style={{ maxWidth: 880 }}>
@@ -288,6 +312,46 @@ export default async function HubDonorPage({
         ))
       )}
 
+      <details style={{ marginTop: 12, maxWidth: 460 }}>
+        <summary style={{ ...label, color: 'var(--hub-gold-ink)', cursor: 'pointer' }}>
+          Record what they heard
+        </summary>
+        <form action={touchAction} style={{ display: 'grid', gap: 10, marginTop: 10 }}>
+          <input type="hidden" name="donor_id" value={d.id} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <label htmlFor="touch-kind" style={label}>
+                What it was
+              </label>
+              <select id="touch-kind" name="kind" style={input} defaultValue="thank_you">
+                <option value="thank_you">A thank-you</option>
+                <option value="call">A call</option>
+                <option value="meeting">A meeting</option>
+                <option value="report">A report on their gift</option>
+                <option value="note">A note</option>
+                <option value="event">An event they came to</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="touch-date" style={label}>
+                When
+              </label>
+              <input id="touch-date" name="occurred_on" type="date" required style={input} />
+            </div>
+          </div>
+          <div>
+            <label htmlFor="touch-note" style={label}>
+              One line about it
+            </label>
+            <input id="touch-note" name="note" maxLength={2000} style={input} />
+          </div>
+          <button type="submit" style={{ ...goldButton, justifySelf: 'start' }}>
+            Record it
+          </button>
+        </form>
+      </details>
+      {!d.do_not_contact ? <ThankYouDraft donorId={d.id} action={draftAction} /> : null}
+
       <h2 style={h2}>Research</h2>
       {profile ? (
         <p style={{ fontSize: 14 }}>
@@ -324,6 +388,48 @@ export default async function HubDonorPage({
       </form>
 
       <h2 style={h2}>Next move</h2>
+      {findings.map((f) => (
+        <div
+          key={f.ruleKey}
+          style={{
+            border: '1px solid var(--hub-terracotta)',
+            padding: '12px 14px',
+            marginTop: 10,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'baseline',
+            gap: 12,
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>{f.title}</div>
+            <div style={{ fontSize: 13, lineHeight: 1.5, marginTop: 2 }}>{f.why}</div>
+          </div>
+          <form action={stewardAction}>
+            <input type="hidden" name="donor_id" value={d.id} />
+            <input type="hidden" name="title" value={f.title} />
+            <input type="hidden" name="why" value={f.why} />
+            <input type="hidden" name="rule_key" value={f.ruleKey} />
+            <button
+              type="submit"
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--hub-line-on-paper)',
+                color: 'var(--hub-terracotta)',
+                fontFamily: 'var(--hub-font-detail)',
+                fontSize: 10,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+                padding: '6px 10px',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Make it a task
+            </button>
+          </form>
+        </div>
+      ))}
       {openTasks.length === 0 ? (
         <p style={{ fontSize: 14, color: 'var(--hub-stone-ink)' }}>No open move for this household.</p>
       ) : (

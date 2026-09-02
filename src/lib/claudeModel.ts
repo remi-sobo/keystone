@@ -38,8 +38,19 @@ export const CLAUDE_MODEL_FAST: string =
 export const CLAUDE_MODEL_FRONTIER: string =
   env.CLAUDE_MODEL_FRONTIER || 'claude-fable-5'
 
-/** The kind of work a Keystone AI call is doing, used to pick the tier. */
-export type ModelTask = 'extract' | 'digest' | 'qa' | 'suggest' | 'voice_sweep' | 'case_study'
+/** The kind of work a Keystone AI call is doing, used to pick the tier.
+ *  hub_draft is the client hub's one drafting job (a thank-you note in
+ *  the house voice, specs/epayl-fundraising-hub.md phase six): a small
+ *  job on the fast tier, inert by construction since the draft is
+ *  render-only and nothing sends. */
+export type ModelTask =
+  | 'extract'
+  | 'digest'
+  | 'qa'
+  | 'suggest'
+  | 'voice_sweep'
+  | 'case_study'
+  | 'hub_draft'
 
 /**
  * Pick the model id for a task. Centralizing this here means there is
@@ -52,6 +63,7 @@ export function modelForTask(task: ModelTask): string {
       return CLAUDE_MODEL_EXTRACT
     case 'suggest':
     case 'voice_sweep':
+    case 'hub_draft':
       return CLAUDE_MODEL_FAST
     case 'digest':
     case 'qa':

@@ -185,3 +185,78 @@ export async function logGift(orgSlug: string, formData: FormData): Promise<void
   revalidatePath(`${peoplePath(orgSlug)}/${parsed.data.donor_id}`)
   redirect(`${peoplePath(orgSlug)}/${parsed.data.donor_id}?state=saved`)
 }
+
+const TouchShape = z.object({
+  donor_id: z.string().uuid(),
+  kind: z.enum(['thank_you', 'call', 'meeting', 'report', 'note', 'event']),
+  occurred_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  note: z.string().trim().max(2000).optional(),
+})
+
+/** Record what a household heard. Touches are what make the
+ *  stewardship rules honest, and what clears them. */
+export async function addTouch(orgSlug: string, formData: FormData): Promise<void> {
+  const hub = await hubContext(orgSlug)
+  if (!hub) redirect('/')
+  const limited = await checkRateLimits([{ config: WRITE_PER_MIN, key: hub.orgId }])
+  if (!limited.ok) redirect(`${peoplePath(orgSlug)}?state=slow`)
+  const parsed = TouchShape.safeParse({
+    donor_id: formData.get('donor_id'),
+    kind: formData.get('kind'),
+    occurred_on: formData.get('occurred_on'),
+    note: formData.get('note') ?? undefined,
+  })
+  if (!parsed.success) redirect(`${peoplePath(orgSlug)}?state=invalid`)
+  const supabase = await createServerSupabase()
+  const { error } = await supabase.from('hub_touches').insert({
+    org_id: hub.orgId,
+    practice_id: hub.practiceId,
+    donor_id: parsed.data.donor_id,
+    kind: parsed.data.kind,
+    occurred_on: parsed.data.occurred_on,
+    note: parsed.data.note || null,
+  })
+  if (error) {
+    console.error('[hub touch] insert failed:', error.message)
+    redirect(`${peoplePath(orgSlug)}?state=error`)
+  }
+  revalidatePath(`${peoplePath(orgSlug)}/${parsed.data.donor_id}`)
+  redirect(`${peoplePath(orgSlug)}/${parsed.data.donor_id}?state=saved`)
+}
+
+const StewardTaskShape = z.object({
+  donor_id: z.string().uuid(),
+  title: z.string().trim().min(1).max(300),
+  why: z.string().trim().min(1).max(1000),
+  rule_key: z.string().trim().min(1).max(120),
+})
+
+/** Turn a stewardship finding into a task. The rule key and the
+ *  unique index make it fire once per donor per rule per cycle; the
+ *  do-not-contact trigger stands behind this like every insert. */
+export async function makeStewardshipTask(orgSlug: string, formData: FormData): Promise<void> {
+  const hub = await hubContext(orgSlug)
+  if (!hub) redirect('/')
+  const parsed = StewardTaskShape.safeParse({
+    donor_id: formData.get('donor_id'),
+    title: formData.get('title'),
+    why: formData.get('why'),
+    rule_key: formData.get('rule_key'),
+  })
+  if (!parsed.success) redirect(peoplePath(orgSlug))
+  const supabase = await createServerSupabase()
+  await supabase.from('hub_tasks').insert({
+    org_id: hub.orgId,
+    practice_id: hub.practiceId,
+    donor_id: parsed.data.donor_id,
+    title: parsed.data.title,
+    why: parsed.data.why,
+    area: 'Stewardship',
+    source: 'stewardship_rule',
+    rule_key: parsed.data.rule_key,
+  })
+  // A duplicate rule key means it already fired this cycle; that is
+  // the contract working, not an error worth surfacing.
+  revalidatePath(`${peoplePath(orgSlug)}/${parsed.data.donor_id}`)
+  redirect(`${peoplePath(orgSlug)}/${parsed.data.donor_id}?state=saved`)
+}

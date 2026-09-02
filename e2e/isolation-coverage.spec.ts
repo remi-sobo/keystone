@@ -141,8 +141,10 @@ function livePolicyBodiesByTable(sql: string): Record<string, string[]> {
 // one of the SECURITY DEFINER scope helpers from 0001/0005, every one of
 // which resolves from auth.uid() internally: the permission authority
 // keystone_can, the membership predicates, and the assignment check.
+// 0046 adds is_hub_member, the client hub's single scope predicate
+// (specs/epayl-fundraising-hub.md), same shape as is_practice_member.
 const MEMBERSHIP_PREDICATE =
-  /(practice_members|client_members)[\s\S]{0,160}?auth\.uid\(\)|keystone_can\s*\(|is_practice_member\s*\(|is_member_of_client\s*\(|is_client_member_of_practice\s*\(|owns_client_membership\s*\(/i
+  /(practice_members|client_members|hub_members)[\s\S]{0,160}?auth\.uid\(\)|keystone_can\s*\(|is_practice_member\s*\(|is_member_of_client\s*\(|is_client_member_of_practice\s*\(|owns_client_membership\s*\(|is_hub_member\s*\(/i
 
 const sql = readAllMigrations()
 const practiceSet = tablesWithColumn(sql, 'practice_id')

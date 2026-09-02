@@ -10,26 +10,29 @@ import { createServerSupabase } from '@/lib/supabase/server'
 
 interface Block {
   id: string
-  kind: 'headline' | 'lead' | 'paragraph' | 'table' | 'stat_row'
+  kind: 'headline' | 'lead' | 'paragraph' | 'table' | 'stat_row' | 'cards'
   payload: Record<string, unknown>
 }
 
 export default async function ContentBlocks({
   orgId,
   section,
+  strategyId,
   heading,
 }: {
   orgId: string
   section: string
+  strategyId?: string
   heading?: string
 }) {
   const supabase = await createServerSupabase()
-  const { data } = await supabase
+  let query = supabase
     .from('hub_content_blocks')
     .select('id, kind, payload')
     .eq('org_id', orgId)
     .eq('section', section)
-    .order('sort')
+  query = strategyId ? query.eq('strategy_id', strategyId) : query.is('strategy_id', null)
+  const { data } = await query.order('sort')
 
   const blocks = (data ?? []) as Block[]
   if (blocks.length === 0) return null
@@ -134,6 +137,56 @@ function BlockView({ block }: { block: Block }) {
             ))}
           </tbody>
         </table>
+      </div>
+    )
+  }
+  if (block.kind === 'cards') {
+    const cards =
+      (p.cards as { tag?: string; value?: string; title?: string; note?: string }[] | undefined) ??
+      []
+    return (
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: 16,
+          marginTop: 14,
+        }}
+      >
+        {cards.map((c, i) => (
+          <div
+            key={i}
+            style={{
+              border: '1px solid var(--hub-line-on-paper)',
+              borderTop: '3px solid var(--hub-gold)',
+              background: 'var(--hub-paper-raised)',
+              padding: 14,
+            }}
+          >
+            {c.tag ? (
+              <div
+                style={{
+                  fontFamily: 'var(--hub-font-detail)',
+                  fontSize: 10,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: 'var(--hub-gold-ink)',
+                }}
+              >
+                {c.tag}
+              </div>
+            ) : null}
+            {c.value ? (
+              <div style={{ fontFamily: 'var(--hub-font-detail)', fontSize: 22, marginTop: 6 }}>
+                {c.value}
+              </div>
+            ) : null}
+            {c.title ? <div style={{ fontSize: 14, fontWeight: 600, marginTop: 6 }}>{c.title}</div> : null}
+            {c.note ? (
+              <div style={{ fontSize: 13, lineHeight: 1.55, marginTop: 6 }}>{c.note}</div>
+            ) : null}
+          </div>
+        ))}
       </div>
     )
   }

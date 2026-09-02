@@ -4,9 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createServerSupabase } from '@/lib/supabase/server'
-import { getViewer, type HubMembership } from '@/lib/membership'
+import { hubContext } from '@/lib/hubPage'
 import { checkRateLimits } from '@/lib/rateLimit'
-import { parseYlExport, buildApplyPlan } from '@/lib/hubYlExport'
 import { fiscalYearOf } from '@/lib/hubFigures'
 
 /**
@@ -16,246 +15,21 @@ import { fiscalYearOf } from '@/lib/hubFigures'
  * bug in this file cannot reach another org's rows. No service role
  * exists anywhere beneath the hub surface (CI-guarded).
  *
- * Upload contract: the file lands in storage and hub_documents FIRST,
- * with parsed_at null, so a failed parse never loses the file. A
- * recognized Young Life export gets a diff preview in parse_result;
- * NOTHING changes a donor row until the person confirms the diff
- * (a silent parse that changes giving history is worse than no
- * parse). Kendra never sees the word parser and never picks a type.
+ * The upload and import actions live in ../uploads.ts, the org's one
+ * upload path; these are the people-side writes.
  */
 
-const UPLOAD_PER_HOUR = { kind: 'hub:upload:hour', windowMs: 60 * 60 * 1000, max: 20 }
 const WRITE_PER_MIN = { kind: 'hub:write:min', windowMs: 60 * 1000, max: 30 }
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
-async function requireHub(orgSlug: string): Promise<HubMembership | null> {
-  const viewer = await getViewer()
-  if (!viewer.hub || viewer.hub.orgSlug !== orgSlug) return null
-  return viewer.hub
-}
 
 function peoplePath(orgSlug: string): string {
   return `/${orgSlug}/people`
 }
 
-const safeFilename = (name: string) =>
-  name.replace(/[^a-zA-Z0-9._-]+/g, '-').slice(0, 120) || 'upload'
 
-/** Detect what a file is from its content and name, never a picker. */
-function detectKind(
-  filename: string,
-  parsedOk: boolean
-): 'yl_export' | 'budget' | 'financial' | 'research' | 'notes' | 'grant' {
-  if (parsedOk) return 'yl_export'
-  const lower = filename.toLowerCase()
-  if (lower.includes('budget')) return 'budget'
-  if (/\.(xlsx|xlsm|csv)$/.test(lower)) return 'financial'
-  if (lower.includes('grant')) return 'grant'
-  if (lower.includes('profile') || lower.includes('research')) return 'research'
-  return 'notes'
-}
 
-export async function uploadHubDocument(orgSlug: string, formData: FormData): Promise<void> {
-  const hub = await requireHub(orgSlug)
-  if (!hub) redirect('/')
-  const limited = await checkRateLimits([{ config: UPLOAD_PER_HOUR, key: hub.orgId }])
-  if (!limited.ok) redirect(`${peoplePath(orgSlug)}?state=slow`)
 
-  const file = formData.get('file')
-  if (!(file instanceof File) || file.size === 0) {
-    redirect(`${peoplePath(orgSlug)}?state=no_file`)
-  }
-  if (file.size > MAX_UPLOAD_BYTES) {
-    redirect(`${peoplePath(orgSlug)}?state=too_large`)
-  }
 
-  const bytes = new Uint8Array(await file.arrayBuffer())
-  const supabase = await createServerSupabase()
-
-  // The file lands first, whatever it turns out to be.
-  const storagePath = `${hub.orgId}/${crypto.randomUUID()}-${safeFilename(file.name)}`
-  const uploaded = await supabase.storage.from('hub-documents').upload(storagePath, bytes, {
-    contentType: file.type || 'application/octet-stream',
-    upsert: false,
-  })
-  if (uploaded.error) {
-    console.error('[hub upload] storage failed:', uploaded.error.message)
-    redirect(`${peoplePath(orgSlug)}?state=error`)
-  }
-
-  let kind: ReturnType<typeof detectKind>
-  let parseResult: Record<string, unknown> | null = null
-  let parseError: string | null = null
-  try {
-    const parsed = parseYlExport(bytes)
-    const { data: existing } = await supabase
-      .from('hub_donors')
-      .select('id, yl_account_number, status')
-      .eq('org_id', hub.orgId)
-    const plan = buildApplyPlan(parsed, existing ?? [])
-    kind = 'yl_export'
-    parseResult = { status: 'preview', ...plan.summary }
-  } catch (e) {
-    kind = detectKind(file.name, false)
-    // Only a recognized export gets a parse verdict; anything else is
-    // simply stored, and an xlsx that ALMOST matched keeps the honest
-    // reason it did not.
-    if (kind === 'financial' || kind === 'budget') {
-      parseError = e instanceof Error ? e.message : 'unreadable workbook'
-    }
-  }
-
-  const { error } = await supabase.from('hub_documents').insert({
-    org_id: hub.orgId,
-    practice_id: hub.practiceId,
-    storage_path: storagePath,
-    filename: file.name,
-    kind,
-    parse_result: parseResult,
-    parse_error: parseError,
-  })
-  if (error) {
-    console.error('[hub upload] document row failed:', error.message)
-    redirect(`${peoplePath(orgSlug)}?state=error`)
-  }
-  revalidatePath(peoplePath(orgSlug))
-  redirect(`${peoplePath(orgSlug)}?state=${kind === 'yl_export' ? 'preview' : 'stored'}`)
-}
-
-export async function confirmYlImport(orgSlug: string, formData: FormData): Promise<void> {
-  const hub = await requireHub(orgSlug)
-  if (!hub) redirect('/')
-  const documentId = z.string().uuid().safeParse(formData.get('document_id'))
-  if (!documentId.success) redirect(peoplePath(orgSlug))
-  const limited = await checkRateLimits([{ config: UPLOAD_PER_HOUR, key: hub.orgId }])
-  if (!limited.ok) redirect(`${peoplePath(orgSlug)}?state=slow`)
-
-  const supabase = await createServerSupabase()
-  const { data: doc } = await supabase
-    .from('hub_documents')
-    .select('id, storage_path, kind, parsed_at')
-    .eq('org_id', hub.orgId)
-    .eq('id', documentId.data)
-    .maybeSingle()
-  if (!doc || doc.kind !== 'yl_export' || doc.parsed_at) redirect(peoplePath(orgSlug))
-
-  const download = await supabase.storage.from('hub-documents').download(doc.storage_path)
-  if (download.error || !download.data) {
-    console.error('[hub import] download failed:', download.error?.message)
-    redirect(`${peoplePath(orgSlug)}?state=error`)
-  }
-  const bytes = new Uint8Array(await download.data.arrayBuffer())
-
-  try {
-    const parsed = parseYlExport(bytes)
-    const { data: existing } = await supabase
-      .from('hub_donors')
-      .select('id, yl_account_number, status')
-      .eq('org_id', hub.orgId)
-    const plan = buildApplyPlan(parsed, existing ?? [])
-
-    // Donors first, so the gift rows have households to hang on.
-    if (plan.inserts.length > 0) {
-      const { error } = await supabase.from('hub_donors').insert(
-        plan.inserts.map((h) => {
-          const { gifts, ...fields } = h
-          void gifts // the plan's gift rows land below, never on the donor
-          return {
-            ...fields,
-            org_id: hub.orgId,
-            practice_id: hub.practiceId,
-            source: 'yl_export',
-          }
-        })
-      )
-      if (error) throw new Error(`donor insert failed: ${error.message}`)
-    }
-    for (const u of plan.updates) {
-      const { error } = await supabase
-        .from('hub_donors')
-        .update({ ...u.fields, source: 'yl_export' })
-        .eq('org_id', hub.orgId)
-        .eq('id', u.id)
-      if (error) throw new Error(`donor update failed: ${error.message}`)
-    }
-
-    // The replacement whose scope IS the feature (correction 2):
-    // delete the parser's own rows and nothing else, then re-insert.
-    const { data: donorRows } = await supabase
-      .from('hub_donors')
-      .select('id, yl_account_number')
-      .eq('org_id', hub.orgId)
-      .not('yl_account_number', 'is', null)
-    const idByAccount = new Map(
-      (donorRows ?? []).map((d) => [d.yl_account_number as string, d.id as string])
-    )
-    const del = await supabase
-      .from('hub_gifts')
-      .delete()
-      .eq('org_id', hub.orgId)
-      .eq('source', plan.giftSourceToReplace)
-    if (del.error) throw new Error(`gift replace failed: ${del.error.message}`)
-    const giftRows = plan.gifts
-      .map((g) => {
-        const donorId = idByAccount.get(g.yl_account_number)
-        if (!donorId) return null
-        return {
-          org_id: hub.orgId,
-          practice_id: hub.practiceId,
-          donor_id: donorId,
-          fiscal_year: g.fiscal_year,
-          amount_cents: g.amount_cents,
-          source: 'yl_export',
-        }
-      })
-      .filter((g) => g !== null)
-    if (giftRows.length > 0) {
-      const { error } = await supabase.from('hub_gifts').insert(giftRows)
-      if (error) throw new Error(`gift insert failed: ${error.message}`)
-    }
-
-    await supabase
-      .from('hub_documents')
-      .update({
-        parsed_at: new Date().toISOString(),
-        parse_result: { status: 'applied', ...plan.summary },
-        parse_error: null,
-      })
-      .eq('org_id', hub.orgId)
-      .eq('id', doc.id)
-  } catch (e) {
-    // The file is safe in storage; the failure is written down, never
-    // silent, and nothing marks the import applied.
-    const message = e instanceof Error ? e.message : 'import failed'
-    console.error('[hub import]', message)
-    await supabase
-      .from('hub_documents')
-      .update({ parse_error: message })
-      .eq('org_id', hub.orgId)
-      .eq('id', doc.id)
-    redirect(`${peoplePath(orgSlug)}?state=error`)
-  }
-  revalidatePath(peoplePath(orgSlug))
-  redirect(`${peoplePath(orgSlug)}?state=imported`)
-}
-
-export async function dismissImport(orgSlug: string, formData: FormData): Promise<void> {
-  const hub = await requireHub(orgSlug)
-  if (!hub) redirect('/')
-  const documentId = z.string().uuid().safeParse(formData.get('document_id'))
-  if (!documentId.success) redirect(peoplePath(orgSlug))
-  const supabase = await createServerSupabase()
-  // The file stays (a failed parse never loses the file); only the
-  // pending preview is set aside.
-  await supabase
-    .from('hub_documents')
-    .update({ parse_result: { status: 'dismissed' } })
-    .eq('org_id', hub.orgId)
-    .eq('id', documentId.data)
-    .is('parsed_at', null)
-  revalidatePath(peoplePath(orgSlug))
-  redirect(peoplePath(orgSlug))
-}
 
 const HouseholdShape = z.object({
   household: z.string().trim().min(1).max(200),
@@ -267,7 +41,7 @@ const HouseholdShape = z.object({
 })
 
 export async function addHousehold(orgSlug: string, formData: FormData): Promise<void> {
-  const hub = await requireHub(orgSlug)
+  const hub = await hubContext(orgSlug)
   if (!hub) redirect('/')
   const limited = await checkRateLimits([{ config: WRITE_PER_MIN, key: hub.orgId }])
   if (!limited.ok) redirect(`${peoplePath(orgSlug)}?state=slow`)
@@ -306,7 +80,7 @@ export async function addHousehold(orgSlug: string, formData: FormData): Promise
 }
 
 export async function saveNotes(orgSlug: string, formData: FormData): Promise<void> {
-  const hub = await requireHub(orgSlug)
+  const hub = await hubContext(orgSlug)
   if (!hub) redirect('/')
   const donorId = z.string().uuid().safeParse(formData.get('donor_id'))
   const notes = z.string().max(8000).safeParse(formData.get('notes') ?? '')
@@ -322,7 +96,7 @@ export async function saveNotes(orgSlug: string, formData: FormData): Promise<vo
 }
 
 export async function addNextMove(orgSlug: string, formData: FormData): Promise<void> {
-  const hub = await requireHub(orgSlug)
+  const hub = await hubContext(orgSlug)
   if (!hub) redirect('/')
   const donorId = z.string().uuid().safeParse(formData.get('donor_id'))
   const title = z.string().trim().min(1).max(300).safeParse(formData.get('title'))
@@ -347,7 +121,7 @@ export async function addNextMove(orgSlug: string, formData: FormData): Promise<
 }
 
 export async function completeTask(orgSlug: string, formData: FormData): Promise<void> {
-  const hub = await requireHub(orgSlug)
+  const hub = await hubContext(orgSlug)
   if (!hub) redirect('/')
   const taskId = z.string().uuid().safeParse(formData.get('task_id'))
   const donorId = z.string().uuid().safeParse(formData.get('donor_id'))
@@ -375,7 +149,7 @@ const GiftShape = z.object({
 })
 
 export async function logGift(orgSlug: string, formData: FormData): Promise<void> {
-  const hub = await requireHub(orgSlug)
+  const hub = await hubContext(orgSlug)
   if (!hub) redirect('/')
   const limited = await checkRateLimits([{ config: WRITE_PER_MIN, key: hub.orgId }])
   if (!limited.ok) redirect(`${peoplePath(orgSlug)}?state=slow`)

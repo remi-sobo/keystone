@@ -5,7 +5,8 @@ import { hubMoney } from '@/lib/hubTheme'
 import SectionTitle from '@/components/hub/SectionTitle'
 import Card from '@/components/hub/Card'
 import Tag from '@/components/hub/Tag'
-import { addHousehold, confirmYlImport, dismissImport, uploadHubDocument } from './actions'
+import { addHousehold } from './actions'
+import { confirmYlImport, dismissImport, uploadHubDocument } from '../uploads'
 
 /**
  * PEOPLE: who are we moving. One list, search then filters; a row is

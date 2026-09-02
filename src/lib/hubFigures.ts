@@ -75,6 +75,58 @@ export interface HomeFigures {
 }
 
 /**
+ * What the year costs: the sum of the budget's expense sections for
+ * one fiscal year, with the weakest trust in the set. Null (a gap)
+ * until the workbook is parsed.
+ */
+export async function annualCost(
+  supabase: SupabaseClient,
+  orgId: string,
+  fiscalYear: number | null
+): Promise<HubFigure> {
+  if (fiscalYear === null) return { cents: null, trust: null }
+  const { data } = await supabase
+    .from('hub_budget_lines')
+    .select('amount_cents, trust')
+    .eq('org_id', orgId)
+    .eq('fiscal_year', fiscalYear)
+    .like('section', 'expenses:%')
+  const lines = (data ?? []).filter((l) => l.amount_cents !== null)
+  if (lines.length === 0) return { cents: null, trust: null }
+  return {
+    cents: lines.reduce((s, l) => s + Number(l.amount_cents), 0),
+    trust: worstTrust(lines.map((l) => l.trust)),
+  }
+}
+
+/**
+ * Committed per strategy: the sum of gift and pledge records tied to
+ * each strategy for the current fiscal year. Gifts from the Young
+ * Life report carry no strategy, so this counts what was logged here;
+ * an untied gift is visible in the org totals, never invented into a
+ * strategy.
+ */
+export async function committedByStrategy(
+  supabase: SupabaseClient,
+  orgId: string,
+  fiscalYear: number | null
+): Promise<Map<string, number>> {
+  const out = new Map<string, number>()
+  if (fiscalYear === null) return out
+  const { data } = await supabase
+    .from('hub_gifts')
+    .select('strategy_id, amount_cents')
+    .eq('org_id', orgId)
+    .eq('fiscal_year', fiscalYear)
+    .not('strategy_id', 'is', null)
+  for (const g of data ?? []) {
+    const key = g.strategy_id as string
+    out.set(key, (out.get(key) ?? 0) + Number(g.amount_cents))
+  }
+  return out
+}
+
+/**
  * Goal, committed, and the gap, or their absences. The budget parser
  * (phase three) writes the goal's rows into section 'to_raise'; until
  * they exist the goal is a gap and so is everything computed from it.

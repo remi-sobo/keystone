@@ -27,16 +27,16 @@ export default function Stat({
   const mut = onBlack ? 'var(--hub-stone)' : 'var(--hub-stone-ink)'
   return (
     <div
+      className="hub-stat"
       style={{
         background: onBlack ? 'var(--hub-acid-black)' : 'var(--hub-paper-raised)',
-        padding: '18px 20px',
       }}
     >
       <div
         style={{
           fontFamily: 'var(--hub-font-detail)',
-          fontSize: 10,
-          letterSpacing: '0.2em',
+          fontSize: 11,
+          letterSpacing: '0.18em',
           textTransform: 'uppercase',
           color: mut,
         }}
@@ -44,18 +44,11 @@ export default function Stat({
         {label}
       </div>
       {value !== null ? (
-        <div
-          style={{
-            fontFamily: 'var(--hub-font-detail)',
-            fontSize: 26,
-            marginTop: 10,
-            color: ink,
-          }}
-        >
+        <div className="hub-stat-value" style={{ color: ink }}>
           {value}
         </div>
       ) : (
-        <div style={{ fontSize: 13, lineHeight: 1.5, marginTop: 10, color: dim }}>
+        <div style={{ fontSize: 14, lineHeight: 1.6, marginTop: 14, color: dim, maxWidth: '34ch' }}>
           {gap ?? 'Nothing recorded yet.'}
         </div>
       )}
@@ -63,10 +56,10 @@ export default function Stat({
         <div
           style={{
             fontFamily: 'var(--hub-font-detail)',
-            fontSize: 10,
-            letterSpacing: '0.18em',
+            fontSize: 11,
+            letterSpacing: '0.16em',
             textTransform: 'uppercase',
-            marginTop: 8,
+            marginTop: 10,
             color: mut,
           }}
         >
@@ -74,20 +67,16 @@ export default function Stat({
         </div>
       ) : null}
       {explain ? (
-        <details style={{ marginTop: 8 }}>
+        <details className="hub-stat-explain">
           <summary
-            style={{
-              listStyle: 'none',
-              cursor: 'pointer',
-              fontFamily: 'var(--hub-font-detail)',
-              fontSize: 11,
-              color: onBlack ? 'var(--hub-gold)' : 'var(--hub-gold-ink)',
-            }}
+            style={{ color: onBlack ? 'var(--hub-gold)' : 'var(--hub-gold-ink)' }}
             aria-label={`What ${label} means`}
           >
             ?
           </summary>
-          <p style={{ fontSize: 12, lineHeight: 1.5, color: dim, margin: '6px 0 0' }}>{explain}</p>
+          <p style={{ fontSize: 13, lineHeight: 1.6, color: dim, margin: '10px 0 0', maxWidth: '38ch' }}>
+            {explain}
+          </p>
         </details>
       ) : null}
     </div>

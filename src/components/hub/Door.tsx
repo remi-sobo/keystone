@@ -54,12 +54,12 @@ function DoorInner({
       }}
     >
       <div style={{ width: '100%', maxWidth: 520 }}>
-        <Wordmark segments={segments} tagline={vocabulary.tagline ?? 'Fundraising Hub'} size={19} />
-        <div style={{ height: 3, background: 'var(--hub-gold)', margin: '28px 0', width: 60 }} />
+        <Wordmark segments={segments} tagline={vocabulary.tagline ?? 'Fundraising Hub'} size={24} />
+        <div style={{ height: 3, background: 'var(--hub-gold)', margin: '32px 0', width: 72 }} />
         <h1
           style={{
             fontFamily: 'var(--hub-font-display)',
-            fontSize: 34,
+            fontSize: 'clamp(34px, 5vw, 44px)',
             lineHeight: 1.05,
             color: 'var(--hub-bone)',
             textTransform: 'uppercase',
@@ -69,7 +69,7 @@ function DoorInner({
         >
           {sent ? 'Check your email' : (vocabulary.door_headline ?? 'This page is private')}
         </h1>
-        <p style={{ fontSize: 15, lineHeight: 1.65, color: 'var(--hub-bone-dim)', marginTop: 16 }}>
+        <p style={{ fontSize: 16, lineHeight: 1.7, color: 'var(--hub-bone-dim)', marginTop: 18, maxWidth: '46ch' }}>
           {sent
             ? `If ${email ?? 'that address'} is on the list, a sign-in link is on its way.`
             : (vocabulary.door_body ??
@@ -91,7 +91,7 @@ function DoorInner({
               htmlFor="hub-door-email"
               style={{
                 fontFamily: 'var(--hub-font-detail)',
-                fontSize: 10,
+                fontSize: 11,
                 letterSpacing: '0.2em',
                 textTransform: 'uppercase',
                 color: 'var(--hub-stone)',
@@ -110,24 +110,25 @@ function DoorInner({
               style={{
                 width: '100%',
                 marginTop: 8,
-                padding: '14px 16px',
+                padding: '16px 18px',
                 background: 'var(--hub-acid-black-raised)',
                 border: '1px solid var(--hub-line-on-black)',
                 color: 'var(--hub-bone)',
-                fontSize: 16,
+                fontSize: 17,
               }}
             />
             <button
               type="submit"
               style={{
-                marginTop: 16,
-                padding: '14px 22px',
+                marginTop: 18,
+                padding: '16px 28px',
                 background: 'var(--hub-gold)',
                 color: 'var(--hub-acid-black)',
                 border: 'none',
                 fontFamily: 'var(--hub-font-detail)',
-                fontSize: 12,
-                letterSpacing: '0.18em',
+                fontSize: 13,
+                fontWeight: 700,
+                letterSpacing: '0.16em',
                 textTransform: 'uppercase',
                 cursor: 'pointer',
               }}
@@ -140,7 +141,7 @@ function DoorInner({
           <p
             style={{
               fontFamily: 'var(--hub-font-detail)',
-              fontSize: 10,
+              fontSize: 11,
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
               color: 'var(--hub-stone)',

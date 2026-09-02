@@ -20,20 +20,21 @@ import { draftThankYou } from '../draft-actions'
 
 const label = {
   fontFamily: 'var(--hub-font-detail)',
-  fontSize: 10,
+  fontSize: 11,
   letterSpacing: '0.18em',
   textTransform: 'uppercase' as const,
   color: 'var(--hub-stone-ink)',
 }
 const h2 = {
   fontFamily: 'var(--hub-font-detail)',
-  fontSize: 11,
-  letterSpacing: '0.2em',
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: '0.18em',
   textTransform: 'uppercase' as const,
   color: 'var(--hub-gold-ink)',
   borderBottom: '3px solid var(--hub-gold)',
-  paddingBottom: 8,
-  marginTop: 34,
+  paddingBottom: 10,
+  marginTop: 44,
 }
 const input = {
   padding: '10px 12px',
@@ -417,7 +418,7 @@ export default async function HubDonorPage({
                 border: '1px solid var(--hub-line-on-paper)',
                 color: 'var(--hub-terracotta)',
                 fontFamily: 'var(--hub-font-detail)',
-                fontSize: 10,
+                fontSize: 11,
                 letterSpacing: '0.16em',
                 textTransform: 'uppercase',
                 padding: '6px 10px',
@@ -462,7 +463,7 @@ export default async function HubDonorPage({
                   border: '1px solid var(--hub-line-on-paper)',
                   color: 'var(--hub-forest-ink)',
                   fontFamily: 'var(--hub-font-detail)',
-                  fontSize: 10,
+                  fontSize: 11,
                   letterSpacing: '0.16em',
                   textTransform: 'uppercase',
                   padding: '6px 10px',

@@ -1,0 +1,338 @@
+/*
+ * The hub's shared dress (docs/hub/art-direction.md). Layout, scale,
+ * and rhythm live here so every page keeps the same measure; every
+ * color is a --hub-* variable because the theme is a row, never a
+ * branch in the code. Square corners, no shadows, no movement: the
+ * only transitions are color, and they are fast enough to read as
+ * crisp rather than animated.
+ */
+
+.hub-root {
+  font-size: 16px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.hub-root ::selection {
+  background: var(--hub-gold);
+  color: var(--hub-acid-black);
+}
+
+.hub-root :focus-visible {
+  outline: 2px solid var(--hub-gold);
+  outline-offset: 2px;
+}
+
+/* ── The measure ── */
+
+.hub-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-left: 48px;
+  padding-right: 48px;
+}
+
+.hub-main {
+  padding-top: 48px;
+  padding-bottom: 96px;
+}
+
+/* ── Header ── */
+
+.hub-header {
+  background: var(--hub-acid-black);
+  padding-top: 28px;
+}
+
+.hub-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.hub-intro {
+  max-width: 60ch;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--hub-stone);
+  margin: 14px 0 0;
+}
+
+.hub-signout {
+  background: transparent;
+  border: none;
+  color: var(--hub-stone);
+  font-family: var(--hub-font-detail);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 6px 0;
+  transition: color 120ms ease;
+}
+
+.hub-signout:hover {
+  color: var(--hub-bone);
+}
+
+/* ── Navigation: the five sections, sticky so the room never gets lost ── */
+
+.hub-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--hub-acid-black);
+}
+
+.hub-nav {
+  border-bottom: 3px solid var(--hub-gold);
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.hub-nav a {
+  font-family: var(--hub-font-detail);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 14px 24px;
+  color: var(--hub-bone-dim);
+  background: transparent;
+  border: 1px solid var(--hub-line-on-black);
+  border-bottom: none;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
+}
+
+.hub-nav a:hover {
+  color: var(--hub-bone);
+  background: var(--hub-acid-black-raised);
+}
+
+.hub-nav a[aria-current='page'] {
+  color: var(--hub-acid-black);
+  background: var(--hub-gold);
+  font-weight: 700;
+}
+
+.hub-nav a[aria-current='page']:hover {
+  color: var(--hub-acid-black);
+  background: var(--hub-gold);
+}
+
+/* ── Type utilities: the three registers ── */
+
+.hub-label {
+  font-family: var(--hub-font-detail);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hub-stone-ink);
+}
+
+.hub-h2 {
+  font-family: var(--hub-font-detail);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--hub-gold-ink);
+  border-bottom: 3px solid var(--hub-gold);
+  padding-bottom: 10px;
+  margin: 0;
+}
+
+.hub-title-kicker {
+  font-family: var(--hub-font-detail);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--hub-gold-ink);
+}
+
+.hub-title {
+  font-family: var(--hub-font-display);
+  font-size: clamp(40px, 5vw, 60px);
+  line-height: 1.0;
+  text-transform: uppercase;
+  color: var(--hub-acid-black);
+  margin: 12px 0 0;
+  font-weight: 400;
+  letter-spacing: 0.005em;
+}
+
+.hub-quiet-link {
+  font-family: var(--hub-font-detail);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hub-gold-ink);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 120ms ease;
+}
+
+.hub-quiet-link:hover {
+  border-bottom-color: var(--hub-gold);
+}
+
+/* ── The stat band ── */
+
+.hub-stat {
+  padding: 26px 28px 24px;
+}
+
+.hub-stat-value {
+  font-family: var(--hub-font-detail);
+  font-size: clamp(30px, 3vw, 40px);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  margin-top: 14px;
+}
+
+.hub-stat-explain {
+  margin-top: 12px;
+}
+
+.hub-stat-explain summary {
+  list-style: none;
+  cursor: pointer;
+  font-family: var(--hub-font-detail);
+  font-size: 12px;
+  line-height: 19px;
+  width: 21px;
+  height: 21px;
+  text-align: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
+}
+
+.hub-stat-explain summary::-webkit-details-marker {
+  display: none;
+}
+
+.hub-stat-explain[open] summary,
+.hub-stat-explain summary:hover {
+  background: var(--hub-gold);
+  border-color: var(--hub-gold);
+  color: var(--hub-acid-black);
+}
+
+/* ── Cards ── */
+
+.hub-card {
+  padding: 22px 24px;
+  transition: border-color 120ms ease;
+}
+
+.hub-card:hover {
+  border-left-color: var(--hub-gold);
+  border-right-color: var(--hub-gold);
+  border-bottom-color: var(--hub-gold);
+}
+
+/* ── Tables ── */
+
+.hub-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.hub-table td,
+.hub-table th {
+  border-bottom: 1px solid var(--hub-line-on-paper);
+  padding: 13px 12px 13px 0;
+  vertical-align: top;
+}
+
+.hub-table th {
+  font-family: var(--hub-font-detail);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--hub-stone-ink);
+}
+
+.hub-table tbody tr {
+  transition: background-color 120ms ease;
+}
+
+.hub-table tbody tr:hover {
+  background: var(--hub-paper-raised);
+}
+
+.hub-num {
+  font-family: var(--hub-font-detail);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── The committed-of-goal bar: flat, square, gold on hairline ── */
+
+.hub-bar {
+  height: 6px;
+  background: var(--hub-line-on-paper);
+  margin-top: 8px;
+}
+
+.hub-bar > i {
+  display: block;
+  height: 100%;
+  background: var(--hub-gold);
+}
+
+.hub-bar > i.over {
+  background: var(--hub-forest);
+}
+
+/* ── Footer ── */
+
+.hub-footer {
+  padding-top: 28px;
+  padding-bottom: 44px;
+  border-top: 1px solid var(--hub-line-on-paper);
+  font-family: var(--hub-font-detail);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hub-stone-ink);
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* ── Small screens: the same room, narrower ── */
+
+@media (max-width: 720px) {
+  .hub-shell {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .hub-main {
+    padding-top: 32px;
+    padding-bottom: 64px;
+  }
+
+  .hub-stat {
+    padding: 20px;
+  }
+
+  .hub-nav a {
+    padding: 12px 16px;
+  }
+}

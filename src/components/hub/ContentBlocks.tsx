@@ -38,22 +38,8 @@ export default async function ContentBlocks({
   if (blocks.length === 0) return null
 
   return (
-    <section style={{ marginTop: 34 }}>
-      {heading ? (
-        <h2
-          style={{
-            fontFamily: 'var(--hub-font-detail)',
-            fontSize: 11,
-            letterSpacing: '0.2em',
-            textTransform: 'uppercase',
-            color: 'var(--hub-gold-ink)',
-            borderBottom: '3px solid var(--hub-gold)',
-            paddingBottom: 8,
-          }}
-        >
-          {heading}
-        </h2>
-      ) : null}
+    <section style={{ marginTop: 48 }}>
+      {heading ? <h2 className="hub-h2">{heading}</h2> : null}
       {blocks.map((b) => (
         <BlockView key={b.id} block={b} />
       ))}
@@ -68,10 +54,10 @@ function BlockView({ block }: { block: Block }) {
       <h3
         style={{
           fontFamily: 'var(--hub-font-display)',
-          fontSize: 26,
+          fontSize: 30,
           textTransform: 'uppercase',
-          lineHeight: 1.05,
-          margin: '20px 0 0',
+          lineHeight: 1.08,
+          margin: '28px 0 0',
           fontWeight: 400,
         }}
       >
@@ -81,14 +67,14 @@ function BlockView({ block }: { block: Block }) {
   }
   if (block.kind === 'lead') {
     return (
-      <p style={{ fontSize: 17, lineHeight: 1.6, marginTop: 14, maxWidth: 720 }}>
+      <p style={{ fontSize: 18, lineHeight: 1.65, marginTop: 16, maxWidth: '68ch' }}>
         {String(p.text ?? '')}
       </p>
     )
   }
   if (block.kind === 'paragraph') {
     return (
-      <p style={{ fontSize: 15, lineHeight: 1.6, marginTop: 12, maxWidth: 720 }}>
+      <p style={{ fontSize: 16, lineHeight: 1.65, marginTop: 14, maxWidth: '68ch' }}>
         {String(p.text ?? '')}
       </p>
     )
@@ -97,25 +83,13 @@ function BlockView({ block }: { block: Block }) {
     const columns = (p.columns as string[] | undefined) ?? []
     const rows = (p.rows as string[][] | undefined) ?? []
     return (
-      <div style={{ overflowX: 'auto', marginTop: 14 }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <div style={{ overflowX: 'auto', marginTop: 16 }}>
+        <table className="hub-table">
           {columns.length > 0 ? (
             <thead>
               <tr>
                 {columns.map((c, i) => (
-                  <th
-                    key={i}
-                    style={{
-                      textAlign: 'left',
-                      fontFamily: 'var(--hub-font-detail)',
-                      fontSize: 10,
-                      letterSpacing: '0.18em',
-                      textTransform: 'uppercase',
-                      color: 'var(--hub-gold-ink)',
-                      padding: '8px 12px 8px 0',
-                      borderBottom: '1px solid var(--hub-line-on-paper)',
-                    }}
-                  >
+                  <th key={i} style={{ color: 'var(--hub-gold-ink)' }}>
                     {c}
                   </th>
                 ))}
@@ -124,12 +98,9 @@ function BlockView({ block }: { block: Block }) {
           ) : null}
           <tbody>
             {rows.map((r, i) => (
-              <tr key={i} style={{ borderBottom: '1px solid var(--hub-line-on-paper)' }}>
+              <tr key={i}>
                 {r.map((cell, j) => (
-                  <td
-                    key={j}
-                    style={{ padding: '10px 12px 10px 0', fontSize: 14, lineHeight: 1.5 }}
-                  >
+                  <td key={j} style={{ fontSize: 15, lineHeight: 1.55 }}>
                     {cell}
                   </td>
                 ))}
@@ -160,14 +131,14 @@ function BlockView({ block }: { block: Block }) {
               border: '1px solid var(--hub-line-on-paper)',
               borderTop: '3px solid var(--hub-gold)',
               background: 'var(--hub-paper-raised)',
-              padding: 14,
+              padding: '18px 20px',
             }}
           >
             {c.tag ? (
               <div
                 style={{
                   fontFamily: 'var(--hub-font-detail)',
-                  fontSize: 10,
+                  fontSize: 11,
                   letterSpacing: '0.18em',
                   textTransform: 'uppercase',
                   color: 'var(--hub-gold-ink)',
@@ -177,13 +148,13 @@ function BlockView({ block }: { block: Block }) {
               </div>
             ) : null}
             {c.value ? (
-              <div style={{ fontFamily: 'var(--hub-font-detail)', fontSize: 22, marginTop: 6 }}>
+              <div style={{ fontFamily: 'var(--hub-font-detail)', fontSize: 26, marginTop: 8 }}>
                 {c.value}
               </div>
             ) : null}
-            {c.title ? <div style={{ fontSize: 14, fontWeight: 600, marginTop: 6 }}>{c.title}</div> : null}
+            {c.title ? <div style={{ fontSize: 15, fontWeight: 700, marginTop: 8 }}>{c.title}</div> : null}
             {c.note ? (
-              <div style={{ fontSize: 13, lineHeight: 1.55, marginTop: 6 }}>{c.note}</div>
+              <div style={{ fontSize: 14, lineHeight: 1.6, marginTop: 8 }}>{c.note}</div>
             ) : null}
           </div>
         ))}
@@ -208,14 +179,14 @@ function BlockView({ block }: { block: Block }) {
           style={{
             border: '1px solid var(--hub-line-on-paper)',
             background: 'var(--hub-paper-raised)',
-            padding: 14,
+            padding: '18px 20px',
           }}
         >
-          <div style={{ fontFamily: 'var(--hub-font-detail)', fontSize: 20 }}>{s.value}</div>
+          <div style={{ fontFamily: 'var(--hub-font-detail)', fontSize: 24 }}>{s.value}</div>
           <div
             style={{
               fontFamily: 'var(--hub-font-detail)',
-              fontSize: 10,
+              fontSize: 11,
               letterSpacing: '0.18em',
               textTransform: 'uppercase',
               color: 'var(--hub-stone-ink)',

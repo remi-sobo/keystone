@@ -8,6 +8,7 @@ import Door from '@/components/hub/Door'
 import Wordmark from '@/components/hub/Wordmark'
 import SectionNav from '@/components/hub/SectionNav'
 import { signInToHub, signOutOfHub } from './actions'
+import './hub.css'
 import './hub-print.css'
 
 /**
@@ -111,81 +112,31 @@ export default async function HubLayout({
         fontFamily: 'var(--hub-font-body)',
       }}
     >
-      <header style={{ background: 'var(--hub-acid-black)', paddingTop: 32 }}>
-        <div style={{ maxWidth: 1320, margin: '0 auto', padding: '0 40px' }}>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+      <header className="hub-header">
+        <div className="hub-shell">
+          <div className="hub-header-top">
+            <div style={{ paddingBottom: 26 }}>
+              <Wordmark segments={segments} tagline={vocab.tagline ?? 'Fundraising Hub'} size={27} />
+              {vocab.intro ? <p className="hub-intro">{vocab.intro}</p> : null}
+            </div>
             <form action={signOutOfHub}>
-              <button
-                type="submit"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--hub-stone)',
-                  fontFamily: 'var(--hub-font-detail)',
-                  fontSize: 11,
-                  letterSpacing: '0.18em',
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                  padding: '6px 0',
-                }}
-              >
+              <button type="submit" className="hub-signout">
                 Sign out
               </button>
             </form>
           </div>
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'flex-end',
-              justifyContent: 'space-between',
-              gap: 24,
-              paddingBottom: 24,
-            }}
-          >
-            <Wordmark segments={segments} tagline={vocab.tagline ?? 'Fundraising Hub'} size={19} />
-            {vocab.intro ? (
-              <p
-                style={{
-                  maxWidth: 520,
-                  fontSize: 15,
-                  lineHeight: 1.6,
-                  color: 'var(--hub-bone-dim)',
-                  margin: 0,
-                }}
-              >
-                {vocab.intro}
-              </p>
-            ) : null}
-          </div>
-          <SectionNav orgSlug={orgSlug} />
         </div>
       </header>
-      <main style={{ maxWidth: 1320, margin: '0 auto', padding: '34px 40px 80px' }}>
-        {children}
-      </main>
-      <footer
-        style={{
-          maxWidth: 1320,
-          margin: '0 auto',
-          padding: '0 40px 40px',
-          fontFamily: 'var(--hub-font-detail)',
-          fontSize: 10,
-          letterSpacing: '0.2em',
-          textTransform: 'uppercase',
-          color: 'var(--hub-stone-ink)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: 16,
-          flexWrap: 'wrap',
-        }}
-      >
+      <div className="hub-navbar">
+        <div className="hub-shell">
+          <SectionNav orgSlug={orgSlug} />
+        </div>
+      </div>
+      <main className="hub-shell hub-main">{children}</main>
+      <footer className="hub-shell hub-footer">
         <span>{vocab.door_footer ?? 'Not public · Not indexed'}</span>
         {/* The quiet overflow: never primary navigation. */}
-        <a
-          href={`/${orgSlug}/export`}
-          style={{ color: 'var(--hub-gold-ink)', textDecoration: 'none' }}
-        >
+        <a className="hub-quiet-link" href={`/${orgSlug}/export`}>
           Take everything with you · one zip
         </a>
       </footer>

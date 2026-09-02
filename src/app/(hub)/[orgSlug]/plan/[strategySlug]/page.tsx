@@ -16,7 +16,7 @@ import ContentBlocks from '@/components/hub/ContentBlocks'
 
 const label = {
   fontFamily: 'var(--hub-font-detail)',
-  fontSize: 10,
+  fontSize: 11,
   letterSpacing: '0.18em',
   textTransform: 'uppercase' as const,
   color: 'var(--hub-stone-ink)',
@@ -76,7 +76,7 @@ export default async function HubStrategyPage({
       <h1
         style={{
           fontFamily: 'var(--hub-font-display)',
-          fontSize: 34,
+          fontSize: 'clamp(34px, 4vw, 48px)',
           lineHeight: 1.05,
           textTransform: 'uppercase',
           margin: '12px 0 0',
@@ -139,15 +139,7 @@ export default async function HubStrategyPage({
       {gifts.length > 0 ? (
         <section style={{ marginTop: 34 }}>
           <h2
-            style={{
-              fontFamily: 'var(--hub-font-detail)',
-              fontSize: 11,
-              letterSpacing: '0.2em',
-              textTransform: 'uppercase',
-              color: 'var(--hub-gold-ink)',
-              borderBottom: '3px solid var(--hub-gold)',
-              paddingBottom: 8,
-            }}
+            className="hub-h2"
           >
             Committed through this strategy
           </h2>
@@ -181,15 +173,7 @@ export default async function HubStrategyPage({
       {tasks.length > 0 ? (
         <section style={{ marginTop: 34 }}>
           <h2
-            style={{
-              fontFamily: 'var(--hub-font-detail)',
-              fontSize: 11,
-              letterSpacing: '0.2em',
-              textTransform: 'uppercase',
-              color: 'var(--hub-gold-ink)',
-              borderBottom: '3px solid var(--hub-gold)',
-              paddingBottom: 8,
-            }}
+            className="hub-h2"
           >
             Open moves
           </h2>

@@ -30,21 +30,12 @@ interface Line {
 
 const label = {
   fontFamily: 'var(--hub-font-detail)',
-  fontSize: 10,
+  fontSize: 11,
   letterSpacing: '0.18em',
   textTransform: 'uppercase' as const,
   color: 'var(--hub-stone-ink)',
 }
-const h2 = {
-  fontFamily: 'var(--hub-font-detail)',
-  fontSize: 11,
-  letterSpacing: '0.2em',
-  textTransform: 'uppercase' as const,
-  color: 'var(--hub-gold-ink)',
-  borderBottom: '3px solid var(--hub-gold)',
-  paddingBottom: 8,
-}
-const mono = { fontFamily: 'var(--hub-font-detail)', fontSize: 12 }
+const mono = { fontFamily: 'var(--hub-font-detail)', fontSize: 14, fontVariantNumeric: 'tabular-nums' as const }
 
 const sum = (lines: Line[]) => lines.reduce((s, l) => s + (l.amount_cents ?? 0), 0)
 
@@ -244,7 +235,7 @@ export default async function HubMoneyPage({
 
       {cumulative.length > 0 ? (
         <section style={{ marginTop: 34 }}>
-          <h2 style={h2}>When the money is needed</h2>
+          <h2 className="hub-h2">When the money is needed</h2>
           <p style={{ fontSize: 14, lineHeight: 1.6, maxWidth: 640 }}>
             Spending piles up month by month; the gold line is what&apos;s in the bank
             {cash?.amount_cents != null ? ` (${hubMoney(Number(cash.amount_cents))}, ${cash.trust})` : ''}.
@@ -308,7 +299,7 @@ export default async function HubMoneyPage({
               </tbody>
             </table>
           </details>
-          <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--hub-stone-ink)', maxWidth: 640, marginTop: 10 }}>
+          <p style={{ fontSize: 14, lineHeight: 1.65, color: 'var(--hub-stone-ink)', maxWidth: '64ch', marginTop: 12 }}>
             These are the workbook&apos;s own months. Its timing tab was built on August through
             July, before the fiscal year settled at October through September, so read the shape,
             not the calendar positions.
@@ -324,12 +315,8 @@ export default async function HubMoneyPage({
       {lines.length > 0 ? (
         <details style={{ marginTop: 34 }}>
           <summary
-            style={{
-              ...h2,
-              cursor: 'pointer',
-              display: 'inline-block',
-              borderBottom: '3px solid var(--hub-gold)',
-            }}
+            className="hub-h2"
+            style={{ cursor: 'pointer', display: 'inline-block' }}
           >
             View budget details
           </summary>
@@ -373,7 +360,7 @@ export default async function HubMoneyPage({
                           </>
                         ) : null}
                         {l.note ? (
-                          <div style={{ fontSize: 12, color: 'var(--hub-stone-ink)', marginTop: 2 }}>{l.note}</div>
+                          <div style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--hub-stone-ink)', marginTop: 4 }}>{l.note}</div>
                         ) : null}
                       </td>
                       <td style={{ ...mono, padding: '8px 0', textAlign: 'right' as const, whiteSpace: 'nowrap' }}>

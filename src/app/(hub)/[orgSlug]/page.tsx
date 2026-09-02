@@ -21,19 +21,10 @@ import { pinTask, unpinTask } from './home-actions'
 
 const label = {
   fontFamily: 'var(--hub-font-detail)',
-  fontSize: 10,
-  letterSpacing: '0.18em',
+  fontSize: 11,
+  letterSpacing: '0.16em',
   textTransform: 'uppercase' as const,
   color: 'var(--hub-stone-ink)',
-}
-const h2 = {
-  fontFamily: 'var(--hub-font-detail)',
-  fontSize: 11,
-  letterSpacing: '0.2em',
-  textTransform: 'uppercase' as const,
-  color: 'var(--hub-gold-ink)',
-  borderBottom: '3px solid var(--hub-gold)',
-  paddingBottom: 8,
 }
 
 export default async function HubHomePage({
@@ -151,9 +142,16 @@ export default async function HubHomePage({
         />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr', gap: 44, marginTop: 34 }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+          gap: 56,
+          marginTop: 48,
+        }}
+      >
         <section>
-          <h2 style={h2}>Your next three moves</h2>
+          <h2 className="hub-h2">Your next three moves</h2>
           {moves.length === 0 ? (
             <p style={{ fontSize: 15, lineHeight: 1.6, color: 'var(--hub-stone-ink)' }}>
               Nothing is asking for attention right now.
@@ -166,8 +164,9 @@ export default async function HubHomePage({
                     <div
                       style={{
                         fontFamily: 'var(--hub-font-detail)',
-                        fontSize: 11,
-                        letterSpacing: '0.18em',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        letterSpacing: '0.16em',
                         color: 'var(--hub-gold-ink)',
                         textTransform: 'uppercase',
                       }}
@@ -185,8 +184,8 @@ export default async function HubHomePage({
                               border: 'none',
                               cursor: 'pointer',
                               fontFamily: 'var(--hub-font-detail)',
-                              fontSize: 10,
-                              letterSpacing: '0.16em',
+                              fontSize: 11,
+                              letterSpacing: '0.14em',
                               textTransform: 'uppercase',
                               color: 'var(--hub-gold-ink)',
                             }}
@@ -205,8 +204,8 @@ export default async function HubHomePage({
                               border: 'none',
                               cursor: 'pointer',
                               fontFamily: 'var(--hub-font-detail)',
-                              fontSize: 10,
-                              letterSpacing: '0.16em',
+                              fontSize: 11,
+                              letterSpacing: '0.14em',
                               textTransform: 'uppercase',
                               color: 'var(--hub-stone-ink)',
                             }}
@@ -217,77 +216,102 @@ export default async function HubHomePage({
                       )
                     ) : null}
                   </div>
-                  <div style={{ fontSize: 16, fontWeight: 600, marginTop: 6 }}>{m.title}</div>
-                  <div style={{ fontSize: 14, lineHeight: 1.6, marginTop: 6 }}>{m.why}</div>
-                  <div style={{ ...label, marginTop: 10 }}>
+                  <div style={{ fontSize: 19, fontWeight: 700, lineHeight: 1.3, marginTop: 8 }}>
+                    {m.title}
+                  </div>
+                  <div style={{ fontSize: 15, lineHeight: 1.6, marginTop: 8 }}>{m.why}</div>
+                  <div style={{ ...label, marginTop: 12 }}>
                     {[m.when, m.owner].filter(Boolean).join(' · ')}
                   </div>
                 </Card>
               </div>
             ))
           )}
-          <p style={{ marginTop: 14 }}>
-            <Link
-              href={`/${orgSlug}/work`}
-              style={{ ...label, color: 'var(--hub-gold-ink)', textDecoration: 'none' }}
-            >
+          <p style={{ marginTop: 18 }}>
+            <Link href={`/${orgSlug}/work`} className="hub-quiet-link">
               · Everything on the list, under Work
             </Link>
           </p>
         </section>
 
         <section>
-          <h2 style={h2}>Where the money will come from</h2>
+          <h2 className="hub-h2">Where the money will come from</h2>
           {strategies.length === 0 ? (
             <p style={{ fontSize: 15, lineHeight: 1.6, color: 'var(--hub-stone-ink)' }}>
               No strategies are set up yet.
             </p>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 12 }}>
-              <tbody>
-                {strategies.map((s) => {
-                  const c = committed.get(s.id) ?? 0
-                  const goal = s.goal_cents === null ? null : Number(s.goal_cents)
-                  const status =
-                    goal === null
-                      ? 'no goal yet'
-                      : c === 0
-                        ? 'not started'
-                        : c >= goal
-                          ? 'covered'
-                          : 'moving'
-                  return (
-                    <tr key={s.id} style={{ borderBottom: '1px solid var(--hub-line-on-paper)' }}>
-                      <td style={{ padding: '10px 8px 10px 0', fontSize: 14, fontWeight: 600 }}>
-                        <Link
-                          href={`/${orgSlug}/plan/${s.slug}`}
-                          style={{ color: 'var(--hub-acid-black)', textDecoration: 'none' }}
-                        >
-                          {s.name}
-                        </Link>
-                      </td>
-                      <td style={{ padding: '10px 8px', fontFamily: 'var(--hub-font-detail)', fontSize: 12, whiteSpace: 'nowrap' }}>
-                        {goal !== null ? (
-                          <>
-                            {hubMoney(c)} of {hubMoney(goal)}
-                          </>
-                        ) : (
-                          <Tag tone="terracotta">no goal yet</Tag>
-                        )}
-                      </td>
-                      <td style={{ padding: '10px 0', textAlign: 'right' as const }}>
-                        <Tag tone={status === 'covered' ? 'gold' : status === 'no goal yet' ? 'terracotta' : 'muted'}>
-                          {status}
-                        </Tag>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+            <div style={{ marginTop: 6 }}>
+              {strategies.map((s) => {
+                const c = committed.get(s.id) ?? 0
+                const goal = s.goal_cents === null ? null : Number(s.goal_cents)
+                const status =
+                  goal === null
+                    ? 'no goal yet'
+                    : c === 0
+                      ? 'not started'
+                      : c >= goal
+                        ? 'covered'
+                        : 'moving'
+                const pct = goal ? Math.min(100, Math.round((c / goal) * 100)) : 0
+                return (
+                  <div
+                    key={s.id}
+                    style={{
+                      borderBottom: '1px solid var(--hub-line-on-paper)',
+                      padding: '16px 0 18px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'baseline',
+                        gap: 12,
+                      }}
+                    >
+                      <Link
+                        href={`/${orgSlug}/plan/${s.slug}`}
+                        style={{
+                          color: 'var(--hub-acid-black)',
+                          textDecoration: 'none',
+                          fontSize: 16,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {s.name}
+                      </Link>
+                      <Tag
+                        tone={status === 'covered' ? 'gold' : status === 'no goal yet' ? 'terracotta' : 'muted'}
+                        fill={status === 'covered'}
+                      >
+                        {status}
+                      </Tag>
+                    </div>
+                    {goal !== null ? (
+                      <>
+                        <div className="hub-num" style={{ marginTop: 6, color: 'var(--hub-stone-ink)' }}>
+                          <span style={{ color: 'var(--hub-acid-black)', fontWeight: 700 }}>
+                            {hubMoney(c)}
+                          </span>{' '}
+                          of {hubMoney(goal)}
+                        </div>
+                        <div className="hub-bar" aria-hidden>
+                          <i style={{ width: `${pct}%` }} />
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ ...label, marginTop: 6 }}>
+                        Goal lands with a trust level when the figure is entered.
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           )}
 
-          <h2 style={{ ...h2, marginTop: 34 }}>This week</h2>
+          <h2 className="hub-h2" style={{ marginTop: 44 }}>This week</h2>
           {capacity.length === 0 ? (
             <p style={{ fontSize: 15, lineHeight: 1.6, color: 'var(--hub-stone-ink)' }}>
               No hours are recorded yet.

@@ -22,13 +22,13 @@ export default function Wordmark({
 }) {
   const ink = volume === 'black' ? 'var(--hub-bone)' : 'var(--hub-acid-black)'
   return (
-    <div style={{ minWidth: 480 }}>
+    <div>
       <div
         style={{
           fontFamily: 'var(--hub-font-display)',
           fontSize: size,
-          lineHeight: 1.02,
-          letterSpacing: '0.005em',
+          lineHeight: 1.05,
+          letterSpacing: '0.01em',
           textTransform: 'uppercase',
           color: ink,
         }}
@@ -39,21 +39,21 @@ export default function Wordmark({
             {i < segments.length - 1 ? ' ' : ''}
           </span>
         ))}
-        {tagline ? (
-          <span
-            style={{
-              fontFamily: 'var(--hub-font-detail)',
-              fontSize: 10,
-              letterSpacing: '0.2em',
-              color: volume === 'black' ? 'var(--hub-stone)' : 'var(--hub-stone-ink)',
-              marginLeft: 14,
-              textTransform: 'uppercase',
-            }}
-          >
-            <span style={{ color: 'var(--hub-gold)' }}>·</span> {tagline}
-          </span>
-        ) : null}
       </div>
+      {tagline ? (
+        <div
+          style={{
+            fontFamily: 'var(--hub-font-detail)',
+            fontSize: 11,
+            letterSpacing: '0.22em',
+            color: volume === 'black' ? 'var(--hub-stone)' : 'var(--hub-stone-ink)',
+            marginTop: 8,
+            textTransform: 'uppercase',
+          }}
+        >
+          <span style={{ color: 'var(--hub-gold)' }}>·</span> {tagline}
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -59,8 +59,8 @@ export default async function HubPlanPage({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: 16,
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: 20,
           }}
         >
           {strategies.map((s) => {
@@ -80,7 +80,7 @@ export default async function HubPlanPage({
                   href={`/${orgSlug}/plan/${s.slug}`}
                   style={{ color: 'var(--hub-acid-black)', textDecoration: 'none' }}
                 >
-                  <div style={{ fontSize: 18, fontWeight: 700 }}>{s.name}</div>
+                  <div style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.25 }}>{s.name}</div>
                 </Link>
                 <div
                   style={{
@@ -89,7 +89,7 @@ export default async function HubPlanPage({
                     letterSpacing: '0.14em',
                     textTransform: 'uppercase',
                     color: 'var(--hub-stone-ink)',
-                    marginTop: 6,
+                    marginTop: 8,
                   }}
                 >
                   {s.owner ?? 'owner unassigned'}
@@ -97,27 +97,35 @@ export default async function HubPlanPage({
                     ? ` · ${Number(s.hours_per_week)} hrs/week${s.hours_trust ? ` · ${s.hours_trust}` : ''}`
                     : ' · hours not settled'}
                 </div>
-                <div style={{ marginTop: 12, fontFamily: 'var(--hub-font-detail)', fontSize: 14 }}>
+                <div style={{ marginTop: 14, fontFamily: 'var(--hub-font-detail)', fontSize: 16 }}>
                   {goal !== null ? (
                     <>
-                      {hubMoney(goal)}
+                      <span style={{ fontWeight: 700 }}>{hubMoney(goal)}</span>
                       {s.goal_trust ? (
                         <span style={{ color: 'var(--hub-stone-ink)', fontSize: 11 }}> · {s.goal_trust}</span>
                       ) : null}
-                      <span style={{ color: 'var(--hub-stone-ink)' }}> · {hubMoney(c)} committed</span>
+                      <span style={{ color: 'var(--hub-stone-ink)', fontSize: 13 }}>
+                        {' '}· {hubMoney(c)} committed
+                      </span>
+                      <div className="hub-bar" aria-hidden>
+                        <i style={{ width: `${Math.min(100, Math.round((c / goal) * 100))}%` }} />
+                      </div>
                     </>
                   ) : (
                     <Tag tone="terracotta">no goal yet</Tag>
                   )}
                 </div>
                 <div style={{ marginTop: 8 }}>
-                  <Tag tone={status === 'covered' ? 'gold' : status === 'no goal yet' ? 'terracotta' : 'muted'}>
+                  <Tag
+                    tone={status === 'covered' ? 'gold' : status === 'no goal yet' ? 'terracotta' : 'muted'}
+                    fill={status === 'covered'}
+                  >
                     {status}
                   </Tag>{' '}
                   <span
                     style={{
                       fontFamily: 'var(--hub-font-detail)',
-                      fontSize: 10,
+                      fontSize: 11,
                       letterSpacing: '0.14em',
                       textTransform: 'uppercase',
                       color: 'var(--hub-stone-ink)',
@@ -127,23 +135,13 @@ export default async function HubPlanPage({
                   </span>
                 </div>
                 {s.next_move ? (
-                  <div style={{ marginTop: 10, fontSize: 14 }}>
+                  <div style={{ marginTop: 12, fontSize: 15, lineHeight: 1.5 }}>
                     <span style={{ color: 'var(--hub-gold-ink)' }}>·</span> Next: {s.next_move}
                   </div>
                 ) : null}
-                <div style={{ marginTop: 12 }}>
-                  <Link
-                    href={`/${orgSlug}/plan/${s.slug}`}
-                    style={{
-                      fontFamily: 'var(--hub-font-detail)',
-                      fontSize: 10,
-                      letterSpacing: '0.16em',
-                      textTransform: 'uppercase',
-                      color: 'var(--hub-gold-ink)',
-                      textDecoration: 'none',
-                    }}
-                  >
-                    Open the playbook
+                <div style={{ marginTop: 16 }}>
+                  <Link href={`/${orgSlug}/plan/${s.slug}`} className="hub-quiet-link">
+                    Open the playbook →
                   </Link>
                 </div>
               </Card>

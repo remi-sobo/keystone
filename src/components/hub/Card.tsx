@@ -14,13 +14,13 @@ export default function Card({
   const onBlack = volume === 'black'
   return (
     <div
+      className="hub-card"
       style={{
         background: onBlack ? 'var(--hub-acid-black-raised)' : 'var(--hub-paper-raised)',
         border: `1px solid ${onBlack ? 'var(--hub-line-on-black)' : 'var(--hub-line-on-paper)'}`,
         borderTop: rule
           ? '3px solid var(--hub-gold)'
           : `1px solid ${onBlack ? 'var(--hub-line-on-black)' : 'var(--hub-line-on-paper)'}`,
-        padding: 16,
       }}
     >
       {children}

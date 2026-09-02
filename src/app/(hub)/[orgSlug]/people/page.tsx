@@ -93,7 +93,7 @@ export default async function HubPeoplePage({
 
   const label = {
     fontFamily: 'var(--hub-font-detail)',
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: '0.18em',
     textTransform: 'uppercase' as const,
     color: 'var(--hub-stone-ink)',
@@ -239,10 +239,10 @@ export default async function HubPeoplePage({
             href={`/${orgSlug}/people?filter=${f.key}${needle ? `&q=${encodeURIComponent(q)}` : ''}`}
             style={{
               fontFamily: 'var(--hub-font-detail)',
-              fontSize: 10,
+              fontSize: 11,
               letterSpacing: '0.16em',
               textTransform: 'uppercase',
-              padding: '6px 10px',
+              padding: '7px 13px',
               textDecoration: 'none',
               color: filter === f.key ? 'var(--hub-acid-black)' : 'var(--hub-stone-ink)',
               background: filter === f.key ? 'var(--hub-gold)' : 'transparent',
@@ -261,16 +261,16 @@ export default async function HubPeoplePage({
             : 'Nothing matches that search and filter.'}
         </p>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 20 }}>
+        <table className="hub-table" style={{ marginTop: 20 }}>
           <tbody>
             {donors.map((d) => {
               const next = openTaskByDonor.get(d.id)
               return (
-                <tr key={d.id} style={{ borderBottom: '1px solid var(--hub-line-on-paper)' }}>
-                  <td style={{ padding: '12px 8px 12px 0', fontSize: 15 }}>
+                <tr key={d.id}>
+                  <td style={{ fontSize: 16 }}>
                     <Link
                       href={`/${orgSlug}/people/${d.id}`}
-                      style={{ color: 'var(--hub-acid-black)', fontWeight: 600, textDecoration: 'none' }}
+                      style={{ color: 'var(--hub-acid-black)', fontWeight: 700, textDecoration: 'none' }}
                     >
                       {d.household}
                     </Link>
@@ -284,9 +284,8 @@ export default async function HubPeoplePage({
                   </td>
                   <td
                     style={{
-                      padding: '12px 8px',
                       fontFamily: 'var(--hub-font-detail)',
-                      fontSize: 11,
+                      fontSize: 13,
                       color: 'var(--hub-stone-ink)',
                       whiteSpace: 'nowrap',
                     }}
@@ -295,7 +294,7 @@ export default async function HubPeoplePage({
                       ? `last gift ${hubMoney(Number(d.last_gift_cents))}${d.last_gift_date ? ` · ${d.last_gift_date}` : ''}`
                       : 'no gift on record'}
                   </td>
-                  <td style={{ padding: '12px 0', fontSize: 13, textAlign: 'right' }}>
+                  <td style={{ fontSize: 14, textAlign: 'right' }}>
                     {next ? (
                       <span>
                         <span style={{ color: 'var(--hub-gold-ink)' }}>·</span> {next.title}

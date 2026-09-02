@@ -17,19 +17,10 @@ import { addTask, doneTask, reopenTask } from './actions'
 
 const label = {
   fontFamily: 'var(--hub-font-detail)',
-  fontSize: 10,
+  fontSize: 11,
   letterSpacing: '0.18em',
   textTransform: 'uppercase' as const,
   color: 'var(--hub-stone-ink)',
-}
-const h2 = {
-  fontFamily: 'var(--hub-font-detail)',
-  fontSize: 11,
-  letterSpacing: '0.2em',
-  textTransform: 'uppercase' as const,
-  color: 'var(--hub-gold-ink)',
-  borderBottom: '3px solid var(--hub-gold)',
-  paddingBottom: 8,
 }
 const input = {
   padding: '10px 12px',
@@ -55,7 +46,7 @@ const quietButton = {
   border: '1px solid var(--hub-line-on-paper)',
   color: 'var(--hub-forest-ink)',
   fontFamily: 'var(--hub-font-detail)',
-  fontSize: 10,
+  fontSize: 11,
   letterSpacing: '0.16em',
   textTransform: 'uppercase' as const,
   padding: '6px 10px',
@@ -132,7 +123,7 @@ export default async function HubWorkPage({
       <SectionTitle label="Work" title="Can we actually do this" />
 
       <section>
-        <h2 style={h2}>This week</h2>
+        <h2 className="hub-h2">This week</h2>
         {capacity.length === 0 ? (
           <p style={{ fontSize: 15, color: 'var(--hub-stone-ink)' }}>No hours are recorded yet.</p>
         ) : (
@@ -152,7 +143,7 @@ export default async function HubWorkPage({
                   }}
                 >
                   <span style={{ fontWeight: 600 }}>{c.person}</span>
-                  <span style={{ fontFamily: 'var(--hub-font-detail)', fontSize: 12, whiteSpace: 'nowrap' }}>
+                  <span style={{ fontFamily: 'var(--hub-font-detail)', fontSize: 14, whiteSpace: 'nowrap' }}>
                     {c.hours_per_week !== null
                       ? `${Number(c.hours_per_week)} hrs/week${c.trust ? ` · ${c.trust}` : ''}`
                       : 'not settled'}
@@ -175,7 +166,7 @@ export default async function HubWorkPage({
                   }}
                 >
                   <span>{s.name}</span>
-                  <span style={{ fontFamily: 'var(--hub-font-detail)', fontSize: 12, whiteSpace: 'nowrap' }}>
+                  <span style={{ fontFamily: 'var(--hub-font-detail)', fontSize: 14, whiteSpace: 'nowrap' }}>
                     {s.hours_per_week !== null
                       ? `${Number(s.hours_per_week)} hrs/week${s.hours_trust ? ` · ${s.hours_trust}` : ''}`
                       : 'not settled'}
@@ -202,7 +193,7 @@ export default async function HubWorkPage({
       </section>
 
       <section style={{ marginTop: 34 }}>
-        <h2 style={h2}>Tasks, by owner</h2>
+        <h2 className="hub-h2">Tasks, by owner</h2>
         {open.length === 0 ? (
           <p style={{ fontSize: 15, color: 'var(--hub-stone-ink)' }}>Nothing open right now.</p>
         ) : (
@@ -228,7 +219,7 @@ export default async function HubWorkPage({
                     <div>
                       <div style={{ fontSize: 15, fontWeight: 600 }}>{t.title}</div>
                       {t.why ? (
-                        <div style={{ fontSize: 13, lineHeight: 1.5, marginTop: 2, maxWidth: 640 }}>{t.why}</div>
+                        <div style={{ fontSize: 14, lineHeight: 1.6, marginTop: 4, maxWidth: '64ch' }}>{t.why}</div>
                       ) : null}
                       {when(t) ? <div style={{ ...label, marginTop: 4 }}>{when(t)}</div> : null}
                     </div>
@@ -326,7 +317,7 @@ export default async function HubWorkPage({
       <ContentBlocks orgId={hub.orgId} section="work-calendar" heading="The calendar" />
 
       <section style={{ marginTop: 34 }}>
-        <h2 style={h2}>Blockers</h2>
+        <h2 className="hub-h2">Blockers</h2>
         {collateral.length === 0 ? (
           <p style={{ fontSize: 15, color: 'var(--hub-stone-ink)' }}>Nothing is blocking work.</p>
         ) : (

@@ -64,7 +64,7 @@ export default function ThankYouDraft({
           <p
             style={{
               fontFamily: 'var(--hub-font-detail)',
-              fontSize: 10,
+              fontSize: 11,
               letterSpacing: '0.16em',
               textTransform: 'uppercase',
               color: 'var(--hub-stone-ink)',

@@ -10,31 +10,9 @@ export default function SectionTitle({
   title: string
 }) {
   return (
-    <div style={{ marginBottom: 24 }}>
-      <div
-        style={{
-          fontFamily: 'var(--hub-font-detail)',
-          fontSize: 11,
-          letterSpacing: '0.2em',
-          textTransform: 'uppercase',
-          color: 'var(--hub-gold-ink)',
-        }}
-      >
-        {label}
-      </div>
-      <h1
-        style={{
-          fontFamily: 'var(--hub-font-display)',
-          fontSize: 42,
-          lineHeight: 1.02,
-          textTransform: 'uppercase',
-          color: 'var(--hub-acid-black)',
-          margin: '10px 0 0',
-          fontWeight: 400,
-        }}
-      >
-        {title}
-      </h1>
+    <div style={{ marginBottom: 36 }}>
+      <div className="hub-title-kicker">{label}</div>
+      <h1 className="hub-title">{title}</h1>
     </div>
   )
 }

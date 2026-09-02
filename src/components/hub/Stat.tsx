@@ -9,6 +9,7 @@ export default function Stat({
   value,
   trust,
   gap,
+  explain,
   volume = 'black',
 }: {
   label: string
@@ -16,6 +17,8 @@ export default function Stat({
   trust?: string | null
   /** The plain sentence shown when there is no value. */
   gap?: string
+  /** One sentence behind a small question mark; never a modal. */
+  explain?: string
   volume?: 'black' | 'paper'
 }) {
   const onBlack = volume === 'black'
@@ -69,6 +72,23 @@ export default function Stat({
         >
           <span style={{ color: 'var(--hub-gold)' }}>·</span> {trust}
         </div>
+      ) : null}
+      {explain ? (
+        <details style={{ marginTop: 8 }}>
+          <summary
+            style={{
+              listStyle: 'none',
+              cursor: 'pointer',
+              fontFamily: 'var(--hub-font-detail)',
+              fontSize: 11,
+              color: onBlack ? 'var(--hub-gold)' : 'var(--hub-gold-ink)',
+            }}
+            aria-label={`What ${label} means`}
+          >
+            ?
+          </summary>
+          <p style={{ fontSize: 12, lineHeight: 1.5, color: dim, margin: '6px 0 0' }}>{explain}</p>
+        </details>
       ) : null}
     </div>
   )

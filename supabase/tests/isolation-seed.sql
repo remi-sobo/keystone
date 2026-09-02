@@ -3660,3 +3660,299 @@ end $$;
 reset role;
 
 select 'keystone isolation matrix: all assertions passed' as result;
+
+-- =====================================================================
+-- The client hub (0046, specs/epayl-fundraising-hub.md): Keystone's
+-- first client-facing surface. The wall here runs the OPPOSITE
+-- direction from every wall above: a hub member is a stranger on the
+-- platform that holds the delivery record and the commission ledger,
+-- and must read NONE of it. Two orgs under the SAME practice, so the
+-- cross-org wall is exercised where it is sharpest.
+--
+-- Personas:
+--   kendra_h1@org-h1.test   hub member of org_h1 (practice_a)
+--   member_h2@org-h2.test   hub member of org_h2 (practice_a)
+-- =====================================================================
+
+reset role;
+
+insert into auth.users (id, email) values
+  ('00000000-0000-0000-0000-0000000000d1', 'kendra_h1@org-h1.test'),
+  ('00000000-0000-0000-0000-0000000000d2', 'member_h2@org-h2.test')
+on conflict do nothing;
+
+insert into hub_orgs (id, practice_id, slug, name, theme, vocabulary) values
+  ('80000000-0000-0000-0000-0000000000e1', '10000000-0000-0000-0000-00000000000a',
+   'org-h1', 'Org H1', '{"paper":"#F2EBDB"}', '{"org_noun":"area"}'),
+  ('80000000-0000-0000-0000-0000000000e2', '10000000-0000-0000-0000-00000000000a',
+   'org-h2', 'Org H2', '{}', '{}');
+
+-- Email-keyed pending memberships, claimed through the real RPC below.
+insert into hub_members (org_id, practice_id, email, role) values
+  ('80000000-0000-0000-0000-0000000000e1', '10000000-0000-0000-0000-00000000000a',
+   'kendra_h1@org-h1.test', 'member'),
+  ('80000000-0000-0000-0000-0000000000e2', '10000000-0000-0000-0000-00000000000a',
+   'member_h2@org-h2.test', 'member');
+
+insert into hub_donors (id, org_id, practice_id, household, do_not_contact, receives_appeals, status, source) values
+  ('81000000-0000-0000-0000-0000000000d1', '80000000-0000-0000-0000-0000000000e1',
+   '10000000-0000-0000-0000-00000000000a', 'Household H1A', false, true, 'donor', 'yl_export'),
+  ('81000000-0000-0000-0000-0000000000d2', '80000000-0000-0000-0000-0000000000e1',
+   '10000000-0000-0000-0000-00000000000a', 'Household H1 DNC', true, false, 'prospect', 'yl_export'),
+  ('81000000-0000-0000-0000-0000000000d3', '80000000-0000-0000-0000-0000000000e2',
+   '10000000-0000-0000-0000-00000000000a', 'Household H2A', false, true, 'donor', 'manual');
+
+insert into hub_gifts (org_id, practice_id, donor_id, fiscal_year, amount_cents, source) values
+  ('80000000-0000-0000-0000-0000000000e1', '10000000-0000-0000-0000-00000000000a',
+   '81000000-0000-0000-0000-0000000000d1', 2026, 5000000, 'yl_export'),
+  ('80000000-0000-0000-0000-0000000000e1', '10000000-0000-0000-0000-00000000000a',
+   '81000000-0000-0000-0000-0000000000d1', 2027, 100000, 'manual'),
+  ('80000000-0000-0000-0000-0000000000e2', '10000000-0000-0000-0000-00000000000a',
+   '81000000-0000-0000-0000-0000000000d3', 2027, 200000, 'manual');
+
+insert into hub_strategies (id, org_id, practice_id, slug, name) values
+  ('82000000-0000-0000-0000-0000000000a1', '80000000-0000-0000-0000-0000000000e1',
+   '10000000-0000-0000-0000-00000000000a', 'major-gifts', 'Major gifts')
+on conflict do nothing;
+
+insert into hub_tasks (org_id, practice_id, donor_id, title, why) values
+  ('80000000-0000-0000-0000-0000000000e1', '10000000-0000-0000-0000-00000000000a',
+   '81000000-0000-0000-0000-0000000000d1', 'Thank Household H1A', 'A gift with no thank-you on record'),
+  ('80000000-0000-0000-0000-0000000000e2', '10000000-0000-0000-0000-00000000000a',
+   null, 'Org H2 task', 'seed');
+
+insert into hub_budget_lines (org_id, practice_id, fiscal_year, section, line, amount_cents, trust) values
+  ('80000000-0000-0000-0000-0000000000e1', '10000000-0000-0000-0000-00000000000a',
+   2027, 'income', 'Rental income', 2520000, 'verified');
+
+insert into hub_profiles (org_id, practice_id, donor_id, headline) values
+  ('80000000-0000-0000-0000-0000000000e1', '10000000-0000-0000-0000-00000000000a',
+   '81000000-0000-0000-0000-0000000000d1', 'H1A research profile');
+
+insert into hub_documents (org_id, practice_id, storage_path, filename, kind) values
+  ('80000000-0000-0000-0000-0000000000e1', '10000000-0000-0000-0000-00000000000a',
+   'org_h1/exports/test.xlsx', 'test.xlsx', 'yl_export');
+
+insert into hub_touches (org_id, practice_id, donor_id, kind, occurred_on) values
+  ('80000000-0000-0000-0000-0000000000e1', '10000000-0000-0000-0000-00000000000a',
+   '81000000-0000-0000-0000-0000000000d1', 'thank_you', now()::date);
+
+insert into hub_content_blocks (org_id, practice_id, section, kind, payload) values
+  ('80000000-0000-0000-0000-0000000000e1', '10000000-0000-0000-0000-00000000000a',
+   'plan', 'paragraph', '{"text":"seed"}');
+
+insert into hub_collateral (org_id, practice_id, name, status) values
+  ('80000000-0000-0000-0000-0000000000e1', '10000000-0000-0000-0000-00000000000a',
+   'Case for support', 'missing');
+
+insert into hub_capacity (org_id, practice_id, person, hours_per_week, trust) values
+  ('80000000-0000-0000-0000-0000000000e1', '10000000-0000-0000-0000-00000000000a',
+   'Kendra', 7, 'stated');
+
+-- ── The hub member: own org only, and NOTHING of Keystone ───────────
+set role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000d1","email":"kendra_h1@org-h1.test"}', false);
+select keystone_claim_membership();
+
+do $$ begin
+  -- Own-org reads work: the surface is usable, not just walled.
+  if (select count(*) from hub_orgs) <> 1
+    or (select name from hub_orgs limit 1) <> 'Org H1' then
+    raise exception 'hub member must read exactly their own org row';
+  end if;
+  if (select count(*) from hub_members) <> 1 then
+    raise exception 'hub member must read their own org roster only';
+  end if;
+  -- cross-org: org_h2 rows are invisible in every hub table, so the
+  -- totals are exactly org_h1''s own.
+  if (select count(*) from hub_donors) <> 2
+    or (select count(*) from hub_gifts) <> 2
+    or (select count(*) from hub_tasks) <> 1
+    or (select count(*) from hub_strategies) <> 1
+    or (select count(*) from hub_budget_lines) <> 1
+    or (select count(*) from hub_profiles) <> 1
+    or (select count(*) from hub_documents) <> 1
+    or (select count(*) from hub_touches) <> 1
+    or (select count(*) from hub_content_blocks) <> 1
+    or (select count(*) from hub_collateral) <> 1
+    or (select count(*) from hub_capacity) <> 1 then
+    raise exception 'LEAK cross-org: a hub member reads another org''s hub rows';
+  end if;
+end $$;
+
+-- The client-direction sweep: EVERY practice-scoped base table outside
+-- the hub, mechanically, zero rows. A new scoped table joins this
+-- sweep automatically the moment it exists.
+do $$
+declare t record; n bigint;
+begin
+  for t in
+    select c.table_name
+    from information_schema.columns c
+    join information_schema.tables tb
+      on tb.table_schema = c.table_schema and tb.table_name = c.table_name
+    where c.table_schema = 'public'
+      and c.column_name = 'practice_id'
+      and tb.table_type = 'BASE TABLE'
+      and c.table_name not like 'hub\_%' escape '\'
+  loop
+    execute format('select count(*) from public.%I', t.table_name) into n;
+    if n <> 0 then
+      raise exception 'LEAK client-direction: hub member reads % rows of %', n, t.table_name;
+    end if;
+  end loop;
+end $$;
+
+do $$ begin
+  -- The tables the sweep cannot see mechanically, by name.
+  if (select count(*) from practices) <> 0 then
+    raise exception 'LEAK client-direction: hub member reads practices';
+  end if;
+  if (select count(*) from sales_commission_statement) <> 0 then
+    raise exception 'LEAK client-direction: hub member reads the commission statement';
+  end if;
+end $$;
+
+-- The write walls.
+do $$ begin
+  insert into engagements (practice_id, client_id, title) values
+    ('10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1', 'hub write probe');
+  raise exception 'HOLE client-direction: a hub member wrote an engagement';
+exception when insufficient_privilege then null; end $$;
+do $$ begin
+  insert into hub_orgs (practice_id, slug, name) values
+    ('10000000-0000-0000-0000-00000000000a', 'minted', 'Minted Org');
+  raise exception 'HOLE hub: a hub member minted an org';
+exception when insufficient_privilege then null; end $$;
+do $$ begin
+  insert into hub_members (org_id, practice_id, email) values
+    ('80000000-0000-0000-0000-0000000000e2', '10000000-0000-0000-0000-00000000000a', 'kendra_h1@org-h1.test');
+  raise exception 'HOLE hub: a hub member invited themselves into another org';
+exception when insufficient_privilege then null; end $$;
+do $$ declare n int; begin
+  update hub_orgs set name = 'Renamed';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'HOLE hub: a hub member rewrote org identity'; end if;
+end $$;
+
+-- Correction 3 is enforced in the database: a task for a
+-- do-not-contact household is refused.
+do $$ begin
+  insert into hub_tasks (org_id, practice_id, donor_id, title) values
+    ('80000000-0000-0000-0000-0000000000e1', '10000000-0000-0000-0000-00000000000a',
+     '81000000-0000-0000-0000-0000000000d2', 'Call the DNC household');
+  raise exception 'HOLE hub: a task was created for a do-not-contact household';
+exception when raise_exception then null; end $$;
+
+-- Correction 2''s constraint: gift source is a checked value.
+do $$ begin
+  insert into hub_gifts (org_id, practice_id, donor_id, fiscal_year, amount_cents, source) values
+    ('80000000-0000-0000-0000-0000000000e1', '10000000-0000-0000-0000-00000000000a',
+     '81000000-0000-0000-0000-0000000000d1', 2027, 1, 'bogus');
+  raise exception 'HOLE hub: gift source accepted a value outside yl_export/manual';
+exception when check_violation then null; end $$;
+
+-- And the ordinary workflow works: a member can log work in their org.
+do $$ declare n int; begin
+  insert into hub_tasks (org_id, practice_id, donor_id, title, why) values
+    ('80000000-0000-0000-0000-0000000000e1', '10000000-0000-0000-0000-00000000000a',
+     '81000000-0000-0000-0000-0000000000d1', 'Write the report', 'A large gift needs a 90-day report');
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'a hub member must be able to create a task in their own org'; end if;
+end $$;
+
+-- ── The second org sees only itself ─────────────────────────────────
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000d2","email":"member_h2@org-h2.test"}', false);
+select keystone_claim_membership();
+do $$ begin
+  if (select count(*) from hub_orgs) <> 1
+    or (select name from hub_orgs limit 1) <> 'Org H2' then
+    raise exception 'LEAK cross-org: org_h2''s member does not see exactly their own org';
+  end if;
+  if (select count(*) from hub_donors) <> 1
+    or (select count(*) from hub_gifts) <> 1
+    or (select count(*) from hub_tasks) <> 1
+    or (select count(*) from hub_strategies) <> 0
+    or (select count(*) from hub_budget_lines) <> 0 then
+    raise exception 'LEAK cross-org: org_h2''s member reads org_h1 rows';
+  end if;
+end $$;
+
+-- ── The reverse direction: nobody else reads hub rows ───────────────
+-- The practice owner is NOT implicitly a hub member: access to a
+-- client''s hub is an explicit hub_members row, never a side effect of
+-- running the practice.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from hub_orgs) <> 0
+    or (select count(*) from hub_members) <> 0
+    or (select count(*) from hub_donors) <> 0
+    or (select count(*) from hub_gifts) <> 0
+    or (select count(*) from hub_profiles) <> 0
+    or (select count(*) from hub_tasks) <> 0
+    or (select count(*) from hub_budget_lines) <> 0
+    or (select count(*) from hub_documents) <> 0
+    or (select count(*) from hub_touches) <> 0
+    or (select count(*) from hub_content_blocks) <> 0
+    or (select count(*) from hub_collateral) <> 0
+    or (select count(*) from hub_capacity) <> 0 then
+    raise exception 'LEAK hub: the practice owner reads hub rows without a hub membership';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from hub_orgs) <> 0
+    or (select count(*) from hub_donors) <> 0
+    or (select count(*) from hub_gifts) <> 0 then
+    raise exception 'LEAK hub: a client member reads hub rows';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000c1","email":"sales_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from hub_orgs) <> 0
+    or (select count(*) from hub_donors) <> 0 then
+    raise exception 'LEAK hub: the sales lead reads hub rows';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000ee","email":"stranger@example.test"}', false);
+do $$ begin
+  if (select count(*) from hub_orgs) <> 0
+    or (select count(*) from hub_donors) <> 0 then
+    raise exception 'LEAK hub: a membershipless session reads hub rows';
+  end if;
+end $$;
+
+-- ── anon: no table, and the door is presentation only ───────────────
+select set_config('request.jwt.claims', '', false);
+reset role;
+set role anon;
+do $$ begin
+  if (select count(*) from hub_orgs) <> 0
+    or (select count(*) from hub_members) <> 0
+    or (select count(*) from hub_donors) <> 0
+    or (select count(*) from hub_gifts) <> 0
+    or (select count(*) from hub_budget_lines) <> 0 then
+    raise exception 'LEAK hub: anon reads hub tables';
+  end if;
+  -- The one deliberate pre-auth disclosure (SECURITY.md): the door RPC
+  -- returns name, theme, and vocabulary for a known slug, nothing for
+  -- an unknown one, and nothing else exists pre-auth.
+  if (select count(*) from keystone_hub_door('org-h1')) <> 1 then
+    raise exception 'the locked screen cannot dress itself: the door RPC returned nothing for a known slug';
+  end if;
+  if (select name from keystone_hub_door('org-h1')) <> 'Org H1' then
+    raise exception 'the door RPC returned the wrong org';
+  end if;
+  if (select count(*) from keystone_hub_door('no-such-org')) <> 0 then
+    raise exception 'the door RPC invented an org for an unknown slug';
+  end if;
+end $$;
+reset role;
+
+select 'client hub isolation: all assertions passed' as result;

@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Client hub source files: real donor data, never committed (docs/handoff/epayl/KEYSTONE-CLIENT-HUB-BUILD-PROMPT.md)
+sources/

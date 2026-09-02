@@ -1,0 +1,1967 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<![CDATA[<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EPA YL Fundraising Hub</title>
+<link rel="stylesheet" href="_ds/epa-young-life-design-system-cb412f7c-9a95-4ac1-a338-62b5c6c3f7bb/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/epa-young-life-design-system-cb412f7c-9a95-4ac1-a338-62b5c6c3f7bb/tokens/colors.css">
+<link rel="stylesheet" href="_ds/epa-young-life-design-system-cb412f7c-9a95-4ac1-a338-62b5c6c3f7bb/tokens/typography.css">
+<link rel="stylesheet" href="_ds/epa-young-life-design-system-cb412f7c-9a95-4ac1-a338-62b5c6c3f7bb/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/epa-young-life-design-system-cb412f7c-9a95-4ac1-a338-62b5c6c3f7bb/styles.css">
+<script src="_ds/epa-young-life-design-system-cb412f7c-9a95-4ac1-a338-62b5c6c3f7bb/_ds_bundle.js"></script>
+<style>
+  html,body{margin:0;padding:0;background:var(--paper);}
+  *{box-sizing:border-box;}
+  a{color:var(--gold-ink);text-decoration:none;border-bottom:1px solid var(--line-on-paper);}
+  a:hover{color:var(--acid-black);border-bottom-color:var(--gold-ink);}
+  input,textarea{font-family:'Archivo',Helvetica,Arial,sans-serif;}
+  textarea{resize:vertical;}
+  ::placeholder{color:var(--stone);}
+</style>
+</helmet>
+
+<div style="font-family:'Archivo',Helvetica,Arial,sans-serif;color:var(--acid-black);background:var(--paper);min-height:100vh;padding-bottom:90px;">
+
+  <sc-if value="{{ isLocked }}" hint-placeholder-val="{{ true }}">
+    <div style="background:var(--acid-black);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px;">
+      <div style="width:100%;max-width:520px;">
+        <div style="min-width:480px;">
+          <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Wordmark" size="{{ wmSize }}" inline="{{ wmInline }}" tagline="Fundraising Hub" hint-size="480px,70px"></x-import>
+        </div>
+        <div style="height:3px;background:var(--gold);margin:28px 0;width:60px;"></div>
+        <div style="font-family:'Abril Fatface',Georgia,serif;font-size:34px;line-height:1.05;color:var(--bone);text-transform:uppercase;">This page is for East Palo Alto Young Life leadership</div>
+        <div style="font-size:15px;line-height:1.65;color:var(--bone-dim);margin-top:16px;">Put in your email and we'll send you a link that signs you in. No password to remember. The link only works for the people on the list.</div>
+        <div style="margin-top:26px;">
+          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--stone);">Your email</div>
+          <input value="{{ email }}" onChange="{{ setEmail }}" placeholder="you@example.com" style="width:100%;margin-top:8px;padding:14px 16px;background:var(--acid-black-raised);border:1px solid var(--line-on-black);color:var(--bone);font-size:16px;">
+        </div>
+        <div style="margin-top:16px;">
+          <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="loud" variant="primary" onClick="{{ sendLink }}" hint-size="auto,48px">Send me the link</x-import>
+        </div>
+        <div style="font-size:14px;line-height:1.6;color:var(--terracotta);margin-top:14px;">{{ authNote }}</div>
+        <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);margin-top:40px;line-height:1.8;">Not public · Not indexed · Kendra and Remi only</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isSent }}" hint-placeholder-val="{{ false }}">
+    <div style="background:var(--acid-black);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px;">
+      <div style="width:100%;max-width:520px;">
+        <div style="min-width:480px;">
+          <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Wordmark" size="{{ wmSize }}" inline="{{ wmInline }}" tagline="Fundraising Hub" hint-size="480px,70px"></x-import>
+        </div>
+        <div style="height:3px;background:var(--gold);margin:28px 0;width:60px;"></div>
+        <div style="font-family:'Abril Fatface',Georgia,serif;font-size:34px;line-height:1.05;color:var(--bone);text-transform:uppercase;">Check your email</div>
+        <div style="font-size:15px;line-height:1.65;color:var(--bone-dim);margin-top:16px;">If {{ sentTo }} is on the list, a sign-in link is on its way. It works once and expires in an hour.</div>
+
+        <sc-if value="{{ linkArrived }}" hint-placeholder-val="{{ true }}">
+          <div style="border:1px solid var(--line-on-black);background:var(--acid-black-raised);padding:22px;margin-top:26px;">
+            <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);">The email she'd get</div>
+            <div style="font-size:15px;line-height:1.65;color:var(--bone);margin-top:12px;">Subject: Your sign-in link for the fundraising hub</div>
+            <div style="font-size:15px;line-height:1.65;color:var(--bone-dim);margin-top:10px;">Click below to open the hub. The link is good for one hour.</div>
+            <div style="margin-top:16px;">
+              <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="loud" variant="primary" onClick="{{ enter }}" hint-size="auto,48px">Open the hub</x-import>
+            </div>
+          </div>
+        </sc-if>
+
+        <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);margin-top:26px;line-height:1.8;">An address that isn't on the list sees this exact screen and gets no email. The page never tells you who has access.</div>
+        <div style="margin-top:20px;">
+          <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="loud" variant="ghost" onClick="{{ signOut }}" hint-size="auto,40px">Use a different email</x-import>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeModal }}" style="position:fixed;inset:0;background:rgba(33,31,28,.86);z-index:50;display:flex;align-items:center;justify-content:center;padding:40px;">
+      <div style="background:var(--paper);border:1px solid var(--acid-black);max-width:660px;width:100%;max-height:86vh;overflow:auto;">
+        <div style="background:var(--acid-black);padding:24px 28px;display:flex;justify-content:space-between;align-items:flex-start;gap:20px;">
+          <div>
+            <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--stone);">{{ modal.label }}</div>
+            <div style="font-family:'Abril Fatface',Georgia,serif;font-size:40px;line-height:1;color:var(--bone);margin-top:8px;">{{ modal.value }}</div>
+          </div>
+          <div onClick="{{ closeModal }}" style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);cursor:pointer;padding-top:6px;">Close</div>
+        </div>
+        <div style="padding:26px 28px 30px 28px;">
+          <div style="font-size:18px;line-height:1.5;font-weight:600;">{{ modal.what }}</div>
+          <sc-for list="{{ modal.body }}" as="p" hint-placeholder-count="3">
+            <div style="font-size:15px;line-height:1.65;margin-top:14px;">{{ p }}</div>
+          </sc-for>
+          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:26px;">The numbers behind it</div>
+          <div style="margin-top:10px;border-top:1px solid var(--line-on-paper);">
+            <sc-for list="{{ modal.rows }}" as="r" hint-placeholder-count="5">
+              <div style="display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid var(--line-on-paper);font-size:14px;">
+                <div>{{ r.k }}</div>
+                <div style="font-family:'Space Mono',monospace;white-space:nowrap;">{{ r.v }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);margin-top:18px;">{{ modal.trust }}</div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+
+  <sc-if value="{{ isOpen }}" hint-placeholder-val="{{ true }}">
+  <div>
+
+  <div onClick="{{ toggleCoach }}" style="position:fixed;right:28px;bottom:28px;z-index:60;background:var(--gold);color:var(--acid-black);font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;padding:18px 24px;cursor:pointer;border:1px solid var(--gold);" style-hover="background:var(--acid-black);color:var(--gold);">Ask coach</div>
+
+  <sc-if value="{{ coachOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;top:0;right:0;bottom:0;width:480px;max-width:100vw;z-index:61;background:var(--paper);border-left:1px solid var(--acid-black);display:flex;flex-direction:column;">
+      <div style="background:var(--acid-black);padding:22px 24px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+        <div>
+          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);">Ask coach</div>
+          <div style="font-family:'Abril Fatface',Georgia,serif;font-size:26px;line-height:1.1;color:var(--bone);margin-top:8px;">Fundraising questions, answered against your own numbers</div>
+        </div>
+        <div onClick="{{ toggleCoach }}" style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);cursor:pointer;padding-top:4px;">Close</div>
+      </div>
+
+      <div style="flex:1;overflow:auto;padding:22px 24px;">
+        <sc-if value="{{ coachEmpty }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <div style="font-size:15px;line-height:1.65;">It knows your goal, your budget, everyone who gave last year, the prospect list, and the gaps. Ask it anything about raising this money. It will say so when it does not know.</div>
+            <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:24px;">Try one of these</div>
+            <sc-for list="{{ coachStarters }}" as="s" hint-placeholder-count="5">
+              <div onClick="{{ s.pick }}" style="border:1px solid var(--line-on-paper);background:var(--paper-raised);padding:13px 15px;margin-top:8px;font-size:14px;line-height:1.5;cursor:pointer;" style-hover="border-color:var(--gold);">{{ s.text }}</div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-for list="{{ coachLog }}" as="m" hint-placeholder-count="2">
+          <div style="border-left:3px solid {{ m.border }};background:{{ m.bg }};padding:14px 16px;margin-bottom:12px;">
+            <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--stone-ink);">{{ m.who }}</div>
+            <div style="font-size:15px;line-height:1.65;margin-top:8px;white-space:pre-wrap;">{{ m.text }}</div>
+          </div>
+        </sc-for>
+
+        <sc-if value="{{ coachBusy }}" hint-placeholder-val="{{ false }}">
+          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">Thinking</div>
+        </sc-if>
+      </div>
+
+      <div style="border-top:1px solid var(--line-on-paper);padding:18px 24px;background:var(--paper-raised);">
+        <textarea value="{{ coachQ }}" onChange="{{ setCoachQ }}" placeholder="Ask anything about raising this money." style="width:100%;height:76px;padding:12px;border:1px solid var(--line-on-paper);background:var(--paper);font-size:15px;line-height:1.55;"></textarea>
+        <div style="margin-top:10px;">
+          <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="quiet" variant="primary" size="sm" onClick="{{ askCoach }}" hint-size="auto,42px">Ask</x-import>
+        </div>
+        <div style="font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone-ink);margin-top:12px;line-height:1.7;">Answers come from the data in this hub. Check any number before it goes to a donor.</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <div style="background:var(--acid-black);color:var(--bone);padding:32px 40px 0 40px;">
+    <div style="max-width:1320px;margin:0 auto;">
+      <div style="display:flex;justify-content:flex-end;gap:20px;align-items:center;margin-bottom:6px;">
+        <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="loud" variant="primary" size="sm" onClick="{{ toggleGift }}" hint-size="auto,36px">Log a gift</x-import>
+        <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="loud" variant="ghost" size="sm" onClick="{{ signOut }}" hint-size="auto,32px">Sign out</x-import>
+      </div>
+      <sc-if value="{{ giftOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="border:1px solid var(--line-on-black);background:var(--acid-black-raised);padding:22px;margin-bottom:20px;">
+          <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);">Money came in</div>
+          <div style="font-size:14px;line-height:1.6;color:var(--bone-dim);margin-top:8px;max-width:720px;">This is not the receipt book. Young Life still counts the money and BloomOS still holds the record. Logging it here updates the plan and starts the thank-you clock.</div>
+          <div style="display:grid;grid-template-columns:1.4fr .8fr .9fr 1fr 1fr 1.1fr;gap:12px;align-items:end;margin-top:18px;">
+            <div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);">Who gave</div>
+              <input value="{{ gWho }}" onChange="{{ setGWho }}" placeholder="Household" style="width:100%;margin-top:6px;padding:11px;background:var(--acid-black);border:1px solid var(--line-on-black);color:var(--bone);font-size:15px;">
+            </div>
+            <div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);">How much</div>
+              <input value="{{ gAmount }}" onChange="{{ setGAmount }}" placeholder="25000" style="width:100%;margin-top:6px;padding:11px;background:var(--acid-black);border:1px solid var(--line-on-black);color:var(--bone);font-size:15px;">
+            </div>
+            <div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);">When</div>
+              <input value="{{ gDate }}" onChange="{{ setGDate }}" placeholder="2026-10-15" style="width:100%;margin-top:6px;padding:11px;background:var(--acid-black);border:1px solid var(--line-on-black);color:var(--bone);font-size:15px;">
+            </div>
+            <div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);">In hand or promised</div>
+              <select value="{{ gKind }}" onChange="{{ setGKind }}" style="width:100%;margin-top:6px;padding:11px;background:var(--acid-black);border:1px solid var(--line-on-black);color:var(--bone);font-size:15px;">
+                <option>Cash in hand</option>
+                <option>Pledged, dated</option>
+                <option>Pledged, no date</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);">Came through</div>
+              <select value="{{ gChannel }}" onChange="{{ setGChannel }}" style="width:100%;margin-top:6px;padding:11px;background:var(--acid-black);border:1px solid var(--line-on-black);color:var(--bone);font-size:15px;">
+                <option>Big gift</option>
+                <option>Monthly giving</option>
+                <option>Fall brunch</option>
+                <option>Spring event</option>
+                <option>Grant</option>
+                <option>Church</option>
+                <option>Came out of nowhere</option>
+              </select>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;">
+              <div>
+                <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);">What for</div>
+                <select value="{{ gFor }}" onChange="{{ setGFor }}" style="width:100%;margin-top:6px;padding:11px;background:var(--acid-black);border:1px solid var(--line-on-black);color:var(--bone);font-size:15px;">
+                  <option>Wherever needed</option>
+                  <option>Camp</option>
+                  <option>The house</option>
+                  <option>Leaders</option>
+                </select>
+              </div>
+              <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="loud" variant="primary" size="sm" onClick="{{ saveGift }}" hint-size="auto,42px">Log it</x-import>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:40px;flex-wrap:wrap;">
+        <div style="flex:0 0 auto;min-width:480px;">
+          <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Wordmark" inline="{{ wmInline }}" size="{{ wmSize }}" tagline="Fundraising Hub" hint-size="480px,70px"></x-import>
+        </div>
+        <div style="flex:1;min-width:300px;font-size:15px;line-height:1.6;color:var(--bone-dim);max-width:520px;">The plan for raising the money, and the budget it pays for. Year one runs October 2026 through September 2027. This file is for Kendra and Remi. Don't send it to a donor.</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;background:var(--line-on-black);border:1px solid var(--line-on-black);margin-top:26px;">
+        <sc-for list="{{ hero }}" as="h" hint-placeholder-count="4">
+          <div onClick="{{ h.open }}" style="background:var(--acid-black);padding:18px 20px 20px 20px;cursor:pointer;" style-hover="background:var(--acid-black-raised);">
+            <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Stat" value="{{ h.value }}" label="{{ h.label }}" trust="{{ h.note }}" volume="loud" hint-size="100%,84px"></x-import>
+            <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin-top:12px;">What this means</div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;margin-top:28px;border-bottom:3px solid var(--gold);">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="11">
+          <div onClick="{{ t.select }}" style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;padding:12px 15px;cursor:pointer;background:{{ t.bg }};color:{{ t.fg }};border:1px solid var(--line-on-black);border-bottom:none;margin-right:2px;">{{ t.label }}</div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width:1320px;margin:0 auto;padding:36px 40px 0 40px;">
+
+    <sc-if value="{{ isNow }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:1.25fr 1fr;gap:44px;align-items:start;">
+        <div>
+          <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">Start here</div>
+          <div style="font-family:'Abril Fatface',Georgia,serif;font-size:42px;line-height:1;text-transform:uppercase;margin-top:12px;">You need {{ goalFmt }} this year. Last year's donors add up to {{ baseFmt }}. So <span style="color:var(--terracotta);">{{ renewGapFmt }} has to come from people who haven't given yet.</span></div>
+          <div style="font-size:16px;line-height:1.6;margin-top:18px;max-width:640px;">Eleven households gave last year. That number is from the Young Life donor export, so it's solid. Nothing is committed for this year yet. Everything below is the plan to close the rest.</div>
+
+          <div style="margin-top:26px;border:1px solid var(--line-on-paper);background:var(--paper-raised);">
+            <div style="display:flex;height:44px;">
+              <div style="background:var(--acid-black);width:{{ baseW }};"></div>
+              <div style="background:var(--terracotta);width:{{ gapW }};"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:12px 16px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone-ink);">
+              <div>Last year's donors {{ baseFmt }}</div>
+              <div>New money {{ renewGapFmt }}</div>
+              <div>Goal {{ goalFmt }}</div>
+            </div>
+          </div>
+
+          <sc-if value="{{ anyGifts }}" hint-placeholder-val="{{ false }}">
+            <div>
+              <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:42px;">Gifts logged this year</div>
+              <div style="font-size:14px;color:var(--stone-ink);line-height:1.55;margin-top:8px;">Your own running list. The official record still lives in BloomOS. If the two disagree, the official record is right.</div>
+              <div style="margin-top:14px;border-top:1px solid var(--line-on-paper);">
+                <sc-for list="{{ giftRows }}" as="g" hint-placeholder-count="2">
+                  <div style="display:grid;grid-template-columns:1.4fr 110px 110px 1fr 1fr 70px;gap:16px;padding:13px 0;border-bottom:1px solid var(--line-on-paper);align-items:baseline;">
+                    <div style="font-weight:600;font-size:15px;">{{ g.who }}</div>
+                    <div style="font-family:'Space Mono',monospace;font-size:15px;">{{ g.amountFmt }}</div>
+                    <div style="font-family:'Space Mono',monospace;font-size:13px;color:var(--stone-ink);">{{ g.date }}</div>
+                    <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:{{ g.color }};">{{ g.kind }}</div>
+                    <div style="font-size:13px;color:var(--stone-ink);">{{ g.channel }} · {{ g.forWhat }}</div>
+                    <div onClick="{{ g.remove }}" style="text-align:right;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--terracotta);cursor:pointer;">Remove</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:42px;">The seven ways money comes in</div>
+          <div style="margin-top:14px;border-top:1px solid var(--line-on-paper);">
+            <sc-for list="{{ strands }}" as="s" hint-placeholder-count="7">
+              <div style="display:grid;grid-template-columns:1.4fr 100px 1fr;gap:20px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line-on-paper);">
+                <div>
+                  <div style="font-weight:600;font-size:15px;">{{ s.name }}</div>
+                  <div style="font-size:13px;color:var(--stone-ink);line-height:1.5;margin-top:3px;">{{ s.note }}</div>
+                </div>
+                <div style="font-family:'Space Mono',monospace;font-size:14px;text-align:right;">{{ s.amountFmt }}</div>
+                <div style="height:10px;background:var(--line-on-paper);"><div style="height:10px;background:{{ s.color }};width:{{ s.w }};"></div></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">The next thing</div>
+          <div style="border:1px solid var(--acid-black);background:var(--paper-raised);padding:22px;margin-top:12px;">
+            <sc-if value="{{ hasTop }}" hint-placeholder-val="{{ true }}">
+              <div>
+                <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:{{ topTask.areaColor }};">{{ topTask.area }}</div>
+                <div style="font-family:'Abril Fatface',Georgia,serif;font-size:26px;line-height:1.15;margin-top:10px;">{{ topTask.title }}</div>
+                <div style="font-size:14px;color:var(--stone-ink);line-height:1.55;margin-top:8px;">{{ topTask.why }}</div>
+                <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-ink);margin-top:10px;">{{ topTask.when }} · {{ topTask.owner }}</div>
+              </div>
+            </sc-if>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line-on-paper);">
+              <sc-for list="{{ topTwoAreas }}" as="a" hint-placeholder-count="3">
+                <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;border:1px solid var(--line-on-paper);padding:7px 11px;color:var(--stone-ink);">{{ a.area }} · {{ a.count }}</div>
+              </sc-for>
+            </div>
+            <div style="margin-top:16px;">
+              <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="quiet" variant="primary" size="sm" onClick="{{ goTodo }}" hint-size="auto,42px">Open the to-do list</x-import>
+            </div>
+            <div style="font-size:13px;color:var(--stone-ink);line-height:1.55;margin-top:12px;">{{ openCount }} open, three at a time per area.</div>
+          </div>
+
+          <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--terracotta);margin-top:34px;">Watch the calendar, not the goal</div>
+          <div style="font-size:15px;line-height:1.65;margin-top:10px;">The bank holds $28,295 and the first three months cost about $44,000. Money has to arrive in October and November or the area is running on fumes by December. That is why the O'Hara renewal and the brunch cannot slip.</div>
+
+          <div style="margin-top:34px;border:1px solid var(--terracotta);padding:20px;">
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--terracotta);">{{ qOpenCount }} open questions</div>
+            <div style="font-size:14px;line-height:1.55;margin-top:10px;">Things only you know, or things nobody has looked up yet. Each one turns an estimate somewhere in here into a real number.</div>
+            <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);margin-top:16px;">{{ qTopArea }}</div>
+            <div style="font-size:16px;font-weight:600;line-height:1.4;margin-top:6px;">{{ qTopText }}</div>
+            <div style="margin-top:16px;">
+              <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="quiet" variant="outline" size="sm" onClick="{{ goQuestions }}" hint-size="auto,40px">See all the questions</x-import>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isTodo }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:900px;">
+        <div style="font-family:'Abril Fatface',Georgia,serif;font-size:42px;line-height:1;text-transform:uppercase;">Three at a time, per part of the work.</div>
+        <div style="font-size:16px;line-height:1.6;margin-top:14px;">Everything from every tab lands here, grouped by what part of the work it belongs to. Each group shows three. Check one off and the next one in that group takes its place. There are {{ openCount }} open in total and you do not need to look at all of them.</div>
+
+        <div style="margin-top:30px;">
+          <sc-for list="{{ groups }}" as="g" hint-placeholder-count="4">
+            <div style="margin-bottom:34px;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:3px solid var(--gold);padding-bottom:8px;">
+                <div style="font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.2em;text-transform:uppercase;">{{ g.area }}</div>
+                <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">{{ g.countLabel }}</div>
+              </div>
+              <sc-for list="{{ g.tasks }}" as="t" hint-placeholder-count="3">
+                <div style="display:grid;grid-template-columns:26px 1fr;gap:16px;padding:18px 22px;border:1px solid var(--line-on-paper);border-top:none;background:{{ t.bg }};align-items:start;">
+                  <div onClick="{{ t.toggle }}" style="width:22px;height:22px;border:1px solid var(--acid-black);background:{{ t.boxBg }};cursor:pointer;color:var(--bone);font-size:14px;line-height:20px;text-align:center;">{{ t.mark }}</div>
+                  <div>
+                    <div style="font-size:18px;font-weight:600;line-height:1.35;">{{ t.title }}</div>
+                    <div style="font-size:14px;color:var(--stone-ink);line-height:1.55;margin-top:5px;">{{ t.why }}</div>
+                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-ink);margin-top:9px;">{{ t.when }} · {{ t.owner }}</div>
+                  </div>
+                </div>
+              </sc-for>
+              <sc-if value="{{ g.anyMore }}" hint-placeholder-val="{{ false }}">
+                <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);padding:10px 0 0 0;">{{ g.more }} more behind these</div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ noTasks }}" hint-placeholder-val="{{ false }}">
+          <div style="border:1px solid var(--line-on-paper);background:var(--paper-raised);padding:24px;font-size:16px;line-height:1.6;">Nothing open. That is either very good or a sign the list needs a look.</div>
+        </sc-if>
+
+        <sc-if value="{{ anyMore }}" hint-placeholder-val="{{ true }}">
+          <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="quiet" variant="ghost" size="sm" onClick="{{ toggleAll }}" hint-size="auto,36px">Show everything</x-import>
+        </sc-if>
+        <sc-if value="{{ allShown }}" hint-placeholder-val="{{ false }}">
+          <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="quiet" variant="ghost" size="sm" onClick="{{ toggleAll }}" hint-size="auto,36px">Back to three</x-import>
+        </sc-if>
+
+        <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:42px;">Add something</div>
+        <div style="display:grid;grid-template-columns:1fr 180px 120px;gap:12px;align-items:end;margin-top:12px;">
+          <div>
+            <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">What needs doing</div>
+            <input value="{{ qText }}" onChange="{{ setQText }}" placeholder="Call the host about the brunch date" style="width:100%;margin-top:6px;padding:12px;border:1px solid var(--line-on-paper);background:var(--paper-raised);font-size:15px;">
+          </div>
+          <div>
+            <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">By when</div>
+            <input value="{{ qWhen }}" onChange="{{ setQWhen }}" placeholder="Friday" style="width:100%;margin-top:6px;padding:12px;border:1px solid var(--line-on-paper);background:var(--paper-raised);font-size:15px;">
+          </div>
+          <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="quiet" variant="primary" size="sm" onClick="{{ addTodo }}" hint-size="auto,44px">Add</x-import>
+        </div>
+
+        <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:42px;">Where the open work sits</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;">
+          <sc-for list="{{ areaCounts }}" as="a" hint-placeholder-count="5">
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;border:1px solid var(--line-on-paper);padding:8px 12px;color:var(--stone-ink);">{{ a.area }} · {{ a.count }}</div>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ anyDone }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:42px;">Done · {{ doneCount }}</div>
+            <div style="margin-top:12px;border-top:1px solid var(--line-on-paper);">
+              <sc-for list="{{ tasksDone }}" as="t" hint-placeholder-count="2">
+                <div onClick="{{ t.toggle }}" style="display:grid;grid-template-columns:26px 1fr 160px;gap:16px;padding:12px 0;border-bottom:1px solid var(--line-on-paper);align-items:center;cursor:pointer;">
+                  <div style="width:20px;height:20px;border:1px solid var(--acid-black);background:{{ t.boxBg }};color:var(--bone);font-size:13px;line-height:18px;text-align:center;">{{ t.mark }}</div>
+                  <div style="font-size:15px;color:var(--stone-ink);">{{ t.title }}</div>
+                  <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone-ink);text-align:right;">{{ t.area }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isQuestions }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:960px;">
+        <div style="font-family:'Abril Fatface',Georgia,serif;font-size:42px;line-height:1;text-transform:uppercase;">{{ qOpenCount }} questions a consultant would ask you</div>
+        <div style="font-size:16px;line-height:1.6;margin-top:14px;">These come out of what is in this file. Some are gaps in the data. Some are things only you know that nobody has written down. Answer one, type the answer in, and check it off. Every answer here makes a number somewhere else in this hub true instead of estimated.</div>
+
+        <div style="margin-top:32px;">
+          <sc-for list="{{ qAreas }}" as="g" hint-placeholder-count="5">
+            <div style="margin-bottom:38px;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:3px solid var(--gold);padding-bottom:8px;">
+                <div style="font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.2em;text-transform:uppercase;">{{ g.area }}</div>
+                <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">{{ g.count }} open</div>
+              </div>
+              <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="3">
+                <div style="border:1px solid var(--line-on-paper);border-top:none;background:{{ r.bg }};padding:20px 22px;">
+                  <div style="display:grid;grid-template-columns:26px 1fr;gap:16px;align-items:start;">
+                    <div onClick="{{ r.toggle }}" style="width:22px;height:22px;border:1px solid var(--acid-black);background:{{ r.boxBg }};cursor:pointer;color:var(--bone);font-size:14px;line-height:20px;text-align:center;">{{ r.mark }}</div>
+                    <div>
+                      <div style="font-size:19px;font-weight:600;line-height:1.35;">{{ r.q }}</div>
+                      <div style="font-size:14px;color:var(--stone-ink);line-height:1.55;margin-top:6px;">{{ r.why }}</div>
+                      <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-ink);margin-top:10px;">What it changes · {{ r.changes }}</div>
+                      <textarea value="{{ r.answer }}" onChange="{{ r.setAnswer }}" placeholder="Type the answer here, in your own words." style="width:100%;height:70px;margin-top:12px;padding:11px;border:1px solid var(--line-on-paper);background:var(--paper);font-size:14px;line-height:1.55;"></textarea>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ anyAnswered }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">Answered · {{ qDoneCount }}</div>
+            <div style="margin-top:12px;border-top:1px solid var(--line-on-paper);">
+              <sc-for list="{{ qAnsweredRows }}" as="r" hint-placeholder-count="2">
+                <div style="display:grid;grid-template-columns:26px 1fr;gap:16px;padding:14px 0;border-bottom:1px solid var(--line-on-paper);align-items:start;">
+                  <div onClick="{{ r.toggle }}" style="width:20px;height:20px;border:1px solid var(--acid-black);background:{{ r.boxBg }};cursor:pointer;color:var(--bone);font-size:13px;line-height:18px;text-align:center;">{{ r.mark }}</div>
+                  <div>
+                    <div style="font-size:15px;color:var(--stone-ink);">{{ r.q }}</div>
+                    <div style="font-size:15px;line-height:1.6;margin-top:4px;">{{ r.answer }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isBudget }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="font-family:'Abril Fatface',Georgia,serif;font-size:42px;line-height:1;text-transform:uppercase;max-width:940px;">Running the ministry for a year costs <span style="color:var(--gold-ink);">$191,869</span>. To have that much, you have to raise <span style="color:var(--terracotta);">$199,245</span>.</div>
+        <div style="font-size:16px;line-height:1.6;margin-top:16px;max-width:780px;">Young Life takes 17 cents of every dollar given before the money reaches this area. Eleven cents goes to national services and six cents to the region. So every ask has to be bigger than the need. Camp gifts are the one exception, as long as the donor writes camp on the gift.</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:44px;margin-top:38px;">
+          <div>
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">Where the money goes</div>
+            <div style="margin-top:14px;border-top:1px solid var(--line-on-paper);">
+              <sc-for list="{{ expense }}" as="e" hint-placeholder-count="5">
+                <div style="padding:14px 0;border-bottom:1px solid var(--line-on-paper);">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;">
+                    <div style="font-weight:600;font-size:15px;">{{ e.name }}</div>
+                    <div style="font-family:'Space Mono',monospace;font-size:14px;">{{ e.amountFmt }} <span style="color:var(--stone-ink);font-size:12px;">{{ e.pctFmt }}</span></div>
+                  </div>
+                  <div style="height:10px;background:var(--line-on-paper);margin-top:8px;"><div style="height:10px;background:{{ e.color }};width:{{ e.w }};"></div></div>
+                  <div style="font-size:13px;color:var(--stone-ink);line-height:1.5;margin-top:6px;">{{ e.note }}</div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:36px;">How $191,869 of cost becomes a $199,245 goal</div>
+            <div style="margin-top:14px;border:1px solid var(--line-on-paper);background:var(--paper-raised);">
+              <sc-for list="{{ grossUp }}" as="g" hint-placeholder-count="6">
+                <div style="display:flex;justify-content:space-between;gap:16px;padding:13px 16px;border-bottom:1px solid var(--line-on-paper);font-size:14px;">
+                  <div style="color:{{ g.color }};font-weight:{{ g.weight }};">{{ g.label }}</div>
+                  <div style="font-family:'Space Mono',monospace;white-space:nowrap;color:{{ g.color }};font-weight:{{ g.weight }};">{{ g.amountFmt }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">What happens if no money comes in</div>
+            <div style="font-size:14px;color:var(--stone-ink);line-height:1.55;margin-top:8px;">The bars are money going out, month by month, added up. The gold line is the $28,295 in the bank on day one. Where the bars pass the line, the money is gone.</div>
+            <div style="margin-top:18px;border:1px solid var(--line-on-paper);background:var(--paper-raised);padding:18px 16px 12px 16px;">
+              <div style="display:flex;align-items:flex-end;gap:6px;height:190px;position:relative;">
+                <div style="position:absolute;left:0;right:0;bottom:{{ cashLine }};height:2px;background:var(--gold);"></div>
+                <sc-for list="{{ runway }}" as="r" hint-placeholder-count="12">
+                  <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;">
+                    <div style="background:{{ r.color }};height:{{ r.h }};"></div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;gap:6px;margin-top:8px;">
+                <sc-for list="{{ runway }}" as="r" hint-placeholder-count="12">
+                  <div style="flex:1;text-align:center;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:{{ r.labelColor }};">{{ r.month }}</div>
+                </sc-for>
+              </div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--terracotta);margin-top:14px;">The bank runs dry in month three</div>
+            </div>
+
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:34px;">How the spending is classified</div>
+            <div style="display:flex;height:42px;margin-top:14px;border:1px solid var(--line-on-paper);">
+              <sc-for list="{{ functional }}" as="f" hint-placeholder-count="3">
+                <div style="width:{{ f.w }};background:{{ f.color }};color:{{ f.fg }};font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;">{{ f.label }}</div>
+              </sc-for>
+            </div>
+            <div style="font-size:14px;line-height:1.6;margin-top:12px;">Program comes out at 49 percent. Most funders want to see 65 or better. Two things cause it. Sixty percent of Kendra's week is admin work, and half the house is counted as admin. Don't re-cut the numbers to fix it. Say it plainly: this is what the second staff hire fixes.</div>
+
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:34px;">Three years out</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line-on-paper);border:1px solid var(--line-on-paper);margin-top:14px;">
+              <sc-for list="{{ arc }}" as="y" hint-placeholder-count="3">
+                <div style="background:var(--paper-raised);padding:16px;">
+                  <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;color:var(--stone-ink);">{{ y.year }}</div>
+                  <div style="font-family:'Abril Fatface',Georgia,serif;font-size:28px;margin-top:6px;">{{ y.amountFmt }}</div>
+                  <div style="font-size:12px;color:var(--stone-ink);line-height:1.45;margin-top:6px;">{{ y.note }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:46px;">Numbers in the budget that aren't settled</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;">
+          <sc-for list="{{ openItems }}" as="o" hint-placeholder-count="6">
+            <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Card" volume="quiet" raised="{{ wmInline }}" hint-size="100%,150px">
+              <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Tag" volume="quiet" tone="{{ o.tone }}" hint-size="auto,28px">{{ o.trust }}</x-import>
+              <div style="font-weight:600;font-size:15px;margin-top:12px;line-height:1.35;">{{ o.title }}</div>
+              <div style="font-size:13px;color:var(--stone-ink);line-height:1.55;margin-top:6px;">{{ o.note }}</div>
+            </x-import>
+          </sc-for>
+        </div>
+
+        <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:46px;">What a gift pays for</div>
+        <div style="font-size:14px;color:var(--stone-ink);line-height:1.55;margin-top:8px;max-width:780px;">Full cost includes staff time and the house. Direct cost is only the activity. Use full cost with a big donor and direct cost with a first-time donor. Never say both numbers to the same person without explaining the difference.</div>
+        <div style="margin-top:16px;border-top:1px solid var(--line-on-paper);">
+          <div style="display:grid;grid-template-columns:1.1fr 120px 120px 1.6fr;gap:20px;padding:10px 0;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);border-bottom:1px solid var(--line-on-paper);">
+            <div>Ask</div><div>Full cost</div><div>Direct cost</div><div>What it covers</div>
+          </div>
+          <sc-for list="{{ menu }}" as="k" hint-placeholder-count="7">
+            <div style="display:grid;grid-template-columns:1.1fr 120px 120px 1.6fr;gap:20px;padding:14px 0;border-bottom:1px solid var(--line-on-paper);align-items:baseline;">
+              <div style="font-weight:600;font-size:15px;">{{ k.name }}</div>
+              <div style="font-family:'Space Mono',monospace;font-size:15px;">{{ k.fullFmt }}</div>
+              <div style="font-family:'Space Mono',monospace;font-size:14px;color:var(--stone-ink);">{{ k.directFmt }}</div>
+              <div style="font-size:13px;color:var(--stone-ink);line-height:1.5;">{{ k.note }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isTable }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="font-family:'Abril Fatface',Georgia,serif;font-size:42px;line-height:1;text-transform:uppercase;max-width:940px;">It takes about {{ giftCount }} gifts to reach <span style="color:var(--gold-ink);">{{ goalFmt }}</span>. Five of them have a name on them today.</div>
+        <div style="font-size:16px;line-height:1.6;margin-top:16px;max-width:780px;">This is a proposal, not a promise. Read it top down: the biggest gifts do most of the work, so the top four rows are where the time goes. The names-needed column uses the standard rule, three real candidates for every gift you plan to close.</div>
+        <div style="margin-top:30px;border-top:2px solid var(--acid-black);">
+          <div style="display:grid;grid-template-columns:120px 80px 120px 110px 1fr;gap:20px;padding:10px 0;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);border-bottom:1px solid var(--line-on-paper);">
+            <div>Gift size</div><div>How many</div><div>Adds up to</div><div>Names needed</div><div>Who, and how covered</div>
+          </div>
+          <sc-for list="{{ levels }}" as="l" hint-placeholder-count="7">
+            <div style="display:grid;grid-template-columns:120px 80px 120px 110px 1fr;gap:20px;padding:16px 0;border-bottom:1px solid var(--line-on-paper);align-items:baseline;">
+              <div style="font-family:'Abril Fatface',Georgia,serif;font-size:22px;">{{ l.level }}</div>
+              <div style="font-family:'Space Mono',monospace;font-size:15px;">{{ l.count }}</div>
+              <div style="font-family:'Space Mono',monospace;font-size:15px;">{{ l.totalFmt }}</div>
+              <div style="font-family:'Space Mono',monospace;font-size:15px;color:var(--stone-ink);">{{ l.pool }}</div>
+              <div>
+                <div style="font-size:14px;line-height:1.5;">{{ l.who }}</div>
+                <div style="height:8px;background:var(--line-on-paper);margin-top:8px;max-width:340px;"><div style="height:8px;background:{{ l.covColor }};width:{{ l.cov }};"></div></div>
+                <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone-ink);margin-top:5px;">{{ l.covLabel }}</div>
+              </div>
+            </div>
+          </sc-for>
+          <div style="display:grid;grid-template-columns:120px 80px 120px 110px 1fr;gap:20px;padding:16px 0;border-bottom:2px solid var(--acid-black);font-weight:700;">
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;padding-top:4px;">Total</div>
+            <div style="font-family:'Space Mono',monospace;font-size:15px;">{{ giftCount }}</div>
+            <div style="font-family:'Space Mono',monospace;font-size:15px;">{{ goalFmt }}</div>
+            <div></div><div></div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isDonors }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:30px;flex-wrap:wrap;">
+          <div>
+            <div style="font-family:'Abril Fatface',Georgia,serif;font-size:42px;line-height:1;text-transform:uppercase;">Everyone who gave last year</div>
+            <div style="font-size:16px;line-height:1.6;margin-top:12px;max-width:720px;">The giving numbers come straight from the Young Life export. The relationship notes are blank until someone fills them in. A blank is better than a guess. Click a row to open the full record.</div>
+          </div>
+          <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="quiet" variant="outline" onClick="{{ toggleAddDonor }}" hint-size="auto,44px">Add a donor</x-import>
+        </div>
+
+        <sc-if value="{{ addDonorOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="border:1px solid var(--acid-black);background:var(--paper-raised);padding:20px;margin-top:20px;display:grid;grid-template-columns:1.2fr .6fr 2fr 110px;gap:12px;align-items:end;">
+            <div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">Name</div>
+              <input value="{{ dName }}" onChange="{{ setDName }}" placeholder="Household" style="width:100%;margin-top:6px;padding:10px;border:1px solid var(--line-on-paper);background:var(--paper);font-size:15px;">
+            </div>
+            <div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">Ask</div>
+              <input value="{{ dAsk }}" onChange="{{ setDAsk }}" placeholder="10000" style="width:100%;margin-top:6px;padding:10px;border:1px solid var(--line-on-paper);background:var(--paper);font-size:15px;">
+            </div>
+            <div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">Next step</div>
+              <input value="{{ dNote }}" onChange="{{ setDNote }}" placeholder="What happens next, and when" style="width:100%;margin-top:6px;padding:10px;border:1px solid var(--line-on-paper);background:var(--paper);font-size:15px;">
+            </div>
+            <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="quiet" variant="primary" onClick="{{ addDonor }}" hint-size="auto,44px">Save</x-import>
+          </div>
+        </sc-if>
+
+        <div style="margin-top:24px;">
+          <div style="display:grid;grid-template-columns:1.5fr 120px 110px 105px 1fr 70px;gap:16px;padding:10px 18px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">
+            <div>Household</div><div>7 years of giving</div><div>Last gift</div><div>Ask</div><div>Next step</div><div></div>
+          </div>
+          <sc-for list="{{ donors }}" as="d" hint-placeholder-count="8">
+            <div style="border:1px solid var(--line-on-paper);background:{{ d.bg }};margin-bottom:8px;">
+              <div onClick="{{ d.toggle }}" style="display:grid;grid-template-columns:1.5fr 120px 110px 105px 1fr 70px;gap:16px;padding:16px 18px;align-items:center;cursor:pointer;">
+                <div>
+                  <div style="font-weight:600;font-size:16px;">{{ d.name }}</div>
+                  <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone-ink);margin-top:4px;">{{ d.sub }}</div>
+                </div>
+                <div style="display:flex;align-items:flex-end;gap:3px;height:32px;">
+                  <sc-for list="{{ d.spark }}" as="s" hint-placeholder-count="7">
+                    <div style="width:11px;height:{{ s.h }};background:{{ s.color }};"></div>
+                  </sc-for>
+                </div>
+                <div style="font-family:'Space Mono',monospace;font-size:14px;">{{ d.lastFmt }}</div>
+                <div style="font-family:'Space Mono',monospace;font-size:15px;color:var(--gold-ink);">{{ d.askFmt }}</div>
+                <div style="font-size:14px;line-height:1.45;">{{ d.next }}</div>
+                <div style="text-align:right;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;color:var(--gold-ink);">{{ d.chev }}</div>
+              </div>
+              <sc-if value="{{ d.open }}" hint-placeholder-val="{{ false }}">
+                <div style="border-top:1px solid var(--line-on-paper);padding:22px 18px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:26px;">
+                  <div>
+                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">What the file says</div>
+                    <sc-for list="{{ d.facts }}" as="f" hint-placeholder-count="9">
+                      <div style="display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid var(--line-on-paper);font-size:13px;">
+                        <div style="color:var(--stone-ink);">{{ f.k }}</div>
+                        <div style="text-align:right;font-family:'Space Mono',monospace;">{{ f.v }}</div>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div>
+                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">Why they give</div>
+                    <div style="font-size:14px;line-height:1.6;margin-top:10px;">{{ d.care }}</div>
+                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:20px;">Still open with them</div>
+                    <div style="font-size:14px;line-height:1.6;margin-top:10px;">{{ d.threads }}</div>
+                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--terracotta);margin-top:20px;">Watch out for</div>
+                    <div style="font-size:14px;line-height:1.6;margin-top:10px;">{{ d.flags }}</div>
+                  </div>
+                  <div>
+                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">Your notes</div>
+                    <textarea value="{{ d.note }}" onChange="{{ d.setNote }}" placeholder="What they said. What you promised. Anything you'd forget." style="width:100%;height:148px;margin-top:10px;padding:12px;border:1px solid var(--line-on-paper);background:var(--paper);font-size:14px;line-height:1.55;"></textarea>
+                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:14px;">Next step</div>
+                    <input value="{{ d.nextEdit }}" onChange="{{ d.setNext }}" placeholder="One sentence, with a date" style="width:100%;margin-top:8px;padding:10px;border:1px solid var(--line-on-paper);background:var(--paper);font-size:14px;">
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isProspects }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:30px;flex-wrap:wrap;">
+          <div>
+            <div style="font-family:'Abril Fatface',Georgia,serif;font-size:42px;line-height:1;text-transform:uppercase;">{{ prosTotal }} names Young Life already has on file</div>
+            <div style="font-size:16px;line-height:1.6;margin-top:12px;max-width:720px;">Capacity and score are guesses about how much money a household has. They say nothing about whether the household cares. {{ prosLocal }} of these live nearby. Most haven't been asked in over ten years, which is why the list is worth working.</div>
+          </div>
+          <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="quiet" variant="outline" onClick="{{ toggleAddProspect }}" hint-size="auto,44px">Add a name</x-import>
+        </div>
+
+        <sc-if value="{{ addProspectOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="border:1px solid var(--acid-black);background:var(--paper-raised);padding:20px;margin-top:20px;display:grid;grid-template-columns:1.2fr .8fr .7fr 1.8fr 110px;gap:12px;align-items:end;">
+            <div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">Name</div>
+              <input value="{{ pName }}" onChange="{{ setPName }}" placeholder="Household" style="width:100%;margin-top:6px;padding:10px;border:1px solid var(--line-on-paper);background:var(--paper);font-size:15px;">
+            </div>
+            <div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">City</div>
+              <input value="{{ pCity }}" onChange="{{ setPCity }}" placeholder="Menlo Park" style="width:100%;margin-top:6px;padding:10px;border:1px solid var(--line-on-paper);background:var(--paper);font-size:15px;">
+            </div>
+            <div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">Ask</div>
+              <input value="{{ pAsk }}" onChange="{{ setPAsk }}" placeholder="5000" style="width:100%;margin-top:6px;padding:10px;border:1px solid var(--line-on-paper);background:var(--paper);font-size:15px;">
+            </div>
+            <div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">Who knows them</div>
+              <input value="{{ pNote }}" onChange="{{ setPNote }}" placeholder="The person who can introduce you" style="width:100%;margin-top:6px;padding:10px;border:1px solid var(--line-on-paper);background:var(--paper);font-size:15px;">
+            </div>
+            <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="quiet" variant="primary" onClick="{{ addProspect }}" hint-size="auto,44px">Save</x-import>
+          </div>
+        </sc-if>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:24px;">
+          <input value="{{ q }}" onChange="{{ setQ }}" placeholder="Search a name, a city, a company" style="flex:1;min-width:240px;padding:12px 14px;border:1px solid var(--line-on-paper);background:var(--paper-raised);font-size:15px;">
+          <sc-for list="{{ pFilters }}" as="f" hint-placeholder-count="5">
+            <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="quiet" variant="{{ f.variant }}" size="sm" onClick="{{ f.select }}" hint-size="auto,40px">{{ f.label }}</x-import>
+          </sc-for>
+        </div>
+        <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);margin-top:14px;">Showing {{ prosShown }} names</div>
+
+        <div style="margin-top:10px;">
+          <div style="display:grid;grid-template-columns:1.4fr 130px 110px 110px 110px 1fr;gap:16px;padding:10px 18px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">
+            <div>Household</div><div>City</div><div>Capacity</div><div>Suggested ask</div><div>Last gave</div><div>What to do</div>
+          </div>
+          <sc-for list="{{ prospects }}" as="p" hint-placeholder-count="12">
+            <div style="border:1px solid var(--line-on-paper);background:{{ p.bg }};margin-bottom:6px;">
+              <div onClick="{{ p.toggle }}" style="display:grid;grid-template-columns:1.4fr 130px 110px 110px 110px 1fr;gap:16px;padding:14px 18px;align-items:center;cursor:pointer;">
+                <div>
+                  <div style="font-weight:600;font-size:15px;">{{ p.name }}</div>
+                  <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone-ink);margin-top:3px;">{{ p.greet }}</div>
+                </div>
+                <div style="font-size:14px;">{{ p.city }}</div>
+                <div style="font-family:'Space Mono',monospace;font-size:14px;">{{ p.capFmt }}</div>
+                <div style="font-family:'Space Mono',monospace;font-size:14px;color:var(--gold-ink);">{{ p.askFmt }}</div>
+                <div style="font-family:'Space Mono',monospace;font-size:13px;color:{{ p.lastColor }};">{{ p.lastLabel }}</div>
+                <div style="font-size:13px;line-height:1.45;color:var(--stone-ink);">{{ p.move }}</div>
+              </div>
+              <sc-if value="{{ p.open }}" hint-placeholder-val="{{ false }}">
+                <div style="border-top:1px solid var(--line-on-paper);padding:20px 18px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:26px;">
+                  <div>
+                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">What the file says</div>
+                    <sc-for list="{{ p.facts }}" as="f" hint-placeholder-count="9">
+                      <div style="display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid var(--line-on-paper);font-size:13px;">
+                        <div style="color:var(--stone-ink);">{{ f.k }}</div>
+                        <div style="text-align:right;font-family:'Space Mono',monospace;">{{ f.v }}</div>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div>
+                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">How to read this record</div>
+                    <div style="font-size:14px;line-height:1.6;margin-top:10px;">{{ p.read }}</div>
+                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--terracotta);margin-top:20px;">Before you contact them</div>
+                    <div style="font-size:14px;line-height:1.6;margin-top:10px;">{{ p.caution }}</div>
+                  </div>
+                  <div>
+                    <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">Your notes</div>
+                    <textarea value="{{ p.note }}" onChange="{{ p.setNote }}" placeholder="Who knows them. What you find out." style="width:100%;height:132px;margin-top:10px;padding:12px;border:1px solid var(--line-on-paper);background:var(--paper);font-size:14px;line-height:1.55;"></textarea>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isResearch }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">Donor research · {{ profile.city }} · {{ profile.stage }}</div>
+        <div style="font-family:'Abril Fatface',Georgia,serif;font-size:42px;line-height:1;text-transform:uppercase;margin-top:10px;">{{ profile.name }}</div>
+        <div style="font-size:17px;line-height:1.6;margin-top:14px;max-width:820px;">{{ profile.headline }}</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1.15fr;gap:44px;margin-top:36px;align-items:start;">
+          <div>
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">1 · The short version</div>
+            <div style="margin-top:12px;border-top:1px solid var(--line-on-paper);">
+              <sc-for list="{{ profile.snapshot }}" as="s" hint-placeholder-count="8">
+                <div style="display:grid;grid-template-columns:170px 1fr;gap:16px;padding:11px 0;border-bottom:1px solid var(--line-on-paper);">
+                  <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone-ink);padding-top:3px;">{{ s.k }}</div>
+                  <div style="font-size:14px;line-height:1.5;">{{ s.v }}</div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:34px;">3 · How much to ask for, eventually</div>
+            <div style="margin-top:12px;border-top:1px solid var(--line-on-paper);">
+              <sc-for list="{{ profile.ladder }}" as="l" hint-placeholder-count="4">
+                <div style="display:grid;grid-template-columns:150px 150px 1fr;gap:16px;padding:12px 0;border-bottom:1px solid var(--line-on-paper);align-items:baseline;">
+                  <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone-ink);">{{ l.a }}</div>
+                  <div style="font-family:'Space Mono',monospace;font-size:15px;">{{ l.b }}</div>
+                  <div style="font-size:13px;color:var(--stone-ink);line-height:1.5;">{{ l.c }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="font-size:14px;line-height:1.6;margin-top:12px;background:var(--paper-raised);border-left:3px solid var(--gold);padding:14px 16px;">{{ profile.ladderNote }}</div>
+
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:34px;">4 · Where the relationship actually sits</div>
+            <div style="margin-top:12px;border-top:1px solid var(--line-on-paper);">
+              <sc-for list="{{ profile.rce }}" as="r" hint-placeholder-count="5">
+                <div style="display:grid;grid-template-columns:150px 1fr;gap:16px;padding:11px 0;border-bottom:1px solid var(--line-on-paper);">
+                  <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone-ink);padding-top:3px;">{{ r.k }}</div>
+                  <div style="font-size:14px;line-height:1.5;">{{ r.v }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">2 · What is public about them</div>
+            <sc-for list="{{ profile.publicNotes }}" as="p" hint-placeholder-count="3">
+              <div style="font-size:15px;line-height:1.65;margin-top:12px;">{{ p }}</div>
+            </sc-for>
+            <div style="border:1px solid var(--acid-black);padding:18px;margin-top:18px;">
+              <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--terracotta);">How to read that</div>
+              <div style="font-size:15px;line-height:1.6;margin-top:10px;">{{ profile.read }}</div>
+            </div>
+
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:34px;">5 · The part of the story most likely to land</div>
+            <div style="font-size:15px;line-height:1.65;margin-top:12px;">{{ profile.caseFit }}</div>
+
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:34px;">8 · The first move</div>
+            <div style="font-size:15px;line-height:1.65;margin-top:12px;">{{ profile.firstMove }}</div>
+            <div style="margin-top:16px;border-top:1px solid var(--line-on-paper);">
+              <sc-for list="{{ profile.meetingGoals }}" as="g" hint-placeholder-count="5">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:11px 0;border-bottom:1px solid var(--line-on-paper);">
+                  <div style="font-size:14px;font-weight:600;line-height:1.4;">{{ g.k }}</div>
+                  <div style="font-size:13px;color:var(--stone-ink);line-height:1.5;">{{ g.v }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:46px;">6 · Questions to ask them</div>
+        <div style="font-size:14px;color:var(--stone-ink);line-height:1.55;margin-top:8px;">{{ profile.questionNote }}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 40px;margin-top:14px;">
+          <sc-for list="{{ profile.questions }}" as="q" hint-placeholder-count="10">
+            <div style="display:grid;grid-template-columns:26px 1fr;gap:12px;padding:14px 0;border-bottom:1px solid var(--line-on-paper);">
+              <div style="font-family:'Abril Fatface',Georgia,serif;font-size:20px;color:var(--gold);">{{ q.n }}</div>
+              <div>
+                <div style="font-size:15px;line-height:1.5;">{{ q.q }}</div>
+                <div style="font-size:13px;color:var(--stone-ink);line-height:1.5;margin-top:5px;">{{ q.why }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:46px;">7 · Six ways to ask, when it is time</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:14px;">
+          <sc-for list="{{ profile.proposals }}" as="p" hint-placeholder-count="6">
+            <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Card" volume="quiet" raised="{{ wmInline }}" rule="{{ p.primary }}" hint-size="100%,300px">
+              <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Tag" volume="quiet" tone="{{ p.tone }}" hint-size="auto,28px">{{ p.fit }}</x-import>
+              <div style="font-family:'Abril Fatface',Georgia,serif;font-size:22px;line-height:1.1;margin-top:12px;">{{ p.name }}</div>
+              <div style="font-family:'Space Mono',monospace;font-size:14px;margin-top:8px;">{{ p.ask }}</div>
+              <div style="font-size:14px;line-height:1.55;margin-top:10px;">{{ p.what }}</div>
+              <div style="font-size:14px;line-height:1.55;margin-top:12px;padding-top:12px;border-top:1px solid var(--line-on-paper);color:var(--forest-ink);">{{ p.line }}</div>
+            </x-import>
+          </sc-for>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:44px;margin-top:46px;align-items:start;">
+          <div>
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">9 · The order to do it in</div>
+            <div style="margin-top:12px;border-top:1px solid var(--line-on-paper);">
+              <sc-for list="{{ profile.sequence }}" as="s" hint-placeholder-count="8">
+                <div style="display:grid;grid-template-columns:26px 130px 1fr;gap:14px;padding:12px 0;border-bottom:1px solid var(--line-on-paper);align-items:baseline;">
+                  <div style="font-family:'Abril Fatface',Georgia,serif;font-size:18px;color:var(--gold);">{{ s.n }}</div>
+                  <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone-ink);">{{ s.when }}</div>
+                  <div style="font-size:14px;line-height:1.5;">{{ s.what }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div>
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">10 · The words to use</div>
+            <sc-for list="{{ profile.askPath }}" as="a" hint-placeholder-count="3">
+              <div style="border-left:3px solid var(--gold);padding:4px 0 4px 18px;margin-top:18px;">
+                <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">{{ a.when }}</div>
+                <div style="font-family:'Abril Fatface',Georgia,serif;font-size:22px;line-height:1.25;margin-top:8px;">{{ a.line }}</div>
+              </div>
+            </sc-for>
+            <div style="font-size:15px;line-height:1.6;margin-top:24px;background:var(--acid-black);color:var(--bone);padding:18px;">{{ profile.closing }}</div>
+          </div>
+        </div>
+
+        <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);margin-top:50px;">Profiles still to write</div>
+        <div style="font-size:14px;color:var(--stone-ink);line-height:1.55;margin-top:8px;max-width:780px;">Every name here gets the same ten sections. Three of them matter more than anything on the prospect list, because they already gave.</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:14px;">
+          <sc-for list="{{ queue }}" as="q" hint-placeholder-count="6">
+            <div style="border:1px solid var(--line-on-paper);background:var(--paper-raised);padding:16px;">
+              <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:{{ q.color }};">{{ q.priority }}</div>
+              <div style="font-weight:600;font-size:16px;margin-top:8px;">{{ q.name }}</div>
+              <div style="font-size:13px;color:var(--stone-ink);line-height:1.55;margin-top:6px;">{{ q.why }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isPage }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="font-family:'Abril Fatface',Georgia,serif;font-size:42px;line-height:1;text-transform:uppercase;max-width:960px;">{{ page.title }}</div>
+        <div style="font-size:16px;line-height:1.6;margin-top:16px;max-width:800px;">{{ page.lead }}</div>
+        <sc-for list="{{ page.blocks }}" as="b" hint-placeholder-count="3">
+          <div style="margin-top:38px;">
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">{{ b.head }}</div>
+            <sc-if value="{{ b.isText }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:16px;line-height:1.65;margin-top:12px;max-width:800px;">{{ b.text }}</div>
+            </sc-if>
+            <sc-if value="{{ b.isRows }}" hint-placeholder-val="{{ true }}">
+              <div style="margin-top:14px;border-top:1px solid var(--line-on-paper);">
+                <div style="display:grid;grid-template-columns:{{ b.grid }};gap:20px;padding:10px 0;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);border-bottom:1px solid var(--line-on-paper);">
+                  <sc-for list="{{ b.cols }}" as="c" hint-placeholder-count="4">
+                    <div>{{ c }}</div>
+                  </sc-for>
+                </div>
+                <sc-for list="{{ b.rows }}" as="r" hint-placeholder-count="6">
+                  <div style="display:grid;grid-template-columns:{{ b.grid }};gap:20px;padding:15px 0;border-bottom:1px solid var(--line-on-paper);align-items:baseline;">
+                    <div style="font-weight:600;font-size:15px;line-height:1.4;">{{ r.a }}</div>
+                    <div style="font-family:'Space Mono',monospace;font-size:14px;">{{ r.b }}</div>
+                    <div style="font-size:14px;line-height:1.5;">{{ r.c }}</div>
+                    <div style="font-size:13px;color:var(--stone-ink);line-height:1.5;">{{ r.d }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ b.isCards }}" hint-placeholder-val="{{ false }}">
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:14px;">
+                <sc-for list="{{ b.cards }}" as="c" hint-placeholder-count="4">
+                  <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Card" volume="quiet" raised="{{ wmInline }}" hint-size="100%,190px">
+                    <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Tag" volume="quiet" tone="gold" hint-size="auto,28px">{{ c.tag }}</x-import>
+                    <div style="font-family:'Abril Fatface',Georgia,serif;font-size:26px;margin-top:12px;line-height:1.05;">{{ c.value }}</div>
+                    <div style="font-weight:600;font-size:15px;margin-top:8px;line-height:1.35;">{{ c.title }}</div>
+                    <div style="font-size:13px;color:var(--stone-ink);line-height:1.55;margin-top:6px;">{{ c.note }}</div>
+                  </x-import>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showQuickAdd }}" hint-placeholder-val="{{ true }}">
+      <div style="margin-top:54px;padding-top:22px;border-top:3px solid var(--gold);">
+        <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-ink);">Add a to-do from this page</div>
+        <div style="font-size:14px;color:var(--stone-ink);line-height:1.55;margin-top:8px;">It gets filed under {{ quickLabel }} and shows up on the To do tab when it reaches the top three.</div>
+        <div style="display:grid;grid-template-columns:1fr 180px 120px;gap:12px;align-items:end;margin-top:12px;max-width:900px;">
+          <div>
+            <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">What needs doing</div>
+            <input value="{{ qText }}" onChange="{{ setQText }}" placeholder="One sentence" style="width:100%;margin-top:6px;padding:12px;border:1px solid var(--line-on-paper);background:var(--paper-raised);font-size:15px;">
+          </div>
+          <div>
+            <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--stone-ink);">By when</div>
+            <input value="{{ qWhen }}" onChange="{{ setQWhen }}" placeholder="Friday" style="width:100%;margin-top:6px;padding:12px;border:1px solid var(--line-on-paper);background:var(--paper-raised);font-size:15px;">
+          </div>
+          <x-import component-from-global-scope="EPAYoungLifeDesignSystem_cb412f.Button" volume="quiet" variant="outline" size="sm" onClick="{{ addTodo }}" hint-size="auto,44px">Add</x-import>
+        </div>
+      </div>
+    </sc-if>
+
+  </div>
+  </div>
+  </sc-if>
+</div>]]>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:1000}}">
+const S = 'epa-hub-v1';
+const money = n => {
+  const v = Math.round(+n || 0);
+  if (!v) return '$0';
+  return '$' + v.toLocaleString('en-US');
+};
+const short = n => {
+  const v = Math.round(+n || 0);
+  if (v >= 1000000) return '$' + (v / 1000000).toFixed(v >= 10000000 ? 0 : 1) + 'M';
+  if (v >= 1000) return '$' + Math.round(v / 1000) + 'K';
+  return '$' + v;
+};
+
+const GOAL = 199245;
+const ALLOWED = ['kendrasobo@gmail.com', 'remi@soboconsulting.com'];
+const NEAR = ['Menlo Park', 'East Palo Alto', 'Palo Alto', 'Atherton', 'Portola Valley', 'Woodside', 'Redwood City', 'Emerald Hills', 'Foster City', 'Los Altos', 'Los Altos Hills', 'Mountain View', 'San Carlos', 'Belmont', 'Stanford', 'San Mateo', 'Hillsborough', 'Burlingame'];
+
+const CARE = {
+  "Butcher": { care: 'Gave $50,000 in October 2025, the biggest single gift this area has ever received, and it was the first gift from this household. Nobody has written down what moved them.', threads: 'A second Butcher record in the file gave $25,000 in 2024 under Carolyn alone. Find out whether that is the same money, the same family, or two different households.', flags: 'No email and no phone on file. The record is marked do-not-call No, so calling is allowed once you have a number.' },
+  "O'Hara": { care: 'Gave $25,000 in January 2026, first gift. Kendra has said this one comes with a condition attached. Write down exactly what the condition is before the renewal ask.', threads: 'The renewal ask is the single most important conversation of the fall. Ask in person, not by email.', flags: 'Runs a foundation with about $8M in assets. That could be a second, separate ask, but not in the same conversation as the personal gift.' },
+  "Brandon": { care: 'Gave $17,000 in March 2026, first gift. Also offered to introduce other people, which is worth more than the check.', threads: 'Get the referral names on paper. Ask for three, with permission to use his name.', flags: 'Connected to a foundation with over $500M in assets. Do not confuse the household ask with the foundation ask.' },
+  "Allen": { care: 'Gave $10,000 in 2026, first gift, from a household listed as a Silicon Valley consulting principal.', threads: 'No email on file. Get one.', flags: '' },
+  "Young": { care: 'Two records in the file under the same name. One gave $20,000 back in 2008, one gave $3,000 in 2026. Probably the same family, twenty years apart.', threads: 'Confirm whether these are one household. If they are, this is a returning donor and the ask should reflect the older gift.', flags: '' },
+  "Frank": { care: 'Has given every year since 2014, small and steady, about $100 a month. 148 gifts on record.', threads: 'This is the model monthly donor. Ask him why he keeps giving, then use his answer to recruit others.', flags: '' },
+  "Sobomehin": { care: 'Family giving. Leave it out of the goal math so the plan does not lean on the household running the ministry.', threads: '', flags: '' },
+  "Spates": { care: 'Gave 163 times since 2009. Total is $12,500 in small amounts. Loyalty like this is rare.', threads: 'Never got a real thank you at the level this deserves. Fix that before asking for anything.', flags: '' },
+  "Davidson": { care: 'Gave 164 times since 2013, $25 at a time. Long-time Young Life person.', threads: '', flags: '' },
+  "Taylor": { care: 'Monthly donor at about $51 a month since 2022.', threads: '', flags: '' },
+  "Snow": { care: 'Small gift in 2026.', threads: '', flags: '' }
+};
+
+const STRANDS = [
+  { name: 'Big gifts, $10,000 and up', amount: 130000, note: 'Four households did $102,000 last year. This is where the year is won or lost.' },
+  { name: 'Gifts between $1,000 and $9,999', amount: 27000, note: 'The middle of the list. Thin right now.' },
+  { name: 'Monthly giving', amount: 18000, note: 'Roughly six households give monthly today. Nobody has counted them properly.' },
+  { name: 'Fall brunch', amount: 15000, note: 'Early November. Fifteen women in a room.' },
+  { name: 'Spring family fundraiser', amount: 6000, note: 'Be a Kid for a Day, early April.' },
+  { name: 'Grants and foundations', amount: 10000, note: 'One $10,000 Young Life grant is the only thing here so far.' },
+  { name: 'Churches', amount: 5000, note: 'Nothing committed. Relationships exist and have never been asked.' }
+];
+
+const MOVES = [
+  { area: 'Donors', title: 'Ask O\u2019Hara to renew the $25,000', why: 'Biggest renewal on the board. Write down the condition attached to last year\u2019s gift first, so the ask matches it.', when: 'By October 15', owner: 'Kendra' },
+  { area: 'Prospects', title: 'Ask Brandon for three referral names', why: 'He already offered. Ask for names, and for permission to use his name when you reach out.', when: 'By October 10', owner: 'Kendra' },
+  { area: 'Stewardship', title: 'Thank the Butchers properly for the $50,000', why: 'A gift that size needs a real thank you and a real report before any second ask.', when: 'This month', owner: 'Kendra' },
+  { area: 'Monthly', title: 'Count the monthly donors', why: 'You cannot grow a number you have not counted. Get the exact list and the exact monthly total from the region.', when: 'By September 30', owner: 'Remi' },
+  { area: 'Donors', title: 'Fix the two duplicate records', why: 'Butcher and Young each appear twice in the file. Until that is sorted, the giving history is wrong.', when: 'By September 30', owner: 'Remi' },
+  { area: 'Brunch', title: 'Set the brunch date and pick the host', why: 'Early November means invitations go out in early October. The host matters more than the venue.', when: 'This week', owner: 'Kendra' },
+  { area: 'Prospects', title: 'Pick 12 names off the prospect list', why: 'Twelve is a real number of research and intro conversations for one fall. A hundred is not.', when: 'By October 1', owner: 'Kendra and Remi' },
+  { area: 'Donor research', title: 'Write down what each big donor cares about', why: 'Right now that information lives in Kendra\u2019s head. If it stays there, nobody else can help raise money.', when: 'Ongoing', owner: 'Kendra' }
+];
+
+const UNKNOWNS = [
+  'How many monthly donors there are, and what they give in total. Six is a guess.',
+  'What condition came with the O\u2019Hara gift. Kendra knows. It is not written down anywhere.',
+  'Whether the two Butcher records and the two Young records are the same families.',
+  'What the second staff position actually costs. The $35,000 in the budget is a placeholder somebody invented, not a real number.',
+  'Which committee members exist today. The budget says three, an earlier correction said one.'
+];
+
+const QUESTIONS = [
+  { area: 'The big donors', q: 'What condition came with the O\u2019Hara gift?', why: 'You have said there was one. It is not written down anywhere, so nobody but you can help renew it.', changes: 'Changes the renewal ask, and whether it can be asked at all.', weight: 0 },
+  { area: 'The big donors', q: 'Why did the Butchers give $50,000, and who asked?', why: 'Largest gift this area has ever received, first gift from that household, and no record of what moved them.', changes: 'Decides whether this repeats or was a one-time thing.', weight: 0 },
+  { area: 'The big donors', q: 'What exactly did Brandon offer when he mentioned introductions?', why: 'An offer of names is worth more than his $17,000, and offers expire.', changes: 'Three names at $10,000 is $30,000 of the gap.', weight: 0 },
+  { area: 'The big donors', q: 'Has anyone thanked the Butchers in writing?', why: 'There is no thank-you on record for a $50,000 gift.', changes: 'A second gift is unlikely without it.', weight: 0 },
+  { area: 'The donor file', q: 'Are the two Butcher records the same family?', why: 'One record shows $50,000 in 2026, another shows $25,000 in 2024 under Carolyn alone.', changes: 'Either lifetime giving is $75,000 or you have two households. Both change the ask.', weight: 1 },
+  { area: 'The donor file', q: 'Are the two Young records the same family?', why: 'One gave $20,000 in 2008, one gave $3,000 in 2026, same name.', changes: 'If yes, this is a returning donor and the ask should reflect the older gift.', weight: 1 },
+  { area: 'The donor file', q: 'How many monthly donors are there, and what do they give in total?', why: 'Six is a guess pulled from gift counts. The region has the real list.', changes: 'Monthly giving is 9 percent of the plan and currently rests on an estimate.', weight: 1 },
+  { area: 'The money', q: 'What does part time mean for the second staff hire, in hours and dollars?', why: 'The $35,000 in the budget is a placeholder somebody invented, not a number you gave.', changes: 'It is the largest unconfirmed number in the budget and it drives year two entirely.', weight: 1 },
+  { area: 'The money', q: 'What does getting kids to camp actually cost?', why: 'It sits at zero. Kids carpool today and you floated $5,000 for a bus.', changes: 'The camp number is low by whatever this is, and camp is the biggest program line.', weight: 1 },
+  { area: 'The money', q: 'Who pays the property tax on the house?', why: 'The budget assumes the area does, and assumes the house is owned outright.', changes: '$1,438 a year, and a wrong assumption here spreads across three years.', weight: 2 },
+  { area: 'The money', q: 'What is actually in the bank, split between restricted and usable?', why: 'You said the region holds this and you cannot see it. Somebody there can.', changes: 'The cash runway is built on $28,295 that has never been reconciled.', weight: 1 },
+  { area: 'The team', q: 'Who are the committee members today, by name?', why: 'The budget says three. An earlier correction said one.', changes: 'A committee is the only way the asks scale past what you can personally carry.', weight: 1 },
+  { area: 'The team', q: 'Which of the current volunteer leaders could host or invite to the brunch?', why: 'The brunch needs a host with a room and a network, and that person is usually already close by.', changes: 'The host decides whether the brunch raises $15,000 or $3,000.', weight: 2 },
+  { area: 'The plan', q: 'Which single ask are you most afraid of, and why?', why: 'The ask people avoid is usually the biggest one, and avoidance shows up as a scheduling problem instead of a fear.', changes: 'Naming it is how it gets on the calendar.', weight: 2 },
+  { area: 'The plan', q: 'If only one thing gets funded this year, what is it?', why: 'The plan currently treats every strand as equally important. In a bad year that is not survivable.', changes: 'Sets the order of the asks when time runs short.', weight: 2 },
+  { area: 'The plan', q: 'Which churches already have people connected to this ministry?', why: 'Church money is listed at $5,000 with nothing behind it, and the relationships are said to exist.', changes: 'Turns a placeholder into a list of real conversations.', weight: 2 }
+];
+
+const EXPENSE = [
+  { name: 'Staff pay and payroll taxes', amount: 90475, note: 'One full-time salary of $77,131, plus 17.3 percent in payroll costs.' },
+  { name: 'Program: clubs, camp, leaders', amount: 50900, note: 'Camp is the biggest piece at $19,350. WyldLife is $12,828.' },
+  { name: 'The house', amount: 28850, note: 'Power, water, garbage, insurance, cleaning, repairs. Rent income covers most of it.' },
+  { name: 'Fundraising and events', amount: 11700, note: 'The brunch, the spring event, the newsletter, donor thank-yous, committee meetings.' },
+  { name: 'Office and operations', amount: 9944, note: 'Supplies, printing, insurance, training. Technology and mileage are still at zero and should not be.' }
+];
+
+const GROSS = [
+  { label: 'Cost of running the ministry for the year', amount: 191869 },
+  { label: 'Minus house rent and transfers in', amount: -35200 },
+  { label: 'What gifts have to cover', amount: 156669, bold: true },
+  { label: 'Plus the 17 percent Young Life takes off every gift', amount: 32089, red: true },
+  { label: 'Plus the capital work not yet funded', amount: 10487 },
+  { label: 'Total to raise', amount: 199245, bold: true }
+];
+
+const RUN = [
+  ['Oct', 11006], ['Nov', 26190], ['Dec', 44397], ['Jan', 62655], ['Feb', 75867], ['Mar', 103229],
+  ['Apr', 131406], ['May', 149226], ['Jun', 168685], ['Jul', 186001], ['Aug', 201111], ['Sep', 212351]
+];
+
+const MENU = [
+  { name: 'Send one kid to camp', full: 2343, direct: 1290, note: 'A week at Woodleaf, their leader in the cabin, and everything around it. The clearest ask this ministry has.' },
+  { name: 'Sponsor a leader for a year', full: 1995, direct: 1098, note: 'Background check, child protection training, regional training, and the monthly leader gatherings.' },
+  { name: 'Pay for WyldLife for a year', full: 23304, direct: 12828, note: 'Every club night, Campaigners, outings, and contact work for the middle school ministry.' },
+  { name: 'Pay for college and Wednesday nights', full: 19533, direct: 10753, note: 'The Wednesday rhythm at the house, monthly college nights, and starting the women\u2019s group.' },
+  { name: 'Pay for high school', full: 2507, direct: 1380, note: 'The monthly club with Live in Peace and the work of getting known on campus.' },
+  { name: 'Cover one club night', full: 218, direct: 120, note: 'Dinner, drinks, and dessert for a Friday night at the house.' },
+  { name: 'Cover the whole camp season', full: 35152, direct: 19350, note: 'Woodleaf in June, the WyldLife weekend in February, the college weekend in October, and the leaders who go.' }
+];
+
+const OPEN_ITEMS = [
+  { tone: 'terracotta', trust: 'Placeholder', title: 'Second staff position, $35,000', note: 'We invented this number. Kendra said part time starting around August of year two and that housing does not change the pay. Nobody has said what part time means in hours or dollars. It is the largest unconfirmed number in the budget.', color: 'var(--terracotta)' },
+  { tone: 'terracotta', trust: 'Not priced', title: 'Getting kids to camp, $0', note: 'Kids carpool today. Kendra wants a shared bus with other Peninsula areas and floated $5,000 a year. Until that is priced, the camp number is low.', color: 'var(--terracotta)' },
+  { tone: 'terracotta', trust: 'Not priced', title: 'Technology and mileage, $0', note: 'Kendra says about $2,000 covers mileage and the phone bill, and that some tech is already inside the service charge. Gas is roughly $200 a month, untracked. Young Life covers her $118.48 phone bill as a full-time employee.', color: 'var(--terracotta)' },
+  { tone: 'gold', trust: 'Stated', title: 'Cash on hand, $28,295', note: 'Kendra\u2019s number, $28,294.76, with about $10,000 more expected from capital. She says the split between restricted and usable is handled at the region and she cannot see it.', color: 'var(--gold-ink)' },
+  { tone: 'muted', trust: 'Settled', title: 'The fiscal year is October to September', note: 'Kendra chose the region\u2019s calendar over the school year. The budget tabs were built on August to July, so the month columns are shifted by two.', color: 'var(--forest-ink)' },
+  { tone: 'muted', trust: 'Verified', title: 'Camp rates', note: '$750 per kid at Woodleaf June 19 to 23, $175 per kid for weekend camps. Both confirmed by Kendra. All-in cost per kid at camp is $1,290.', color: 'var(--forest-ink)' }
+];
+
+const LEVELS = [
+  { level: '$50,000', count: 1, named: 1, who: 'Butcher renewal. Everything else in the plan assumes this one repeats.' },
+  { level: '$25,000', count: 2, named: 2, who: 'O\u2019Hara renewal, and Brandon asked up from $17,000.' },
+  { level: '$10,000', count: 3, named: 1, who: 'Allen renewal, plus two new households. One should come from a Brandon introduction.' },
+  { level: '$5,000', count: 6, named: 1, who: 'Young asked up from $3,000, plus five new. The brunch and the prospect list both feed this row.' },
+  { level: '$2,500', count: 6, named: 0, who: 'Nobody yet. Churches and brunch guests are the most likely source.' },
+  { level: '$1,000', count: 12, named: 0, who: 'The newsletter list and the spring event. Twelve at a thousand is a real target, not a stretch.' },
+  { level: 'Under $1,000', count: 25, named: 6, who: 'Monthly donors and the small-gift crowd. Six households already give here every year.' }
+];
+
+const PROFILES = [
+  {
+    id: 'dillabough',
+    name: 'Gary and Michelle Dillabough',
+    city: 'Atherton',
+    status: 'Complete',
+    stage: 'Discovery. Do not ask yet.',
+    headline: 'Gave $25,000 once, in 2005, and nobody has talked to them since. High capacity, no relationship. The whole job this year is getting one conversation.',
+    snapshot: [
+      ['Where they live', 'Atherton, California'],
+      ['Where things stand', 'Lapsed donor. Last gift 2005.'],
+      ['What they gave', '$25,000 total, a $20,000 gift and a $5,000 gift. Verify before using with them.'],
+      ['Warm connection', 'None right now. This is the biggest problem.'],
+      ['Capacity signal', 'High. Marked hidden gem and strong planned giving prospect in the screening file.'],
+      ['Right stage', 'Discovery and re-engagement. Not a solicitation.'],
+      ['Goal for now', 'One conversation, and permission to keep them updated.'],
+      ['What to talk about', 'Rebuilding a community, youth, leadership, long-term stability.']
+    ],
+    public: [
+      'Gary is co-founder and CEO of Urban Community and works on downtown San Jose. Before that, Navitas Capital, The Westly Group, and eBay, where he was Vice President of Sustainability.',
+      'He was elected to the board of the Lucile Packard Foundation for Children\u2019s Health and is described publicly as an active fundraiser for Packard Children\u2019s Hospital and a supporter of the Las Lomitas Education Foundation.',
+      'He co-founded the Urban Vibrancy Institute, a San Jose nonprofit about the cultural, economic, and social life of the city. Local coverage describes his work as being about people and places, not just buildings.'
+    ],
+    read: 'Do not pitch him on running programs. Pitch him on rebuilding the thing that helps young people belong, lead, and stay in their own community. That is the language he already uses about San Jose.',
+    ladder: [
+      ['Re-entry ask', '$25,000 to $50,000', 'Only after a first conversation goes well.'],
+      ['Five-year target', '$250,000', 'Carry this as the real strategy number.'],
+      ['Stretch', '$500,000 over 5 years', 'Only if they get genuinely involved.'],
+      ['Screening ceiling', 'About $700,000', 'Only if the $140,676 field is annual capacity. Never lead here.']
+    ],
+    ladderNote: 'Put them in the system at $250,000 over five years, with a $500,000 stretch and a separate planned-giving note. But the first invitation is $25,000 to $50,000 toward one clear thing, not $250,000.',
+    rce: [
+      ['Attributes', 'Probably strong. Public record shows generosity and interest in youth, health, and education.'],
+      ['Engagement', 'Dormant. Maybe aware of Young Life, not involved.'],
+      ['Relationship', 'Very low. There is no warm connection at all.'],
+      ['Strategy', 'Thank them, get curious, find shared values, then invite.'],
+      ['Do not do', 'Do not lead with wealth, planned giving, or a big ask.']
+    ],
+    caseFit: 'Young Life was in East Palo Alto for more than forty years, went quiet for about five, and is being rebuilt now with local leadership and a house in the neighborhood. That is a rebuild story about a place, which is exactly the kind of thing he already funds.',
+    questions: [
+      ['When you think back on supporting Young Life before, what do you remember about what moved you to give?', 'Reconnects them to their own story with no pressure.'],
+      ['What kinds of youth or community work feel most important to you right now?', 'Finds out what they fund today.'],
+      ['You\u2019ve put a lot of energy into community vitality. What do you think makes a community healthier for young people?', 'Connects East Palo Alto to how he already thinks.'],
+      ['What have you seen make the biggest difference for young people: programs, places, mentors, education, faith, something else?', 'Tells you which proposal to bring.'],
+      ['What values shape the giving decisions you and Michelle make together?', 'The core values question.'],
+      ['What would you need to see from Young Life East Palo Alto to feel confident this is well led?', 'Surfaces what they need to trust you.'],
+      ['We want to go from 34 kids known by name to 225 in three years. What part of that feels most compelling, or most difficult?', 'Lets them react to the real plan.'],
+      ['When you make a big gift, what do you hope to hear back about?', 'Tells you how to report later.'],
+      ['Would it mean something to see the house or meet a leader before you consider anything?', 'Offers involvement instead of an ask.'],
+      ['Who else should be in this conversation if the goal is a strong youth ministry in East Palo Alto?', 'Opens the door to introductions without using them.']
+    ],
+    questionNote: 'Pick four or five, not ten. Listen about seventy percent of the time.',
+    proposals: [
+      { name: 'East Palo Alto Rebuild Fund', ask: '$250,000 over 5 years', fit: 'Primary proposal', what: 'Rebuild three connected ministries: WyldLife, high school, college. Funds growth, leaders, and the systems that keep the area stable.', line: 'Your five-year partnership would help rebuild a ministry that went quiet and is becoming a steady presence for kids again.' },
+      { name: 'Known by Name Leadership Pipeline', ask: '$150,000 to $250,000', fit: 'If they care about leadership and multiplication', what: 'Funds the path from middle school kid to high school kid to college student to volunteer leader.', line: 'Your investment would help young people here come back as leaders for the next generation.' },
+      { name: 'The House as Home Fund', ask: '$100,000 to $200,000', fit: 'If they care about place and hospitality', what: 'Funds the house as the place kids belong. Club, Campaigners, food, leader care.', line: 'Your gift would make the house a home base where kids are known, fed, and welcomed.' },
+      { name: 'Camp Access Fund', ask: '$125,000 to $200,000', fit: 'If they want concrete, story-rich impact', what: 'Camp scholarships plus leader costs, so no kid is at camp without their leader in the cabin.', line: 'Your gift would remove what keeps East Palo Alto students from the deepest week of the year.' },
+      { name: 'High School Launch Fund', ask: '$150,000 to $250,000', fit: 'If they like solving hard problems', what: 'Launches high school ministry for kids who scatter across several campuses after eighth grade.', line: 'Your investment would reach East Palo Alto high schoolers even after they scatter across the Peninsula.' },
+      { name: 'Lead Sustainability Partner', ask: '$500,000 over 5 years', fit: 'Only after strong engagement', what: 'Funds the whole buildout, including the second staff position and donor systems.', line: 'Your leadership gift would move this from a fragile restart to a ministry that lasts.' }
+    ],
+    firstMove: 'Do not send a proposal. Send a short re-introduction letter, then ask for a conversation. The ask is: would you and Michelle be open to a short conversation? I\u2019d love to thank you for your past support, hear what you care about now, and tell you what is being rebuilt in East Palo Alto.',
+    meetingGoals: [
+      ['Remind them of their past giving', 'Restores the memory.'],
+      ['Learn what they care about now', 'Stops you guessing.'],
+      ['Tell the rebuild story', 'Gives them a reason to care today.'],
+      ['Ask permission to keep them updated', 'Starts a relationship.'],
+      ['Figure out which proposal fits', 'Sets up a later ask.']
+    ],
+    sequence: [
+      ['Week 1', 'Send a gratitude letter.'],
+      ['Week 3', 'Follow up by email or phone.'],
+      ['First meeting', 'Ask the discovery questions. Mostly listen.'],
+      ['Within 48 hours', 'Handwritten thank-you note.'],
+      ['Month 2', 'Send the one-page rebuild summary.'],
+      ['Month 3', 'Invite them to see the house or come to a small gathering.'],
+      ['Month 4 to 5', 'Present one proposal, the one that fits.'],
+      ['Month 5 to 6', 'Ask for a re-entry gift or a multi-year commitment.']
+    ],
+    askPath: [
+      ['First invitation, after cultivation', 'Would you consider a $50,000 gift this year to help rebuild Young Life East Palo Alto?'],
+      ['Second, after they are engaged', 'Would you extend that into a five-year commitment of $250,000, so this ministry can grow from restart to steady?'],
+      ['Stretch, only if strongly aligned', 'Would you and Michelle consider a $500,000 lead commitment over five years to fund the full rebuild?']
+    ],
+    closing: 'Gratitude first, curiosity second, vision third, invitation fourth. In that order, every time.'
+  }
+];
+
+const PROFILE_QUEUE = [
+  { name: 'John O\u2019Hara', why: 'Gave $25,000 last year with a condition attached. The renewal is the biggest conversation of the fall.', priority: 'Do this first' },
+  { name: 'Carolyn and Preston Butcher', why: 'The $50,000 gift. Nobody has written down what moved them.', priority: 'Do this first' },
+  { name: 'John and Nancy Brandon', why: 'Gave $17,000 and offered introductions. Needs a profile before you use the referrals.', priority: 'Do this first' },
+  { name: 'John and Dena Mumford', why: 'Portola Valley. Gave $24,933 through 2010, then stopped. Capacity is high.', priority: 'Next' },
+  { name: 'Wally and Alex Hawley', why: 'Atherton. $25,000 lifetime, last gift 2010. Runs a foundation.', priority: 'Next' },
+  { name: 'Bill and Brenda Younger', why: 'Atherton. $17,500 lifetime, last gift 2006.', priority: 'Next' }
+];
+
+const PAGES = {
+  monthly: {
+    title: 'Monthly giving',
+    lead: 'Monthly gifts are the only money you can count on before it arrives. Right now about six households give monthly and nobody knows the exact total. Fix the counting first, then grow it.',
+    blocks: [
+      { head: 'The target', kind: 'cards', cards: [
+        { tag: 'Today', value: '6 households', title: 'Roughly $1,500 a year', note: 'Best guess from the donor file. Frank at about $100 a month and Taylor at about $51 are the two clearest.' },
+        { tag: 'This year', value: '30 households', title: '$18,000 a year', note: 'Thirty households at an average of $50 a month. That is one recruiting conversation a week for a year.' },
+        { tag: 'Why it matters', value: '9%', title: 'Of the whole goal', note: 'Predictable money means you stop guessing about January.' }
+      ] },
+      { head: 'How to get there', kind: 'rows', grid: '1.2fr 130px 1.6fr 1.2fr', cols: ['Step', 'When', 'What happens', 'Who owns it'], rows: [
+        { a: 'Get the real list from the region', b: 'September', c: 'Exact names, exact amounts, exact dates. You cannot ask people to upgrade if you do not know what they give.', d: 'Remi' },
+        { a: 'Ask Frank why he gives', b: 'September', c: 'He has given 148 times. His reason, in his words, is the best recruiting line you will get.', d: 'Kendra' },
+        { a: 'Add a monthly option to every ask', b: 'October', c: '$50 a month instead of $600 once. Same money, easier yes, and it renews itself.', d: 'Kendra' },
+        { a: 'Ask every leader parent once', b: 'November', c: 'Parents of kids in the ministry are the most natural monthly donors and the least asked.', d: 'Kendra' },
+        { a: 'Thank monthly donors by name', b: 'Quarterly', c: 'A short note with one story. Monthly donors quit when they feel like a bank transfer.', d: 'Remi' }
+      ] },
+      { head: 'One thing to avoid', kind: 'text', text: 'Do not put the monthly total in the goal until the list is verified. A number you assumed is worse than a blank, because you will plan around it.' }
+    ]
+  },
+  brunch: {
+    title: 'The fall brunch',
+    lead: 'Early November. Fifteen women in a room, hosted by one of them. Budget is $2,500 and the target is $15,000. The host matters more than the venue and the invitation matters more than the program.',
+    blocks: [
+      { head: 'The shape of the day', kind: 'rows', grid: '1fr 130px 1.6fr 1.2fr', cols: ['Piece', 'Target', 'What it is', 'Notes'], rows: [
+        { a: 'Guests', b: '15 women', c: 'Invited by the host, not by the ministry. A personal invitation from a peer is what fills the room.', d: 'Aim for 20 invitations to get 15 in the room.' },
+        { a: 'Average gift', b: '$1,000', c: 'Fifteen guests at an average of $1,000 gets you to $15,000. Some will give $5,000, most will give less.', d: 'Do not set a minimum. It shrinks the room.' },
+        { a: 'The ask', b: '90 seconds', c: 'One person asks, once, clearly, near the end. Everyone leaves with a card and a way to give.', d: 'Kendra asks. Nobody else.' },
+        { a: 'The story', b: '5 minutes', c: 'One story about one kid, told with permission. No slideshow, no statistics.', d: 'Written parental consent before any kid is named.' },
+        { a: 'Follow-up', b: '48 hours', c: 'Every guest gets a note within two days, whether they gave or not.', d: 'Remi drafts, Kendra signs.' }
+      ] },
+      { head: 'What has to happen first', kind: 'rows', grid: '1.2fr 130px 1.6fr 1.2fr', cols: ['Task', 'Deadline', 'Detail', 'Owner'], rows: [
+        { a: 'Pick the host', b: 'This week', c: 'A woman with a home, a network, and a real belief in this ministry. She invites, she opens the room, she gives first.', d: 'Kendra' },
+        { a: 'Set the date', b: 'This week', c: 'Early November, weekday late morning. Avoid the week of Thanksgiving.', d: 'Kendra' },
+        { a: 'Build the guest list', b: 'Late September', c: 'Twenty names. The host owns the list. Prospect list names can be added if the host knows them.', d: 'Host and Kendra' },
+        { a: 'Send invitations', b: 'Early October', c: 'Paper or a personal note, not a mass email. Four weeks of lead time.', d: 'Host' },
+        { a: 'Rehearse the ask', b: 'Late October', c: 'Out loud, twice. The ask is the part everybody skips practicing.', d: 'Kendra and Remi' }
+      ] }
+    ]
+  },
+  grants: {
+    title: 'Grants and foundations',
+    lead: 'One $10,000 Young Life grant is the only thing here so far. Grants are slow and they are not a rescue plan. What makes them worth working is that three of last year\u2019s donors are already connected to foundations.',
+    blocks: [
+      { head: 'What is on the board', kind: 'rows', grid: '1.3fr 120px 1.5fr 1.2fr', cols: ['Source', 'Amount', 'Status', 'Next step'], rows: [
+        { a: 'Young Life area grant', b: '$10,000', c: 'Received. This is the only grant money on record.', d: 'Confirm whether it repeats this year and what it requires.' },
+        { a: 'Foundation connected to the O\u2019Hara household', b: 'About $8M in assets', c: 'Not approached. Shows up in the donor file, not from a conversation.', d: 'Ask John how the foundation makes decisions. Do not pitch it in the renewal meeting.' },
+        { a: 'Foundation connected to the Brandon household', b: 'Over $500M in assets', c: 'Not approached. Large and probably has its own process.', d: 'Ask him whether it is even the right door. He may say no, and that is useful.' },
+        { a: 'Foundation connected to the Allen household', b: 'Large fund on record', c: 'Not approached.', d: 'Research only. No ask this year.' },
+        { a: 'Local Peninsula funders', b: 'Unknown', c: 'Not researched.', d: 'Two hours of research. Pick three that fund youth work in San Mateo County.' }
+      ] },
+      { head: 'The rule for this year', kind: 'text', text: 'Do not write a grant proposal to a foundation where nobody knows anybody. Cold grant writing is the slowest fundraising there is. Start with the three foundations already connected to your donors, and ask the donor how the door opens.' }
+    ]
+  },
+  churches: {
+    title: 'Churches',
+    lead: 'Nothing is committed from a church today. The relationships exist and have never been asked. Church money is usually smaller than a major gift and steadier than an event.',
+    blocks: [
+      { head: 'How to work it', kind: 'rows', grid: '1.2fr 120px 1.6fr 1.2fr', cols: ['Step', 'Target', 'What it looks like', 'Owner'], rows: [
+        { a: 'List every church already connected', b: 'By October', c: 'Any church where a leader, a family, or a committee member attends. Start with the people, not the buildings.', d: 'Kendra' },
+        { a: 'Ask for a speaking slot, not money', b: 'Fall', c: 'Five minutes in front of the congregation, or a table after service. Money follows being known.', d: 'Kendra' },
+        { a: 'Ask for one line in the mission budget', b: 'Winter', c: 'Church budgets get set months ahead. Missing the calendar means waiting a year.', d: 'Kendra' },
+        { a: 'Ask for leaders too', b: 'Ongoing', c: 'A church that sends two volunteer leaders is worth more than one that sends $2,500.', d: 'Kendra' }
+      ] },
+      { head: 'The target', kind: 'cards', cards: [
+        { tag: 'This year', value: '$5,000', title: 'From two or three churches', note: 'Small on purpose. Nothing is committed, so a big number here would be fiction.' },
+        { tag: 'The real prize', value: 'Leaders', title: 'Six volunteer leaders is the plan', note: 'Churches are the most reliable place to find adults who will show up every week.' }
+      ] }
+    ]
+  },
+  calendar: {
+    title: 'When the money is needed',
+    lead: 'The year runs October through September. Expenses are known because the camp dates and the ministry calendar are set. Income timing is up to you, which is what this page is for. Money has to arrive before it is spent, not in the same month.',
+    blocks: [
+      { head: 'Month by month', kind: 'rows', grid: '90px 130px 1.4fr 1.4fr', cols: ['Month', 'Cash out', 'What drives it', 'What has to be raised or asked'], rows: [
+        { a: 'October', b: '$18,208', c: 'College weekend camp. First full month of program.', d: 'O\u2019Hara renewal ask. Brunch invitations out. Butcher thank-you and report.' },
+        { a: 'November', b: '$18,257', c: 'Brunch costs land this month.', d: 'The brunch itself. Target $15,000. Ask the Brandon referrals.' },
+        { a: 'December', b: '$13,212', c: 'Program slows for the holidays.', d: 'Year-end appeal to the whole list. December is the biggest giving month of the year everywhere.' },
+        { a: 'January', b: '$27,362', c: 'House capital work and a full program month.', d: 'Close anything that slipped from the fall. Start monthly donor recruiting in earnest.' },
+        { a: 'February', b: '$28,177', c: 'WyldLife weekend camp February 13 to 15, plus capital.', d: 'Camp-specific asks. Camp gifts skip the 17 percent if the donor writes camp on the gift.' },
+        { a: 'March', b: '$17,821', c: 'Woodleaf deposits begin.', d: 'Second half of the big-gift asks. Grant research turns into two real conversations.' },
+        { a: 'April', b: '$19,459', c: 'Spring family fundraiser costs.', d: 'Be a Kid for a Day. Target $6,000. Kids raising their own camp money starts here.' },
+        { a: 'May', b: '$17,316', c: 'Woodleaf balance coming due.', d: 'Final camp gap ask. Fifteen kids at $750 each, minus what the kids raise.' },
+        { a: 'June', b: '$15,110', c: 'Woodleaf June 19 to 23. The biggest single spend of the year.', d: 'Nothing new. This month is for showing up with kids.' },
+        { a: 'July to September', b: '$11,240 a month', c: 'Staff pay and the house only.', d: 'Report to every donor. Set next year\u2019s plan in August, not September.' }
+      ] },
+      { head: 'The thing to watch', kind: 'text', text: 'The bank holds $28,295 on day one and the first three months cost $44,000. So money has to come in during October and November or the area is borrowing against itself by December. That is the whole argument for asking O\u2019Hara early and running the brunch in early November rather than late.' }
+    ]
+  },
+  steward: {
+    title: 'Stewardship',
+    lead: 'Getting a gift is the easy half. Most donors leave because nobody told them what happened with their money. Here is the minimum for every level, and it is a real commitment, so do not promise more than you will do.',
+    blocks: [
+      { head: 'What each donor hears, and when', kind: 'rows', grid: '140px 130px 1.5fr 1.3fr', cols: ['Gift size', 'How often', 'What they get', 'Who does it'], rows: [
+        { a: '$10,000 and up', b: '6 times a year', c: 'A handwritten thank-you inside a week. A call from Kendra twice a year. One in-person visit. A one-page report on what the gift did.', d: 'Kendra' },
+        { a: '$1,000 to $9,999', b: '4 times a year', c: 'A thank-you inside two weeks with one specific detail about what the money covered. The newsletter. One personal note that is not an ask.', d: 'Kendra' },
+        { a: 'Monthly donors', b: 'Every quarter', c: 'A short note with one story. An annual total for taxes. Never an ask disguised as a thank-you.', d: 'Remi' },
+        { a: 'Under $1,000', b: '3 times a year', c: 'A thank-you inside two weeks. The newsletter. A year-end note.', d: 'Remi' },
+        { a: 'Brunch and event guests', b: 'Twice', c: 'A note within 48 hours, whether they gave or not. One follow-up in the spring.', d: 'Remi drafts, Kendra signs' }
+      ] },
+      { head: 'Three rules', kind: 'text', text: 'Thank people faster than feels necessary. Report on the money before anyone asks. And never let a thank-you carry an ask inside it, because donors can feel it and it costs more than the gift is worth.' },
+      { head: 'What is broken right now', kind: 'cards', cards: [
+        { tag: 'Fix first', value: '$50,000', title: 'The Butcher gift', note: 'The largest gift this area has ever received. Nothing on record about a thank-you or a report.' },
+        { tag: 'Fix first', value: '163 gifts', title: 'Sylvia Spates', note: 'Has given 163 times since 2009. Almost certainly never thanked at the level that deserves.' },
+        { tag: 'Fix first', value: '148 gifts', title: 'Nathan Frank', note: 'Twelve straight years of monthly giving. Nobody has asked him why.' }
+      ] }
+    ]
+  }
+};
+
+class Component extends DCLogic {
+  state = { auth: 'locked', email: '', authNote: '', logged: [], giftOpen: false,
+    gWho: '', gAmount: '', gDate: '', gKind: 'Cash in hand', gChannel: 'Big gift', gFor: 'Wherever needed', tab: 'now', raw: null, open: {}, checks: {}, notes: {}, nexts: {}, extraDonors: [], extraPros: [], q: '', filter: 'Nearby', addD: false, addP: false, dName: '', dAsk: '', dNote: '', pName: '', pCity: '', pAsk: '', pNote: '' };
+
+  componentDidMount() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(S) || '{}');
+      if (saved && typeof saved === 'object') this.setState(saved);
+      if (localStorage.getItem(S + '-session') === 'open') this.setState({ auth: 'open' });
+    } catch (e) {}
+    import('./epa-prospects.js').then(m => this.setState({ raw: m.default })).catch(() => {});
+  }
+
+  save(patch) {
+    this.setState(patch, () => {
+      const s = this.state;
+      try {
+        localStorage.setItem(S, JSON.stringify({ checks: s.checks, notes: s.notes, nexts: s.nexts, extraDonors: s.extraDonors, extraPros: s.extraPros, logged: s.logged, todos: s.todos }));
+      } catch (e) {}
+    });
+  }
+
+  hubFacts() {
+    const st = this.state;
+    const raw = st.raw || [];
+    const givers = raw.filter(p => p.fy && p.fy['2026'] > 0).sort((a, b) => b.fy['2026'] - a.fy['2026']);
+    const logged = st.logged || [];
+    const cash = logged.filter(g => g.kind === 'Cash in hand').reduce((a, g) => a + g.amount, 0);
+    const pledged = logged.filter(g => g.kind !== 'Cash in hand').reduce((a, g) => a + g.amount, 0);
+    const base = givers.reduce((a, p) => a + p.fy['2026'], 0);
+    const top = raw.slice().sort((a, b) => b.cap5 - a.cap5).slice(0, 12)
+      .map(p => p.name + ' (' + p.city + '), capacity ' + Math.round(p.cap5) + ', lifetime ' + Math.round(p.lifetime) + ', last gift ' + (p.last || 'never'));
+    return [
+      'GOAL AND MONEY',
+      'Goal to raise FY27 (Oct 2026 to Sep 2027): $199,245. Cost of running the ministry: $191,869. Young Life takes 17 percent off every gift (11 national, 6 regional), except camp-designated gifts. Capital still to fund: $10,487. Cash on hand: $28,295, stated by Kendra, not reconciled. First three months cost about $44,000, so cash runs out in month three with no giving.',
+      'Logged so far this year: $' + cash + ' cash in hand, $' + pledged + ' pledged. Last year eleven households gave $' + base + '.',
+      '',
+      'LAST YEAR DONORS (verified from the Young Life export)',
+      givers.map(p => p.name + ' (' + p.greet + '): $' + p.fy['2026']).join('; '),
+      '',
+      'BUDGET FY27',
+      'Staff pay and payroll $90,475. Program $50,900 (camp $19,350, WyldLife $12,828, college and Wednesdays $10,753, leaders $6,590, high school $1,380). House $28,850. Fundraising and events $11,700. Office and operations $9,944. Functional split: program 49 percent, admin 39, fundraising 11. Three-year arc: $199,245 then $297,255 then $373,861.',
+      'Cost per kid at camp all in: $1,290. Full cost to send one kid: $2,343. Sponsor a leader: $1,995 full, $1,098 direct.',
+      '',
+      'UNSETTLED NUMBERS',
+      'Second staff position $35,000 is a placeholder nobody confirmed. Camp transportation is $0 and unpriced (Kendra floated $5,000). Technology and mileage $0 (Kendra says about $2,000). Property tax payer unconfirmed.',
+      '',
+      'PLAN',
+      'Gift table: 1 at $50,000, 2 at $25,000, 3 at $10,000, 6 at $5,000, 6 at $2,500, 12 at $1,000, about 25 under $1,000. Five have names on them. Strands: big gifts $130,000, mid gifts $27,000, monthly $18,000, fall brunch $15,000, grants $10,000, spring event $6,000, churches $5,000.',
+      'Fall brunch: early November, 15 women, $2,500 budget, $15,000 target. Spring family fundraiser: early April, Be a Kid for a Day.',
+      '',
+      'PROSPECTS (Young Life screening file, 100 households; capacity is a wealth estimate, not interest)',
+      top.join('; '),
+      '',
+      'KNOWN GAPS',
+      'The O\u2019Hara gift came with a condition nobody wrote down. No thank-you on record for the $50,000 Butcher gift. Brandon offered introductions and the names were never collected. Butcher and Young each appear twice in the file. Monthly donor count is a guess. Committee membership is unclear (three in the budget, one in an earlier correction).'
+    ].join('\n');
+  }
+
+  async askCoach() {
+    const q = (this.state.coachQ || '').trim();
+    if (!q || this.state.coachBusy) return;
+    const history = (this.state.coachLog || []).concat([{ role: 'user', text: q }]);
+    this.setState({ coachLog: history, coachQ: '', coachBusy: true });
+    const system = 'You are a fundraising coach for Kendra Sobomehin, the Area Director of East Palo Alto and East Menlo Park Young Life. She is not a professional fundraiser. She is a ministry leader who has to raise money.\n\nHOW TO ANSWER\nUse the plainest possible language. Short sentences. No jargon, no development-speak, no words like cultivation, moves management, stewardship pipeline, or leverage. If you must use a fundraising term, explain it in the same breath.\nBe direct and specific. Give her the actual next step, not a framework.\nKeep answers short. Three or four short paragraphs at most, usually less. No bullet lists unless she asks for a list.\nNo em dashes. Use contractions.\nNever describe the East Palo Alto community by what it lacks.\n\nUSING THE DATA\nEverything below is her real data. Use it. Cite the actual numbers and names when they answer the question.\nIf the answer is not in the data, say so plainly and say what she would need to find out. Never invent a dollar figure, a donor name, or a date.\nWhen a number in the data is a guess or a placeholder, say that when you use it.\n\nHER DATA\n' + this.hubFacts();
+    try {
+      const msgs = history.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }));
+      const text = await window.claude.complete({ system, max_tokens: 900, messages: msgs });
+      this.setState({ coachLog: history.concat([{ role: 'coach', text: String(text || '').trim() }]), coachBusy: false });
+    } catch (e) {
+      this.setState({ coachLog: history.concat([{ role: 'coach', text: 'That did not go through. Try again in a moment.' }]), coachBusy: false });
+    }
+  }
+
+  logGift() {
+    const amt = +String(this.state.gAmount).replace(/[^0-9.]/g, '') || 0;
+    if (!this.state.gWho.trim() || !amt) return;
+    const g = {
+      who: this.state.gWho.trim(), amount: amt,
+      date: this.state.gDate.trim() || new Date().toISOString().slice(0, 10),
+      kind: this.state.gKind, channel: this.state.gChannel, forWhat: this.state.gFor
+    };
+    this.save({ logged: (this.state.logged || []).concat([g]), giftOpen: false, gWho: '', gAmount: '', gDate: '' });
+  }
+
+  removeGift(i) {
+    this.save({ logged: (this.state.logged || []).filter((x, j) => j !== i) });
+  }
+
+  daysSince(iso) {
+    const t = Date.parse(iso);
+    if (!t) return 0;
+    return Math.max(0, Math.round((Date.now() - t) / 86400000));
+  }
+
+  sendLink() {
+    const e = (this.state.email || '').trim().toLowerCase();
+    if (!/.+@.+\..+/.test(e)) { this.setState({ authNote: 'That does not look like an email address.' }); return; }
+    this.setState({ auth: 'sent', authNote: '' });
+  }
+
+  allowed() {
+    const e = (this.state.email || '').trim().toLowerCase();
+    return ALLOWED.indexOf(e) >= 0;
+  }
+
+  enter() {
+    try { localStorage.setItem(S + '-session', 'open'); } catch (er) {}
+    this.setState({ auth: 'open' });
+  }
+
+  signOut() {
+    try { localStorage.removeItem(S + '-session'); } catch (er) {}
+    this.setState({ auth: 'locked', email: '', authNote: '' });
+  }
+
+  toggleOpen(k) { this.setState(s => ({ open: Object.assign({}, s.open, { [k]: !s.open[k] }) })); }
+  toggleCheck(k) { this.save({ checks: Object.assign({}, this.state.checks, { [k]: !this.state.checks[k] }) }); }
+  setNote(k, v) { this.save({ notes: Object.assign({}, this.state.notes, { [k]: v }) }); }
+  setNext(k, v) { this.save({ nexts: Object.assign({}, this.state.nexts, { [k]: v }) }); }
+
+  since(iso) {
+    if (!iso) return null;
+    const y = +String(iso).slice(0, 4);
+    return 2026 - y;
+  }
+
+  renderVals() {
+    const st = this.state;
+    const raw = st.raw || [];
+    const tab = st.tab;
+
+    const tabDefs = [
+      ['now', 'Start here'], ['todo', 'To do'], ['questions', 'Questions'], ['budget', 'Budget'], ['table', 'Gift table'], ['donors', 'Donors'],
+      ['prospects', 'Prospects'], ['research', 'Donor research'], ['monthly', 'Monthly'], ['brunch', 'Brunch'], ['grants', 'Grants'],
+      ['churches', 'Churches'], ['calendar', 'Calendar'], ['steward', 'Stewardship']
+    ];
+    const tabs = tabDefs.map(([id, label]) => ({
+      id, label,
+      bg: tab === id ? 'var(--gold)' : 'transparent',
+      fg: tab === id ? 'var(--acid-black)' : 'var(--bone-dim)',
+      select: () => this.setState({ tab: id })
+    }));
+
+    const fyGivers = raw.filter(p => p.fy && p.fy['2026'] > 0);
+    const family = fyGivers.filter(p => /Sobomehin/.test(p.name)).reduce((a, p) => a + p.fy['2026'], 0);
+    const base = fyGivers.reduce((a, p) => a + p.fy['2026'], 0);
+    const loggedAll = st.logged || [];
+    const cashIn = loggedAll.filter(g => g.kind === 'Cash in hand').reduce((a, g) => a + g.amount, 0);
+    const promised = loggedAll.filter(g => g.kind !== 'Cash in hand').reduce((a, g) => a + g.amount, 0);
+    const gap = Math.max(0, GOAL - cashIn - promised);
+
+    const heroDefs = [
+      {
+        label: 'To raise this year', value: money(GOAL), note: 'Budget plus the 17 percent',
+        what: 'This is the whole job for the year. Every dollar of it.',
+        body: [
+          'Running the ministry for a year costs $191,869. That is staff pay, camp, clubs, the house, and everything else.',
+          'But you cannot just raise $191,869. Young Life takes 17 cents out of every dollar somebody gives before the money reaches this area. Eleven cents pays for national services like accounting and gift processing. Six cents pays for the region.',
+          'So the asks have to be bigger than the need. Add the house upgrades that still need funding, and the number you are actually raising toward is $199,245.'
+        ],
+        rows: [['Cost of the year', '$191,869'], ['Minus rent and transfers', '\u2212$35,200'], ['What gifts must cover', '$156,669'], ['Plus the 17 percent', '$32,089'], ['Plus capital not yet funded', '$10,487'], ['Total to raise', '$199,245']],
+        trust: 'Verified. Comes straight from the three-year budget.'
+      },
+      {
+        label: 'In so far this year', value: money(cashIn), note: loggedAll.filter(g => g.kind === 'Cash in hand').length + ' gifts logged',
+        what: 'Money that has actually arrived, as far as you know.',
+        body: [
+          'This counts only what you have logged as cash in hand. Every time a gift comes in, log it here and this number moves.',
+          'This is not the official record. Young Life still counts the money, and BloomOS still holds the receipts. What this number does is tell you where the plan stands today, without waiting for a report from somebody else.',
+          'If the two ever disagree, the official record wins and you fix the entry here.'
+        ],
+        rows: loggedAll.filter(g => g.kind === 'Cash in hand').slice(-6).map(g => [g.who + ' \u00b7 ' + g.date, money(g.amount)]),
+        trust: 'Logged by hand. Confirm against the official record.'
+      },
+      {
+        label: 'Promised, not in yet', value: money(promised), note: loggedAll.filter(g => g.kind !== 'Cash in hand').length + ' pledges',
+        what: 'Somebody said yes, but the money has not landed.',
+        body: [
+          'A pledge counts toward the goal and does not count toward paying November\u2019s bills. Keeping those two separate is the whole reason this is its own number.',
+          'When the check arrives, change the entry from a pledge to cash in hand and the money moves across.',
+          'A verbal yes with no amount and no date is not a pledge. Do not log it.'
+        ],
+        rows: loggedAll.filter(g => g.kind !== 'Cash in hand').slice(-6).map(g => [g.who + ' \u00b7 ' + g.kind, money(g.amount)]),
+        trust: 'Logged by hand.'
+      },
+      {
+        label: 'Last year\u2019s donors', value: base ? money(base) : '\u2014', note: fyGivers.length + ' households, verified',
+        what: 'What last year\u2019s givers add up to, if every one of them gives the same amount again.',
+        body: [
+          'Eleven households gave last year. Four of them gave $10,000 or more, and those four are ' + Math.round((102000 / (base || 1)) * 100) + ' percent of the total.',
+          'That is the risk in one sentence. If one of those four does not give again, the year gets very hard very fast.',
+          'Treat this number as a starting point, not a promise. Nothing is committed until somebody says yes this year.'
+        ],
+        rows: fyGivers.slice().sort((a, b) => b.fy['2026'] - a.fy['2026']).slice(0, 6).map(p => [p.name + ' (' + p.greet + ')', money(p.fy['2026'])]),
+        trust: 'Verified. From the Young Life donor export.'
+      },
+      {
+        label: 'Still to find', value: money(gap), note: 'Goal minus what is in and promised',
+        what: 'The gap. What is not covered yet by anything real.',
+        body: [
+          'Take the goal, subtract what has come in and what has been promised, and this is what is left.',
+          'It will not come from one place. Roughly speaking: a handful of new gifts at $5,000 and up, the fall brunch, more monthly donors, and asking two of last year\u2019s donors for more than they gave.',
+          'The gift table tab breaks this into a specific number of gifts at specific sizes, so it stops being one scary number and becomes a list.'
+        ],
+        rows: [['New gifts, $10,000 and up', 'about $30,000'], ['New gifts, $2,500 to $5,000', 'about $40,000'], ['Fall brunch', '$15,000'], ['Monthly giving growth', 'about $16,000'], ['Asking current donors up', 'about $10,000'], ['Everything else', 'the remainder']],
+        trust: 'Estimated. This is a plan, not a forecast.'
+      },
+      {
+        label: 'In the bank', value: '$28,295', note: 'Stated, not reconciled',
+        what: 'What is on hand right now, and how long it lasts.',
+        body: [
+          'Kendra says $28,294.76, with about $10,000 more expected from capital that is not available yet.',
+          'The first three months of the year cost about $44,000. So the money on hand does not reach December on its own.',
+          'That is the real reason the O\u2019Hara renewal and the fall brunch cannot slip. It is not about hitting a goal. It is about paying for November.'
+        ],
+        rows: [['Month 1 out', '$11,006'], ['Month 2, running total', '$26,190'], ['Month 3, running total', '$44,397'], ['Cash on hand', '$28,295'], ['Short by month 3', '\u2212$16,102']],
+        trust: 'Stated by Kendra. Not reconciled against a bank statement.'
+      }
+    ];
+    const hero = heroDefs.map((h, i) => ({
+      label: h.label, value: h.value, note: h.note,
+      open: () => this.setState({ modal: i })
+    }));
+    const mi = st.modal;
+    const modalOpen = mi !== null && mi !== undefined && heroDefs[mi];
+    const modal = modalOpen ? {
+      label: heroDefs[mi].label, value: heroDefs[mi].value, what: heroDefs[mi].what,
+      body: heroDefs[mi].body, trust: heroDefs[mi].trust,
+      rows: heroDefs[mi].rows.map(r => ({ k: r[0], v: r[1] }))
+    } : { label: '', value: '', what: '', body: [], trust: '', rows: [] };
+
+    const strandMax = Math.max.apply(null, STRANDS.map(s => s.amount));
+    const strands = STRANDS.map((s, i) => ({
+      name: s.name, note: s.note, amountFmt: money(s.amount),
+      w: Math.round((s.amount / strandMax) * 100) + '%',
+      color: i === 0 ? 'var(--acid-black)' : i < 3 ? 'var(--forest-ink)' : 'var(--gold-ink)'
+    }));
+
+    const autoMoves = [];
+    loggedAll.forEach((g, i) => {
+      if (g.kind !== 'Cash in hand') {
+        autoMoves.push({ key: 'g' + i + 'p', area: 'Gifts', urgent: true, title: 'Get the ' + money(g.amount) + ' from ' + g.who + ' in writing', why: 'A pledge with no date is a hope. Confirm the amount and when it lands.', when: 'Within a week', owner: 'Kendra', auto: true });
+        return;
+      }
+      const d = this.daysSince(g.date);
+      autoMoves.push({ key: 'g' + i + 't', area: 'Stewardship', urgent: true, title: 'Thank ' + g.who + ' for ' + money(g.amount), why: d > 7 ? 'Logged ' + d + ' days ago. This is late. Handwritten, today.' : 'Handwritten, inside seven days. Not an email.', when: d > 7 ? 'Overdue' : 'Within 7 days', owner: 'Kendra', auto: true });
+      if (g.amount >= 10000) autoMoves.push({ key: 'g' + i + 'r', area: 'Stewardship', title: 'Send ' + g.who + ' a one-page report on what the gift did', why: 'Gifts this size need a report inside ninety days, whether or not they ask.', when: 'Within 90 days', owner: 'Kendra', auto: true });
+      if (g.forWhat === 'Camp') autoMoves.push({ key: 'g' + i + 'c', area: 'Budget', title: 'Confirm the ' + g.who + ' gift is marked for camp', why: 'Camp gifts skip the 17 percent service charge only if the gift says camp. Check it landed that way.', when: 'This week', owner: 'Remi', auto: true });
+    });
+
+    const autoRows = autoMoves.map(m => {
+      const done = !!st.checks[m.key];
+      return {
+        title: m.title, why: m.why, when: m.when, owner: m.owner,
+        bg: done ? 'var(--line-on-paper)' : 'var(--paper-raised)',
+        boxBg: done ? 'var(--acid-black)' : 'transparent',
+        mark: done ? '\u2713' : '',
+        toggle: () => this.toggleCheck(m.key)
+      };
+    });
+
+    const giftRows = loggedAll.map((g, i) => ({
+      who: g.who, amountFmt: money(g.amount), date: g.date,
+      kind: g.kind, channel: g.channel, forWhat: g.forWhat,
+      color: g.kind === 'Cash in hand' ? 'var(--forest-ink)' : 'var(--gold-ink)',
+      remove: () => this.removeGift(i)
+    }));
+
+    const moves = MOVES.map((m, i) => {
+      const k = 'm' + i;
+      const done = !!st.checks[k];
+      return {
+        title: m.title, why: m.why, when: m.when, owner: m.owner,
+        bg: done ? 'var(--line-on-paper)' : 'var(--paper-raised)',
+        boxBg: done ? 'var(--acid-black)' : 'transparent',
+        mark: done ? '\u2713' : '',
+        toggle: () => this.toggleCheck(k)
+      };
+    });
+
+    const manual = (st.todos || []).map((t, i) => ({ key: 't' + i, area: t.area, title: t.title, why: t.why || 'Added by hand.', when: t.when || 'No date set', owner: t.owner || 'Kendra', manual: true, idx: i }));
+    const planned = MOVES.map((m, i) => ({ key: 'm' + i, area: m.area, title: m.title, why: m.why, when: m.when, owner: m.owner }));
+    const everything = autoMoves.concat(manual).concat(planned);
+    const weight = t => (st.checks[t.key] ? 1000 : 0) + (t.urgent ? 0 : t.manual ? 2 : 5) + (/overdue/i.test(t.when) ? -1 : 0);
+    const ordered = everything.slice().sort((a, b) => weight(a) - weight(b));
+    const openTasks = ordered.filter(t => !st.checks[t.key]);
+    const doneTasks = ordered.filter(t => st.checks[t.key]);
+    const showAll = !!st.showAllTasks;
+    const shown = showAll ? openTasks : openTasks.slice(0, 3);
+
+    const taskRow = t => ({
+      title: t.title, why: t.why, when: t.when, owner: t.owner, area: t.area || 'General',
+      areaColor: t.urgent ? 'var(--terracotta)' : t.manual ? 'var(--forest-ink)' : 'var(--gold-ink)',
+      done: !!st.checks[t.key],
+      boxBg: st.checks[t.key] ? 'var(--acid-black)' : 'transparent',
+      mark: st.checks[t.key] ? '\u2713' : '',
+      bg: st.checks[t.key] ? 'var(--line-on-paper)' : 'var(--paper-raised)',
+      toggle: () => this.toggleCheck(t.key)
+    });
+
+    const AREA_ORDER = ['Stewardship', 'Gifts', 'Donors', 'Prospects', 'Brunch', 'Monthly', 'Donor research', 'Budget', 'Grants', 'Churches', 'Calendar', 'Gift table', 'Start here', 'General'];
+    const grouped = {};
+    openTasks.forEach(t => { const a = t.area || 'General'; (grouped[a] = grouped[a] || []).push(t); });
+    const groups = Object.keys(grouped)
+      .sort((a, b) => {
+        const ia = AREA_ORDER.indexOf(a), ib = AREA_ORDER.indexOf(b);
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+      })
+      .map(a => {
+        const list = grouped[a];
+        const take = showAll ? list : list.slice(0, 3);
+        return {
+          area: a,
+          countLabel: list.length > take.length ? take.length + ' of ' + list.length : String(list.length),
+          more: list.length - take.length,
+          anyMore: list.length > take.length,
+          tasks: take.map(taskRow)
+        };
+      });
+
+    const tasksTop = shown.map(taskRow);
+    const tasksDone = doneTasks.map(taskRow);
+    const tabLabel = { now: 'Start here', budget: 'Budget', table: 'Gift table', donors: 'Donors', prospects: 'Prospects', research: 'Donor research', monthly: 'Monthly', brunch: 'Brunch', grants: 'Grants', churches: 'Churches', calendar: 'Calendar', steward: 'Stewardship', todo: 'General' }[tab] || 'General';
+
+    const byArea = {};
+    openTasks.forEach(t => { const a = t.area || 'General'; byArea[a] = (byArea[a] || 0) + 1; });
+    const areaCounts = Object.keys(byArea).sort((a, b) => byArea[b] - byArea[a]).map(a => ({ area: a, count: byArea[a] }));
+
+    const expTotal = EXPENSE.reduce((a, e) => a + e.amount, 0);
+    const expense = EXPENSE.map((e, i) => ({
+      name: e.name, note: e.note, amountFmt: money(e.amount),
+      pctFmt: Math.round((e.amount / expTotal) * 100) + '%',
+      w: Math.round((e.amount / expTotal) * 100) + '%',
+      color: i === 0 ? 'var(--acid-black)' : i === 1 ? 'var(--forest-ink)' : 'var(--gold-ink)'
+    }));
+
+    const grossUp = GROSS.map(g => ({
+      label: g.label,
+      amountFmt: (g.amount < 0 ? '\u2212' : '') + money(Math.abs(g.amount)),
+      color: g.red ? 'var(--terracotta)' : 'var(--acid-black)',
+      weight: g.bold ? '700' : '400'
+    }));
+
+    const runMax = RUN[RUN.length - 1][1];
+    const runway = RUN.map(([m, v], i) => ({
+      month: m,
+      h: Math.max(3, Math.round((v / runMax) * 100)) + '%',
+      color: v > 28295 ? 'var(--terracotta)' : 'var(--acid-black)',
+      labelColor: v > 28295 ? 'var(--terracotta)' : 'var(--stone-ink)'
+    }));
+    const cashLine = Math.round((28295 / runMax) * 100) + '%';
+
+    const functional = [
+      { label: 'Program 49%', w: '49.2%', color: 'var(--acid-black)', fg: 'var(--bone)' },
+      { label: 'Admin 39%', w: '39.4%', color: 'var(--forest-ink)', fg: 'var(--bone)' },
+      { label: 'Fundraising 11%', w: '11.4%', color: 'var(--gold)', fg: 'var(--acid-black)' }
+    ];
+
+    const arc = [
+      { year: 'Year one, FY27', amountFmt: '$199,245', note: 'One staff person. This is the year in front of you.' },
+      { year: 'Year two, FY28', amountFmt: '$297,255', note: 'The second hire starts. Costs jump 49 percent.' },
+      { year: 'Year three, FY29', amountFmt: '$373,861', note: 'Forty kids at camp, sixteen leaders.' }
+    ];
+
+    const menu = MENU.map(k => ({ name: k.name, fullFmt: money(k.full), directFmt: money(k.direct), note: k.note }));
+
+    const levels = LEVELS.map(l => {
+      const cov = Math.min(100, Math.round((l.named / l.count) * 100));
+      return {
+        level: l.level, count: l.count, totalFmt: money(l.count * (+String(l.level).replace(/[^0-9]/g, '') || 490)),
+        pool: l.count >= 12 ? '\u2014' : l.count * 3,
+        who: l.who,
+        cov: cov + '%',
+        covColor: cov >= 100 ? 'var(--forest-ink)' : cov > 0 ? 'var(--acid-black)' : 'var(--line-on-paper)',
+        covLabel: l.named + ' of ' + l.count + ' named'
+      };
+    });
+    levels[6].totalFmt = money(12245);
+
+    const donorRows = fyGivers.slice().sort((a, b) => b.fy['2026'] - a.fy['2026']).map(p => {
+      const key = 'd:' + p.name + ':' + p.greet;
+      const surname = p.name.split(' ')[0].replace(/'/g, "'");
+      const c = CARE[p.name] || CARE[surname] || {};
+      const years = ['2020', '2021', '2022', '2023', '2024', '2025', '2026'];
+      const vals = years.map(y => p.fy[y] || 0);
+      const mx = Math.max.apply(null, vals.concat([1]));
+      const askGuess = p.fy['2026'] >= 25000 ? p.fy['2026'] : p.fy['2026'] >= 10000 ? Math.round(p.fy['2026'] * 1.5 / 1000) * 1000 : p.fy['2026'] >= 1000 ? Math.round(p.fy['2026'] * 1.6 / 500) * 500 : p.fy['2026'];
+      return {
+        name: p.name, sub: p.greet + (p.city ? ' \u00b7 ' + p.city : ''),
+        spark: years.map((y, i) => ({
+          h: Math.max(2, Math.round((vals[i] / mx) * 30)) + 'px',
+          color: i === 6 ? 'var(--acid-black)' : vals[i] ? 'var(--gold-ink)' : 'var(--line-on-paper)'
+        })),
+        lastFmt: money(p.fy['2026']),
+        askFmt: money(askGuess),
+        next: st.nexts[key] || 'Nobody has set one.',
+        nextEdit: st.nexts[key] || '',
+        open: !!st.open[key],
+        chev: st.open[key] ? 'Close' : 'Open',
+        bg: st.open[key] ? 'var(--paper-raised)' : 'var(--paper)',
+        facts: [
+          { k: 'Gave last year', v: money(p.fy['2026']) },
+          { k: 'Lifetime total', v: money(p.lifetime) },
+          { k: 'Number of gifts', v: String(p.gifts || 0) },
+          { k: 'First gift', v: (p.first || 'not on file') + (p.firstAmt ? ' \u00b7 ' + money(p.firstAmt) : '') },
+          { k: 'Biggest gift', v: p.big ? money(p.big) + ' \u00b7 ' + p.bigDate : 'not on file' },
+          { k: 'Capacity estimate', v: p.cap5 ? short(p.cap5) + ' over 5 yrs' : 'not scored' },
+          { k: 'Suggested ask', v: p.ask ? money(p.ask) : 'not set' },
+          { k: 'Email', v: p.email || 'none on file' },
+          { k: 'Phone', v: p.phone || 'none on file' }
+        ],
+        care: c.care || 'Nobody has written this down yet.',
+        threads: c.threads || 'Nothing on record.',
+        flags: c.flags || (p.email ? 'Nothing flagged.' : 'No email on file. Get one.'),
+        note: st.notes[key] || '',
+        setNote: e => this.setNote(key, e.target.value),
+        setNext: e => this.setNext(key, e.target.value),
+        toggle: () => this.toggleOpen(key)
+      };
+    });
+    const extraDonorRows = (st.extraDonors || []).map((d, i) => {
+      const key = 'dx' + i;
+      return {
+        name: d.name, sub: 'Added by hand',
+        spark: [{ h: '2px', color: 'var(--line-on-paper)' }],
+        lastFmt: '\u2014', askFmt: money(d.ask), next: d.note || 'Nobody has set one.', nextEdit: st.nexts[key] || d.note || '',
+        open: !!st.open[key], chev: st.open[key] ? 'Close' : 'Open', bg: st.open[key] ? 'var(--paper-raised)' : 'var(--paper)',
+        facts: [{ k: 'Source', v: 'added by hand' }, { k: 'Ask', v: money(d.ask) }],
+        care: 'Nobody has written this down yet.', threads: 'Nothing on record.', flags: 'Nothing flagged.',
+        note: st.notes[key] || '', setNote: e => this.setNote(key, e.target.value), setNext: e => this.setNext(key, e.target.value),
+        toggle: () => this.toggleOpen(key)
+      };
+    });
+    const donors = extraDonorRows.concat(donorRows);
+
+    const nonDonors = raw.filter(p => !(p.fy && p.fy['2026'] > 0));
+    const nearby = nonDonors.filter(p => NEAR.indexOf(p.city) >= 0);
+    const filters = ['Nearby', 'Biggest capacity', 'Gave before', 'Never gave', 'Everyone'];
+    const pFilters = filters.map(f => ({
+      label: f,
+      variant: st.filter === f ? 'primary' : 'outline',
+      select: () => this.setState({ filter: f })
+    }));
+
+    let pool = nonDonors.slice();
+    if (st.filter === 'Nearby') pool = nearby.slice().sort((a, b) => b.cap5 - a.cap5);
+    else if (st.filter === 'Biggest capacity') pool = pool.sort((a, b) => b.cap5 - a.cap5);
+    else if (st.filter === 'Gave before') pool = pool.filter(p => p.lifetime >= 1000).sort((a, b) => b.lifetime - a.lifetime);
+    else if (st.filter === 'Never gave') pool = pool.filter(p => p.lifetime < 1000).sort((a, b) => b.cap5 - a.cap5);
+    else pool = pool.sort((a, b) => b.cap5 - a.cap5);
+
+    const q = (st.q || '').trim().toLowerCase();
+    if (q) pool = pool.filter(p => (p.name + ' ' + p.greet + ' ' + p.city + ' ' + p.biz).toLowerCase().indexOf(q) >= 0);
+
+    const prospects = (st.extraPros || []).map((p, i) => {
+      const key = 'px' + i;
+      return {
+        name: p.name, greet: 'Added by hand', city: p.city || '\u2014', capFmt: '\u2014', askFmt: money(p.ask),
+        lastLabel: 'unknown', lastColor: 'var(--stone-ink)', move: p.note || 'Write down who can introduce you.',
+        open: !!st.open[key], toggle: () => this.toggleOpen(key), bg: st.open[key] ? 'var(--paper-raised)' : 'var(--paper)',
+        facts: [{ k: 'Source', v: 'added by hand' }, { k: 'Intended ask', v: money(p.ask) }],
+        read: 'This name came from you, not the Young Life file.', caution: 'Write down who knows them before anyone reaches out.',
+        note: st.notes[key] || '', setNote: e => this.setNote(key, e.target.value)
+      };
+    }).concat(pool.slice(0, 60).map(p => {
+      const key = 'p:' + p.name + ':' + p.greet;
+      const yrs = this.since(p.last);
+      const cold = yrs !== null && yrs >= 10;
+      const move = p.lifetime >= 5000 && cold
+        ? 'Gave real money once, a long time ago. Find out who knew them then.'
+        : p.cap5 >= 500000 && p.lifetime < 1000
+        ? 'Money is likely there, interest is not proven. Research before any contact.'
+        : p.lifetime >= 1000
+        ? 'Has given before. Worth a reintroduction, not a cold ask.'
+        : 'Low priority this year. Leave it unless someone knows them.';
+      return {
+        name: p.name, greet: p.greet, city: p.city || '\u2014',
+        capFmt: p.cap5 ? short(p.cap5) : 'not scored',
+        askFmt: p.ask ? money(Math.round(p.ask / 500) * 500) : '\u2014',
+        lastLabel: p.last ? (yrs === 0 ? 'this year' : yrs + ' yrs ago') : 'never',
+        lastColor: cold ? 'var(--terracotta)' : 'var(--acid-black)',
+        move,
+        open: !!st.open[key], toggle: () => this.toggleOpen(key),
+        bg: st.open[key] ? 'var(--paper-raised)' : 'var(--paper)',
+        facts: [
+          { k: 'Lifetime total', v: money(p.lifetime) },
+          { k: 'Number of gifts', v: String(p.gifts || 0) },
+          { k: 'Biggest gift', v: p.big ? money(p.big) + ' \u00b7 ' + p.bigDate : 'none' },
+          { k: 'Last gift', v: p.last ? money(p.lastAmt) + ' \u00b7 ' + p.last : 'never' },
+          { k: 'Capacity estimate', v: p.cap5 ? short(p.cap5) + ' over 5 yrs' : 'not scored' },
+          { k: 'Wealth score', v: p.iwave ? p.iwave + ' out of 4' : 'not scored' },
+          { k: 'Work', v: p.biz ? (p.biz + (p.role ? ', ' + p.role : '')) : 'not on file' },
+          { k: 'Email', v: p.email || 'none on file' },
+          { k: 'Phone', v: p.phone || 'none on file' }
+        ],
+        read: (p.cap5 ? 'The capacity number, ' + short(p.cap5) + ' over five years, is an estimate of what this household could give to anything, not to this ministry. ' : '') + (p.lifetime ? 'They have given ' + money(p.lifetime) + ' to this area over ' + (p.gifts || 0) + ' gifts. ' : 'They have never given here. ') + (cold ? 'The last gift was ' + yrs + ' years ago, so whoever knew them then is the way back in.' : ''),
+        caution: p.dnc ? 'This record is marked do not contact. Leave it alone.' : (!p.appeals ? 'This household has opted out of appeals. Do not add them to a mailing.' : (p.email || p.phone ? 'Nothing flagged. Still find a person who knows them before you reach out.' : 'No email and no phone on file. You need an introduction, not a lookup.')),
+        note: st.notes[key] || '',
+        setNote: e => this.setNote(key, e.target.value)
+      };
+    }));
+
+    const qKey = i => 'q' + i;
+    const qOpen = QUESTIONS.map((x, i) => ({ x, i })).filter(o => !st.checks[qKey(o.i)]);
+    const qAnswered = QUESTIONS.map((x, i) => ({ x, i })).filter(o => !!st.checks[qKey(o.i)]);
+    const qRow = o => ({
+      q: o.x.q, why: o.x.why, changes: o.x.changes, area: o.x.area,
+      answer: st.notes[qKey(o.i)] || '',
+      setAnswer: e => this.setNote(qKey(o.i), e.target.value),
+      done: !!st.checks[qKey(o.i)],
+      boxBg: st.checks[qKey(o.i)] ? 'var(--acid-black)' : 'transparent',
+      mark: st.checks[qKey(o.i)] ? '\u2713' : '',
+      bg: st.checks[qKey(o.i)] ? 'var(--line-on-paper)' : 'var(--paper-raised)',
+      toggle: () => this.toggleCheck(qKey(o.i))
+    });
+    const qAreas = [];
+    ['The big donors', 'The money', 'The donor file', 'The team', 'The plan'].forEach(a => {
+      const list = qOpen.filter(o => o.x.area === a).sort((x, y) => x.x.weight - y.x.weight);
+      if (list.length) qAreas.push({ area: a, count: list.length, rows: list.map(qRow) });
+    });
+    const qTop = qOpen.slice().sort((a, b) => a.x.weight - b.x.weight)[0];
+
+    const pr = PROFILES[0];
+    const profile = {
+      name: pr.name, city: pr.city, stage: pr.stage, headline: pr.headline,
+      snapshot: pr.snapshot.map(r => ({ k: r[0], v: r[1] })),
+      publicNotes: pr.public,
+      read: pr.read,
+      ladder: pr.ladder.map(r => ({ a: r[0], b: r[1], c: r[2] })),
+      ladderNote: pr.ladderNote,
+      rce: pr.rce.map(r => ({ k: r[0], v: r[1] })),
+      caseFit: pr.caseFit,
+      questions: pr.questions.map((r, i) => ({ n: i + 1, q: r[0], why: r[1] })),
+      questionNote: pr.questionNote,
+      proposals: pr.proposals.map((p, i) => ({
+        n: i + 1, name: p.name, ask: p.ask, fit: p.fit, what: p.what, line: p.line,
+        primary: i === 0, tone: i === 0 ? 'gold' : 'muted'
+      })),
+      firstMove: pr.firstMove,
+      meetingGoals: pr.meetingGoals.map(r => ({ k: r[0], v: r[1] })),
+      sequence: pr.sequence.map((r, i) => ({ n: i + 1, when: r[0], what: r[1] })),
+      askPath: pr.askPath.map(r => ({ when: r[0], line: r[1] })),
+      closing: pr.closing
+    };
+    const queue = PROFILE_QUEUE.map(x => ({
+      name: x.name, why: x.why, priority: x.priority,
+      color: x.priority === 'Do this first' ? 'var(--terracotta)' : 'var(--gold-ink)'
+    }));
+
+    const pageDef = PAGES[tab];
+    const page = pageDef ? {
+      title: pageDef.title, lead: pageDef.lead,
+      blocks: pageDef.blocks.map(b => ({
+        head: b.head,
+        isText: b.kind === 'text', text: b.text || '',
+        isRows: b.kind === 'rows', grid: b.grid || '1fr 1fr 1fr 1fr', cols: b.cols || [], rows: b.rows || [],
+        isCards: b.kind === 'cards', cards: b.cards || []
+      }))
+    } : { title: '', lead: '', blocks: [] };
+
+    return {
+      tabs, hero, strands, unknowns: UNKNOWNS,
+      moves: autoRows.concat(moves),
+      coachOpen: !!st.coachOpen,
+      toggleCoach: () => this.setState({ coachOpen: !st.coachOpen }),
+      coachQ: st.coachQ || '',
+      setCoachQ: e => this.setState({ coachQ: e.target.value }),
+      askCoach: () => this.askCoach(),
+      coachBusy: !!st.coachBusy,
+      coachLog: (st.coachLog || []).map(m => ({
+        text: m.text,
+        who: m.role === 'user' ? 'You' : 'Coach',
+        bg: m.role === 'user' ? 'var(--line-on-paper)' : 'var(--paper-raised)',
+        border: m.role === 'user' ? 'var(--line-on-paper)' : 'var(--gold)'
+      })),
+      coachEmpty: !(st.coachLog || []).length,
+      coachStarters: [
+        'Who should I ask first this fall, and for how much?',
+        'How do I ask O\u2019Hara to renew without knowing what the condition was?',
+        'What do I say to somebody who asks why 17 percent goes to Young Life?',
+        'I have two hours this week. What is the best use of them?',
+        'How do I get 30 monthly donors from 6?'
+      ].map(s => ({ text: s, pick: () => this.setState({ coachQ: s }) })),
+      isTodo: tab === 'todo', tasksTop, tasksDone, areaCounts, groups,
+      topTask: openTasks.length ? taskRow(openTasks[0]) : { title: 'Nothing open right now.', why: '', when: '', owner: '', area: '' },
+      hasTop: openTasks.length > 0,
+      topTwoAreas: areaCounts.slice(0, 3),
+      goTodo: () => this.setState({ tab: 'todo' }),
+      showQuickAdd: tab !== 'todo' && tab !== 'now',
+      openCount: openTasks.length, doneCount: doneTasks.length,
+      moreCount: Math.max(0, openTasks.length - shown.length),
+      anyMore: openTasks.length > shown.length,
+      anyDone: doneTasks.length > 0,
+      allShown: showAll,
+      toggleAll: () => this.setState({ showAllTasks: !showAll }),
+      noTasks: openTasks.length === 0,
+      qText: st.qText || '', qWhen: st.qWhen || '',
+      setQText: e => this.setState({ qText: e.target.value }),
+      setQWhen: e => this.setState({ qWhen: e.target.value }),
+      quickLabel: tabLabel,
+      addTodo: () => {
+        const t = (st.qText || '').trim();
+        if (!t) return;
+        this.save({ todos: (st.todos || []).concat([{ title: t, area: tabLabel, when: (st.qWhen || '').trim() }]), qText: '', qWhen: '' });
+      },
+      giftRows, anyGifts: giftRows.length > 0,
+      giftOpen: st.giftOpen,
+      toggleGift: () => this.setState({ giftOpen: !st.giftOpen }),
+      gWho: st.gWho, gAmount: st.gAmount, gDate: st.gDate, gKind: st.gKind, gChannel: st.gChannel, gFor: st.gFor,
+      setGWho: e => this.setState({ gWho: e.target.value }),
+      setGAmount: e => this.setState({ gAmount: e.target.value }),
+      setGDate: e => this.setState({ gDate: e.target.value }),
+      setGKind: e => this.setState({ gKind: e.target.value }),
+      setGChannel: e => this.setState({ gChannel: e.target.value }),
+      setGFor: e => this.setState({ gFor: e.target.value }),
+      saveGift: () => this.logGift(),
+      isLocked: st.auth === 'locked', isSent: st.auth === 'sent', isOpen: st.auth === 'open',
+      email: st.email, authNote: st.authNote,
+      setEmail: e => this.setState({ email: e.target.value }),
+      sendLink: () => this.sendLink(),
+      enter: () => this.enter(),
+      signOut: () => this.signOut(),
+      sentTo: (st.email || '').trim().toLowerCase(),
+      linkArrived: this.allowed(),
+      modal, modalOpen: !!modalOpen, closeModal: () => this.setState({ modal: null }),
+      wmSize: 19, wmInline: true,
+      isNow: tab === 'now', isBudget: tab === 'budget', isTable: tab === 'table',
+      isDonors: tab === 'donors', isProspects: tab === 'prospects', isPage: !!pageDef,
+      isResearch: tab === 'research', profile, queue,
+      isQuestions: tab === 'questions', qAreas,
+      qAnsweredRows: qAnswered.map(qRow), qOpenCount: qOpen.length, qDoneCount: qAnswered.length,
+      anyAnswered: qAnswered.length > 0,
+      qTopText: qTop ? qTop.x.q : 'Every question in the file has an answer.',
+      qTopArea: qTop ? qTop.x.area : '',
+      goQuestions: () => this.setState({ tab: 'questions' }),
+      page,
+      goalFmt: money(GOAL), baseFmt: base ? money(base) : '\u2014', gapFmt: base ? money(gap) : '\u2014',
+      renewGapFmt: money(Math.max(0, GOAL - base)),
+      baseW: Math.round((base / GOAL) * 100) + '%', gapW: Math.round((Math.max(0, GOAL - base) / GOAL) * 100) + '%',
+      expense, grossUp, runway, cashLine, functional, arc, menu, openItems: OPEN_ITEMS,
+      levels, giftCount: LEVELS.reduce((a, l) => a + l.count, 0),
+      donors,
+      prospects, prosTotal: raw.length || '\u2014', prosLocal: nearby.length || '\u2014', prosShown: prospects.length,
+      pFilters, q: st.q, setQ: e => this.setState({ q: e.target.value }),
+      addDonorOpen: st.addD, toggleAddDonor: () => this.setState({ addD: !st.addD }),
+      dName: st.dName, dAsk: st.dAsk, dNote: st.dNote,
+      setDName: e => this.setState({ dName: e.target.value }),
+      setDAsk: e => this.setState({ dAsk: e.target.value }),
+      setDNote: e => this.setState({ dNote: e.target.value }),
+      addDonor: () => {
+        if (!st.dName.trim()) return;
+        this.save({ extraDonors: (st.extraDonors || []).concat([{ name: st.dName, ask: +String(st.dAsk).replace(/[^0-9.]/g, '') || 0, note: st.dNote }]), dName: '', dAsk: '', dNote: '', addD: false });
+      },
+      addProspectOpen: st.addP, toggleAddProspect: () => this.setState({ addP: !st.addP }),
+      pName: st.pName, pCity: st.pCity, pAsk: st.pAsk, pNote: st.pNote,
+      setPName: e => this.setState({ pName: e.target.value }),
+      setPCity: e => this.setState({ pCity: e.target.value }),
+      setPAsk: e => this.setState({ pAsk: e.target.value }),
+      setPNote: e => this.setState({ pNote: e.target.value }),
+      addProspect: () => {
+        if (!st.pName.trim()) return;
+        this.save({ extraPros: (st.extraPros || []).concat([{ name: st.pName, city: st.pCity, ask: +String(st.pAsk).replace(/[^0-9.]/g, '') || 0, note: st.pNote }]), pName: '', pCity: '', pAsk: '', pNote: '', addP: false });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

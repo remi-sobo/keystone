@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Client hub source files: gitignored real donor data, local only
+    // (specs/epayl-fundraising-hub.md). Never linted, never committed.
+    "sources/**",
   ]),
 ]);
 

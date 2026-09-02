@@ -142,3 +142,8 @@ and operator steps this sandbox cannot do:
       Vercel domain + CNAME step like section 0, pointed at /epayl.
 - [ ] 390px live run on the hub door and shell, owed with the other
       rings' runs.
+- [ ] Phase two live run (2026-09-02): sign in at /epayl, open People,
+      upload sources/epayl/Top_100_List_CA495.xlsx, read the diff
+      (expect 99 households, 4 warnings), press Bring it in, and spot
+      check one household against the workbook. Then click the footer
+      export link and confirm the zip opens with donors.csv inside.

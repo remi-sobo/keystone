@@ -59,14 +59,16 @@ on conflict (slug) do update set
   vocabulary = excluded.vocabulary;
 
 -- The allowlist IS these rows: the two emails from the design
--- reference, email-keyed, claimed on first sign-in by the same RPC as
--- every Keystone membership.
+-- reference plus Remi's Ambition Angels address (his ask, 2026-09-02),
+-- email-keyed, claimed on first sign-in by the same RPC as every
+-- Keystone membership.
 insert into public.hub_members (org_id, practice_id, email, role)
 select o.id, o.practice_id, m.email, m.role
 from public.hub_orgs o,
   (values
     ('kendrasobo@gmail.com', 'director'),
-    ('remi@soboconsulting.com', 'consultant')
+    ('remi@soboconsulting.com', 'consultant'),
+    ('remi@ambitionangels.org', 'consultant')
   ) as m(email, role)
 where o.slug = 'epayl'
 on conflict (org_id, lower(email)) do nothing;

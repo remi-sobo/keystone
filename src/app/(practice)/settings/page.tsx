@@ -450,6 +450,7 @@ export default async function SettingsPage({
               <p className="text-sm text-ink-dim">
                 Booked sessions land on your calendar at the correct hour in both time zones.
               </p>
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- the connect route redirects to Google OAuth; it needs a full navigation, not a client Link */}
               <a
                 href="/api/calendar/connect"
                 className="mt-3 inline-block rounded-lg bg-forest px-4 py-2 text-sm font-medium text-paper transition-colors duration-200 hover:bg-forest-deep active:scale-[0.98]"

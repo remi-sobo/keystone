@@ -74,6 +74,7 @@ export default async function AccountPage({
           files, sent digests, the message thread, and the library. Raw transcripts and the
           consultant&apos;s working notes are never in it.
         </p>
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- /export is a route handler that streams a zip; a full navigation is correct, a client Link would try to prefetch it */}
         <a
           href="/export"
           className="mt-4 inline-block rounded-lg border border-forest px-4 py-2 text-sm text-forest transition-colors duration-200 hover:bg-forest hover:text-paper active:scale-[0.98]"

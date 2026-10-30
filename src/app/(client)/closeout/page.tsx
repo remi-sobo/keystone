@@ -102,6 +102,7 @@ export default async function ClientCloseoutPage({
           charter
         </Link>{' '}
         said what we would do; this room shows where it landed. You can{' '}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- /export is a route handler that streams a zip; a full navigation is correct */}
         <a href="/export" className="underline hover:text-ink">
           download the whole record
         </a>{' '}

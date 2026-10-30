@@ -27,8 +27,9 @@ import {
  * extraction writes ONE ai_proposals row (service role, after the
  * membership check, scoped by the resolved practice); decideProposal is
  * the single human path from a proposal into live tables. The
- * transcript itself saves through the SESSION client so RLS stays the
- * wall for the raw PII write.
+ * transcript itself saves through the SESSION client into
+ * session_transcripts (practice-only by RLS, migration 0050) so RLS
+ * stays the wall for the raw PII write.
  */
 
 const back = (id: string, state: string) => `/sessions/${id}/notes?state=${state}`
@@ -64,19 +65,36 @@ export async function saveTranscript(formData: FormData): Promise<void> {
     .maybeSingle()
   if (!session) redirect('/clients')
 
-  const { error } = await supabase.from('session_notes').upsert(
+  // The transcript lives in session_transcripts, which no client
+  // member can read by any query (migration 0050). The note row is made
+  // alongside it, practice-only, so the review workspace has a row to
+  // publish into later.
+  const { error } = await supabase.from('session_transcripts').upsert(
     {
       session_id: session.id,
       engagement_id: session.engagement_id,
       practice_id: session.practice_id,
       client_id: session.client_id,
-      raw_transcript: transcript,
+      body: transcript,
+      source: 'paste',
+      readai_meeting_id: null,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'session_id' }
   )
-  if (error) {
-    console.error('[notes] transcript save failed:', error.message)
+  const { error: noteError } = error
+    ? { error: null }
+    : await supabase.from('session_notes').upsert(
+        {
+          session_id: session.id,
+          engagement_id: session.engagement_id,
+          practice_id: session.practice_id,
+          client_id: session.client_id,
+        },
+        { onConflict: 'session_id', ignoreDuplicates: true }
+      )
+  if (error || noteError) {
+    console.error('[notes] transcript save failed:', (error ?? noteError)?.message)
     redirect(back(sessionId, 'save_failed'))
   }
   revalidatePath(`/sessions/${sessionId}/notes`)
@@ -109,20 +127,21 @@ export async function extractFromTranscript(formData: FormData): Promise<void> {
     .maybeSingle()
   if (!session) redirect('/clients')
 
-  const [{ data: note }, { data: roster }] = await Promise.all([
+  const [{ data: transcript }, { data: roster }] = await Promise.all([
     supabaseAdmin
-      .from('session_notes')
-      .select('raw_transcript')
+      .from('session_transcripts')
+      .select('body')
       .eq('session_id', session.id)
+      .eq('practice_id', practiceId)
       .maybeSingle(),
     supabaseAdmin
       .from('client_members')
       .select('email')
       .eq('client_id', session.client_id),
   ])
-  if (!note?.raw_transcript) redirect(back(sessionId, 'no_transcript'))
+  if (!transcript?.body) redirect(back(sessionId, 'no_transcript'))
 
-  const request = buildExtractionRequest(note.raw_transcript, {
+  const request = buildExtractionRequest(transcript.body, {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     clientName: ((session.clients as any)?.name as string) ?? 'the client',
     sessionDate: new Date(session.starts_at).toISOString().slice(0, 10),

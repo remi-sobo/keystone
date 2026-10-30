@@ -115,11 +115,13 @@ where practice_id = '10000000-0000-0000-0000-00000000000a' and role = 'owner';
 
 -- Ring 3: notes (one unshared, one shared), items, a proposal, and a
 -- readiness marker, all in practice_a.
+-- Since 0050 the transcript lives in session_transcripts (asserted in
+-- the Read AI block at the end of this file); session_notes holds none.
 insert into session_notes (session_id, engagement_id, practice_id, client_id,
-                           raw_transcript, summary_md, visibility) values
+                           summary_md, visibility) values
   ('50000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
    '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
-   'leak-test transcript', 'unshared summary', 'practice');
+   'unshared summary', 'practice');
 
 insert into action_items (id, engagement_id, practice_id, client_id, title,
                           assigned_client_member_id, status) values
@@ -4060,3 +4062,147 @@ end $$;
 reset role;
 
 select 'client hub phase two: bucket wall and manual-gift survival passed' as result;
+
+
+-- ═════════════════════════════════════════════════════════════════════
+-- Read AI import and the transcript wall (migration 0050,
+-- specs/keystone-readai.md). session_transcripts and readai_meetings are
+-- practice-read only: no client member reads either, even after the
+-- session's note is shared (the leak 0050 closes), and nothing crosses
+-- practices. readai_meetings has no write policy at all.
+-- ═════════════════════════════════════════════════════════════════════
+reset role;
+select set_config('request.jwt.claims', '', false);
+
+insert into session_transcripts (session_id, engagement_id, practice_id, client_id, body, source) values
+  ('50000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
+   '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1',
+   'leak-test transcript', 'readai');
+
+insert into readai_meetings (practice_id, readai_id, status, match_reason, client_id,
+                             title, participant_emails, summary_md, action_items, transcript_text) values
+  ('10000000-0000-0000-0000-00000000000a', 'readai-test-1', 'needs_review', 'no_session',
+   '20000000-0000-0000-0000-0000000000a1', 'leak-test call', '{member_a1@client-a.test}',
+   'leak-test summary', '["leak-test item"]', 'leak-test words');
+insert into readai_meetings (practice_id, readai_id, status, match_reason) values
+  ('10000000-0000-0000-0000-00000000000a', 'readai-test-2', 'skipped', 'no_client');
+
+-- The note is shared: the case that used to show the transcript.
+update session_notes set visibility = 'shared'
+  where session_id = '50000000-0000-0000-0000-0000000000a1';
+
+-- The old column stays empty for every writer, the service role included.
+do $$ begin
+  begin
+    update session_notes set raw_transcript = 'smuggled'
+      where session_id = '50000000-0000-0000-0000-0000000000a1';
+    raise exception 'HOLE: session_notes.raw_transcript accepted a transcript after 0050';
+  exception when check_violation then null;
+  end;
+end $$;
+
+-- A skipped meeting can hold no content, by constraint.
+do $$ begin
+  begin
+    insert into readai_meetings (practice_id, readai_id, status, match_reason, title)
+      values ('10000000-0000-0000-0000-00000000000a', 'readai-test-3', 'skipped', 'no_client', 'kept?');
+    raise exception 'HOLE: a skipped Read AI meeting kept its title';
+  exception when check_violation then null;
+  end;
+  begin
+    insert into readai_meetings (practice_id, readai_id, status, match_reason, transcript_text)
+      values ('10000000-0000-0000-0000-00000000000a', 'readai-test-4', 'attached', 'participants_and_time', 'kept?');
+    raise exception 'HOLE: an attached Read AI meeting kept its transcript in the ledger';
+  exception when check_violation then null;
+  end;
+end $$;
+
+set role authenticated;
+
+-- The practice reads both.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"owner_a@practice-a.test"}', false);
+do $$ begin
+  if (select count(*) from session_transcripts) <> 1 then
+    raise exception 'owner_a must read their practice''s transcript';
+  end if;
+  if (select count(*) from readai_meetings) <> 2 then
+    raise exception 'owner_a must read their practice''s Read AI ledger';
+  end if;
+end $$;
+-- No session writes the ledger, not even the owner.
+do $$ begin
+  begin
+    insert into readai_meetings (practice_id, readai_id, status, match_reason)
+      values ('10000000-0000-0000-0000-00000000000a', 'readai-forged', 'skipped', 'no_client');
+    raise exception 'HOLE: a session inserted into readai_meetings';
+  exception when insufficient_privilege then null;
+  end;
+  update readai_meetings set status = 'discarded', title = null, participant_emails = '{}',
+    summary_md = null, action_items = null, transcript_text = null
+    where readai_id = 'readai-test-1';
+  if found then raise exception 'HOLE: a session updated readai_meetings'; end if;
+end $$;
+
+-- The client member of that very session reads neither, with the note shared.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a1","email":"member_a1@client-a.test"}', false);
+do $$ begin
+  if (select count(*) from session_notes where session_id = '50000000-0000-0000-0000-0000000000a1') <> 1 then
+    raise exception 'member_a1 must read the shared note (the precondition of this test)';
+  end if;
+  if (select count(*) from session_transcripts) <> 0 then
+    raise exception 'LEAK: a client member reads a session transcript (shared note)';
+  end if;
+  if (select count(*) from readai_meetings) <> 0 then
+    raise exception 'LEAK: a client member reads the Read AI ledger';
+  end if;
+  begin
+    insert into session_transcripts (session_id, engagement_id, practice_id, client_id, body)
+      values ('50000000-0000-0000-0000-0000000000a1', '30000000-0000-0000-0000-0000000000a1',
+              '10000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-0000000000a1', 'forged');
+    raise exception 'HOLE: a client member wrote a session transcript';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+
+-- Cross-client inside the practice, cross-practice, a stranger: zero.
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000a2","email":"member_a2@client-a2.test"}', false);
+do $$ begin
+  if (select count(*) from session_transcripts) + (select count(*) from readai_meetings) <> 0 then
+    raise exception 'LEAK cross-client: member_a2 reads client_a1 transcripts or Read AI rows';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000b1","email":"member_b@client-b.test"}', false);
+do $$ begin
+  if (select count(*) from session_transcripts) + (select count(*) from readai_meetings) <> 0 then
+    raise exception 'LEAK cross-practice: member_b reads practice_a transcripts or Read AI rows';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000bb","email":"owner_b@practice-b.test"}', false);
+do $$ begin
+  if (select count(*) from session_transcripts) + (select count(*) from readai_meetings) <> 0 then
+    raise exception 'LEAK cross-practice: owner_b reads practice_a transcripts or Read AI rows';
+  end if;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000ee","email":"stranger@example.test"}', false);
+do $$ begin
+  if (select count(*) from session_transcripts) + (select count(*) from readai_meetings) <> 0 then
+    raise exception 'LEAK: a stranger reads transcripts or Read AI rows';
+  end if;
+end $$;
+select set_config('request.jwt.claims', '', false);
+reset role;
+set role anon;
+do $$ begin
+  if (select count(*) from session_transcripts) + (select count(*) from readai_meetings) <> 0 then
+    raise exception 'LEAK: anon reads transcripts or Read AI rows';
+  end if;
+end $$;
+reset role;
+
+select 'read ai import: transcript wall and ledger wall passed' as result;

@@ -8,10 +8,12 @@ import { MarkdownLite } from '@/components/MarkdownLite'
 
 /**
  * Client session detail (Ring 3, spec 6.4): date and attendees in mono
- * eyebrow, decisions as the led block, the session's homework, and the
- * transcript folded behind a disclosure. Pure RLS: an unshared note
- * (and its transcript) returns zero rows here by policy, so this page
- * simply renders what the wall admits.
+ * eyebrow, decisions as the led block, and the session's homework. Pure
+ * RLS: an unshared note returns zero rows here by policy, so this page
+ * simply renders what the wall admits. The raw transcript is never
+ * shown here (migration 0050 moved it to session_transcripts, which has
+ * no client-member policy): every client member reads this page, and
+ * the exclusion wall (SECURITY.md 4.5) keeps confidences out of it.
  */
 
 export default async function ClientSessionPage({
@@ -35,7 +37,7 @@ export default async function ClientSessionPage({
   const [{ data: note }, { data: items }, { data: prep }] = await Promise.all([
     supabase
       .from('session_notes')
-      .select('summary_md, decisions_md, raw_transcript, visibility')
+      .select('summary_md, decisions_md, visibility')
       .eq('session_id', id)
       .maybeSingle(),
     supabase
@@ -181,14 +183,6 @@ export default async function ClientSessionPage({
         </section>
       ) : null}
 
-      {note?.raw_transcript ? (
-        <details className="mt-10">
-          <summary className="eyebrow cursor-pointer">Transcript</summary>
-          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-ink-dim">
-            {note.raw_transcript}
-          </p>
-        </details>
-      ) : null}
     </RoomShell>
   )
 }

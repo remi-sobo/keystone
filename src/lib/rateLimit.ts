@@ -285,6 +285,12 @@ export const LIMITS = {
   HUB_SNAPSHOT_PER_MIN: { kind: 'hub-snapshot:ip:min', windowMs: 60 * 1000, max: 10 },
   HUB_SNAPSHOT_PER_HOUR: { kind: 'hub-snapshot:ip:hour', windowMs: 60 * 60 * 1000, max: 60 },
 
+  // The Read AI webhook (specs/keystone-readai.md). One POST per ended
+  // meeting; a busy day is a few dozen. The limit runs BEFORE the URL
+  // secret check so guessing is bounded, keyed per IP.
+  READAI_WEBHOOK_PER_MIN: { kind: 'readai-webhook:ip:min', windowMs: 60 * 1000, max: 30 },
+  READAI_WEBHOOK_PER_HOUR: { kind: 'readai-webhook:ip:hour', windowMs: 60 * 60 * 1000, max: 300 },
+
   // The per-practice model-spend ceiling: a call-count proxy for spend,
   // consumed by lib/spend.ts before every AI call. Every Keystone AI
   // call is max_tokens-bounded, so capping calls per practice per day

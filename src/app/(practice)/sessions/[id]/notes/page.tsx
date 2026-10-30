@@ -24,6 +24,7 @@ import { draftFromPayload, type EditedPayload, type ExtractionPayload } from '@/
 const STATES: Record<string, string> = {
   saved: 'Transcript saved.',
   extracted: 'Proposal ready below. Nothing is live until you publish.',
+  readai_attached: 'Read AI meeting attached. Its notes are a proposal below; nothing is live until you publish.',
   ros_saved: 'Run of show saved. The client sees it on the session.',
   ros_error: 'That did not save. Check the fields and try again.',
   accepted: 'Accepted. The note and homework are live for the client.',
@@ -61,11 +62,16 @@ export default async function PracticeSessionPage({
     .maybeSingle()
   if (!session) redirect('/engagements')
 
-  const [{ data: note }, { data: proposals }, { data: members }, { data: items }, { data: prep }, { data: catalog }] =
+  const [{ data: note }, { data: transcript }, { data: proposals }, { data: members }, { data: items }, { data: prep }, { data: catalog }] =
     await Promise.all([
       supabase
         .from('session_notes')
-        .select('raw_transcript, summary_md, decisions_md, visibility')
+        .select('summary_md, decisions_md, visibility')
+        .eq('session_id', id)
+        .maybeSingle(),
+      supabase
+        .from('session_transcripts')
+        .select('body, source')
         .eq('session_id', id)
         .maybeSingle(),
       supabase
@@ -545,15 +551,16 @@ export default async function PracticeSessionPage({
       <section className="mt-8">
         <h2 className="font-display text-2xl font-medium text-ink">Transcript</h2>
         <p className="mt-1 text-sm text-ink-dim">
-          Paste the call transcript or your notes. It stays behind the client wall and feeds only
-          the extraction.
+          Paste the call transcript or your notes. It stays on the practice side, no client member
+          ever sees it, and it feeds only the extraction.
+          {transcript?.source === 'readai' ? ' This one came in from Read AI.' : ''}
         </p>
         <form action={saveTranscript} className="mt-3">
           <input type="hidden" name="sessionId" value={session.id} />
           <textarea
             name="transcript"
             rows={10}
-            defaultValue={note?.raw_transcript ?? ''}
+            defaultValue={transcript?.body ?? ''}
             placeholder="Paste the transcript here."
             className="w-full rounded-lg border border-ink/15 bg-paper-raised p-3 text-sm text-ink"
           />
@@ -566,7 +573,7 @@ export default async function PracticeSessionPage({
             </button>
           </div>
         </form>
-        {note?.raw_transcript ? (
+        {transcript?.body ? (
           <form action={extractFromTranscript} className="mt-3">
             <input type="hidden" name="sessionId" value={session.id} />
             <button

@@ -134,6 +134,12 @@ export default async function SettingsPage({
           </Link>
         </p>
       ) : null}
+      <p className="mb-8 text-sm text-ink-dim">
+        Call notes from Read AI:{' '}
+        <Link href="/settings/read-ai" className="underline hover:text-ink">
+          Read AI inbox
+        </Link>
+      </p>
       <section>
         <h2 className="font-display text-2xl font-medium text-ink">Availability</h2>
         <p className="mt-1 text-sm text-ink-dim">
